@@ -1030,6 +1030,8 @@
     const createdAt = new Date(returningWish.createdAt);
     $('#returned-date').textContent = `預けた日 ${new Intl.DateTimeFormat('ja-JP', {year: 'numeric', month: 'long', day: 'numeric'}).format(createdAt)}`;
     $('#returned-date').dateTime = createdAt.toISOString();
+    $('#share-comment').value = '';
+    $('#share-status').textContent = '';
     returnCard.hidden = false;
     setTimeout(() => returnCard.classList.add('card-open'), 20);
     $('#mission-status').textContent = '2010 — 帰還カプセル / 願い星を回収';
@@ -1038,7 +1040,7 @@
 
   async function chooseDisposition(status) {
     if (!returningWish || !landed) return;
-    const actions = [...document.querySelectorAll('#try-wish, #return-to-orbit, #finish-wish')];
+    const actions = [...document.querySelectorAll('#try-wish, #return-to-orbit, #finish-wish, #share-wish')];
     actions.forEach(button => { button.disabled = true; });
     const updated = {...returningWish, status, updatedAt: Date.now()};
     try {
@@ -1053,6 +1055,30 @@
       $('#mission-status').textContent = '保存できませんでした。もう一度お試しください';
     } finally {
       actions.forEach(button => { button.disabled = false; });
+    }
+  }
+
+  async function shareWish() {
+    if (!returningWish || !landed) return;
+    const shareButton = $('#share-wish');
+    const shareStatus = $('#share-status');
+    const comment = $('#share-comment').value.trim();
+    const message = [`「${returningWish.text}」`, comment, 'イトカワから帰還した願い星 — MORUNE 25143'].filter(Boolean).join('\n');
+    const shareData = {title: 'MORUNE 25143 — 帰還した願い星', text: message, url: window.location.href};
+    shareButton.disabled = true;
+    shareStatus.textContent = '';
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share(shareData);
+        shareStatus.textContent = '共有シートを開きました';
+      } else {
+        await navigator.clipboard.writeText(`${message}\n${window.location.href}`);
+        shareStatus.textContent = '共有文をコピーしました';
+      }
+    } catch (error) {
+      if (error?.name !== 'AbortError') shareStatus.textContent = '共有できませんでした。もう一度お試しください';
+    } finally {
+      shareButton.disabled = false;
     }
   }
 
@@ -1207,6 +1233,7 @@
   $('#try-wish').addEventListener('click', () => chooseDisposition('doing'));
   $('#return-to-orbit').addEventListener('click', () => chooseDisposition('waiting'));
   $('#finish-wish').addEventListener('click', () => chooseDisposition('done'));
+  $('#share-wish').addEventListener('click', shareWish);
   $('#archive-open').addEventListener('click', () => { $('#archive-sheet').hidden = false; });
   $('#archive-close').addEventListener('click', () => { $('#archive-sheet').hidden = true; });
   $('#archive-select-all').addEventListener('change', event => {
