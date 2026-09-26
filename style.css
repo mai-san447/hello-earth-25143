@@ -4,3 +4,30 @@
 @media(max-width:620px){.app{padding:14px 12px 25px}.masthead{padding:0 5px;font-size:.69rem}.layout{margin-top:12px;gap:0}.mission-copy{left:24px;top:17px}.mission-copy h1{font-size:clamp(2.7rem,12vw,4rem);margin:8px 0}.mission-copy p:last-child{font-size:.82rem;max-width:240px}.universe{height:500px;min-height:0;border-radius:24px}.distance{top:47%;left:5%;right:5%;font-size:.58rem}.distance span:nth-child(2){font-size:.64rem;max-width:100px}.earth{left:0;bottom:18%;font-size:5.7rem}.asteroid{right:6%;top:28%;font-size:2.6rem}.craft{top:37%;font-size:2.3rem}.universe.returning .craft{top:68%;left:23%}.universe.departing .craft{top:37%}.flight-caption{bottom:74px;font-size:.76rem}.mission-control{margin:-62px 9px 0;padding:15px;border-radius:18px}.return-controls{flex-direction:column}.return-button,.tap-button{min-height:46px}.desk{display:block;padding-top:19px}.deposit,.arrival,.log{padding:21px}.arrival,.log{margin-top:15px}textarea{min-height:110px}.input-actions{margin-bottom:17px}footer{margin-top:24px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 .deposit-button{margin-top:22px}
+@media(min-width:621px) and (max-width:900px){.desk footer{grid-column:1/-1}}
+@media(max-width:620px){
+  .app{height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding-bottom:0}
+  .masthead{flex:0 0 auto}
+  .layout{display:flex;flex:1;flex-direction:column;min-height:0;overflow:hidden}
+  .mission{flex:0 0 auto}
+  .universe{height:clamp(210px,34dvh,300px);min-height:0}
+  .mission-copy{top:12px;left:20px}
+  .mission-copy h1{font-size:clamp(2.1rem,9vw,3.1rem);margin:7px 0}
+  .mission-copy p:last-child{display:none}
+  .earth{font-size:clamp(3.8rem,12vw,5rem);bottom:18%}
+  .asteroid{top:28%;font-size:2.2rem}
+  .craft{font-size:2rem;top:37%}
+  .universe.returning .craft{top:67%}
+  .universe.departing .craft{top:37%}
+  .distance{top:52%}
+  .flight-caption{bottom:67px}
+  .mission-control{margin-top:-55px;padding:11px 13px;border-radius:16px}
+  .mission-control>p:first-child{margin-bottom:7px;font-size:.8rem}
+  .return-controls{flex-direction:row}
+  .return-button,.tap-button{min-height:44px;font-size:.8rem}
+  .tap-button{padding:0 9px}
+  .mission-control .notice{margin-top:7px;font-size:.75rem}
+  .desk{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:12px 3px 22px;scrollbar-gutter:stable}
+  .arrival{scroll-margin-top:12px}
+  .desk footer{margin:19px 7px 5px;font-size:.75rem}
+}
