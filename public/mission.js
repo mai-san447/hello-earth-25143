@@ -929,7 +929,7 @@
     setTimeout(() => finishReturn(returningWish), reducedMotion ? 60 : 2700);
     landed = false;
     sampleButton.hidden = true;
-    $('#mission-status').textContent = '2005 — イトカワで採取したサンプルを地球へ';
+    $('#mission-status').textContent = '2005 — イトカワ出発 / 願い星を地球へ';
     $('#gesture-hint').textContent = '星はひとつだけ。はやぶさの帰還を見届けてください';
     setTimeout(() => {
       if (returnFlight) $('#mission-status').textContent = '2007 — イオンエンジンで地球帰還の航路へ';
@@ -948,7 +948,7 @@
     $('#returned-date').dateTime = createdAt.toISOString();
     returnCard.hidden = false;
     setTimeout(() => returnCard.classList.add('card-open'), 20);
-    $('#mission-status').textContent = '2010 — カプセル帰還 / WISH SAMPLE RETURNED';
+    $('#mission-status').textContent = '2010 — 帰還カプセル / 願い星を回収';
     $('#card-close').focus({preventScroll: true});
   }
 
