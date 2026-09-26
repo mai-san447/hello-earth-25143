@@ -26,6 +26,7 @@
 	- `SUPABASE_URL`
 	- `SUPABASE_SERVICE_ROLE_KEY`
 - Supabase SQL Editorで `supabase/migrations/001_create_wishes.sql` を実行してから、Workerをデプロイします。
+- 詳細な接続手順と確認場所は [Supabase接続手順](docs/SUPABASE-SETUP.md) を参照してください。
 - 初回デプロイは `workers.dev` の検証用URLで行います。独自ドメインを使う場合は、Workers版の検証後にDNSとカスタムドメインを設定します。
 
 ## JAXA素材
