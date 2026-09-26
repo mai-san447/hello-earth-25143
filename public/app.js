@@ -56,6 +56,7 @@
       }
     }
     await refresh();
+    desk.dataset.view = waiting().length ? 'return' : 'deposit';
     returnStatus.textContent = waiting().length ? 'スマホを振ると、はやぶさが一つ連れ帰ります。' : 'まず願いを預けてください。';
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') installMotion();
   }
@@ -89,7 +90,7 @@
       wish.value = ''; depositStatus.textContent = 'イトカワへ預けました。';
       returnStatus.textContent = 'スマホを振ると、はやぶさが一つ連れ帰ります。';
       await refresh();
-      desk.dataset.view = 'deposit';
+      desk.dataset.view = 'return';
     } catch (error) { depositStatus.textContent = `保存できませんでした。入力は残しています。${error.message || '通信を確認してください。'}`; }
     finally { deposit.disabled = false; }
   }
@@ -121,7 +122,7 @@
     try {
       await store('readwrite', object => object.put(next));
       current = null; arrival.hidden = true; traveling = true;
-      desk.dataset.view = 'deposit';
+      desk.dataset.view = 'return';
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
       const result = {doing:'「これやろう」を地球に残しました。',later:'またいつか、イトカワから連れ帰ります。',expired:'用済みとして記録しました。',done:'対応済みとして記録しました。'};
       returnStatus.textContent = result[action] + ' はやぶさは次の願いを迎えに行きます。';
@@ -129,6 +130,7 @@
       distanceText.textContent = '次の願いを迎えに'; flightCaption.textContent = '地球を離れ、イトカワへ';
       setTimeout(() => { flightCaption.textContent = 'また長い航路を進んでいます'; }, 1200);
       await refresh();
+      if (!waiting().length) desk.dataset.view = 'deposit';
       setTimeout(() => { traveling = false; universe.classList.remove('departing'); distanceText.textContent = '長い航路を、ひとつずつ'; flightCaption.textContent = 'はやぶさはイトカワで待っています'; render(); }, 2700);
     } catch (_) { returnStatus.textContent = '保存できませんでした。もう一度選んでください。'; }
     finally { choices.querySelectorAll('button').forEach(button => { button.disabled = false; }); }
@@ -157,6 +159,7 @@
   choices.addEventListener('click', event => { const action = event.target.closest('button')?.dataset.action; if (action) decide(action); });
   $('#show-history').addEventListener('click', () => { desk.dataset.view = 'history'; });
   $('#hide-history').addEventListener('click', () => { desk.dataset.view = 'deposit'; });
+  $('#back-to-deposit').addEventListener('click', () => { desk.dataset.view = 'deposit'; });
   $('#history-prev').addEventListener('click', () => { historyPage--; render(); });
   $('#history-next').addEventListener('click', () => { historyPage++; render(); });
   legacyPlay.addEventListener('click', async () => {
