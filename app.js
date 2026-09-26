@@ -7,9 +7,11 @@
   const flightCaption = $('#flight-caption'), returnStatus = $('#return-status');
   const arrival = $('#arrival'), returnedText = $('#returned-text'), legacyPlay = $('#legacy-play');
   const choices = $('#choices'), history = $('#history');
+  const desk = $('.desk');
   const labels = { doing:'取り組み中', expired:'用済み', done:'対応済み' };
   let db, items = [], current = null, traveling = false, lastId = null;
   let motionListening = false, lastMotion = 0, audioUrl = null;
+  let historyPage = 0;
 
   function openDB() {
     return new Promise((resolve, reject) => {
@@ -35,10 +37,16 @@
     count.textContent = `イトカワに ${waiting().length} 件 ／ 地球で取り組み中 ${items.filter(item => item.status === 'doing').length} 件`;
     shake.disabled = fallback.disabled = !waiting().length || Boolean(current) || traveling;
     const settled = items.filter(item => labels[item.status]).sort((a,b) => b.updatedAt - a.updatedAt);
+    const pageCount = Math.max(1, Math.ceil(settled.length / 3));
+    historyPage = Math.min(historyPage, pageCount - 1);
     $('#log-count').textContent = `${settled.length} 件`;
     $('#history-empty').hidden = Boolean(settled.length);
+    $('#history-page').textContent = settled.length ? `${historyPage + 1} / ${pageCount}` : '';
+    $('#history-prev').disabled = historyPage === 0;
+    $('#history-next').disabled = historyPage >= pageCount - 1;
+    $('.log-pages').hidden = settled.length <= 3;
     history.replaceChildren();
-    for (const item of settled) {
+    for (const item of settled.slice(historyPage * 3, historyPage * 3 + 3)) {
       const li = document.createElement('li'), title = document.createElement('span'), status = document.createElement('span');
       title.textContent = item.text || '以前、声で預けた願い'; status.textContent = labels[item.status];
       li.append(title, status); history.append(li);
@@ -53,6 +61,7 @@
       wish.value = ''; depositStatus.textContent = 'イトカワへ預けました。';
       returnStatus.textContent = 'スマホを振ると、はやぶさが一つ連れ帰ります。';
       await refresh();
+      desk.dataset.view = 'deposit';
     } catch (_) { depositStatus.textContent = '保存できませんでした。入力は残しています。ブラウザの空き容量を確認してください。'; }
     finally { deposit.disabled = false; }
   }
@@ -74,7 +83,7 @@
       returnedText.textContent = item.text || '以前、声で預けた願い';
       legacyPlay.hidden = !item.audio; arrival.hidden = false;
       flightCaption.textContent = '地球に帰還しました'; returnStatus.textContent = '届いた願いを確かめてください。';
-      traveling = false; render(); arrival.scrollIntoView({behavior:'smooth',block:'nearest'});
+      traveling = false; desk.dataset.view = 'arrival'; render();
     }, 2700);
   }
   async function decide(action) {
@@ -84,6 +93,7 @@
     try {
       await store('readwrite', object => object.put(next));
       current = null; arrival.hidden = true; traveling = true;
+      desk.dataset.view = 'deposit';
       if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
       const result = {doing:'「これやろう」を地球に残しました。',later:'またいつか、イトカワから連れ帰ります。',expired:'用済みとして記録しました。',done:'対応済みとして記録しました。'};
       returnStatus.textContent = result[action] + ' はやぶさは次の願いを迎えに行きます。';
@@ -117,6 +127,10 @@
   deposit.addEventListener('click', saveWish);
   shake.addEventListener('click', requestMotion); fallback.addEventListener('click', returnOne);
   choices.addEventListener('click', event => { const action = event.target.closest('button')?.dataset.action; if (action) decide(action); });
+  $('#show-history').addEventListener('click', () => { desk.dataset.view = 'history'; });
+  $('#hide-history').addEventListener('click', () => { desk.dataset.view = 'deposit'; });
+  $('#history-prev').addEventListener('click', () => { historyPage--; render(); });
+  $('#history-next').addEventListener('click', () => { historyPage++; render(); });
   legacyPlay.addEventListener('click', async () => {
     if (!current?.audio) return;
     if (audioUrl) URL.revokeObjectURL(audioUrl);
