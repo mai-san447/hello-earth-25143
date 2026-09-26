@@ -83,3 +83,63 @@
   .mission-copy h1{font-size:clamp(1.6rem,7.5vw,2.6rem);line-height:1.1}
   .account-bar{bottom:auto;top:27px;right:14px;max-width:42%;font-size:.62rem;line-height:1.2;background:#141d3bee}
 }
+/* One fixed scene above one changing operation panel. */
+.app{width:min(100%,600px);max-width:none;height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden;padding:10px 12px max(9px,env(safe-area-inset-bottom))}
+.masthead{flex:0 0 auto;padding:0 3px;font-size:.64rem}
+.layout{display:flex;flex:1;min-height:0;flex-direction:column;align-items:stretch;gap:8px;margin-top:7px;overflow:hidden}
+.mission{flex:1 1 auto;min-height:0;width:100%;position:relative}
+.universe{height:100%;min-height:0;border-radius:22px}
+.mission-copy{top:15px;left:20px;max-width:68%}
+.mission-copy h1{font-size:clamp(1.8rem,5.2vw,2.8rem);line-height:1.13;margin:6px 0}
+.mission-copy p:last-child{display:none}
+.earth{left:3%;bottom:13%;font-size:clamp(4.5rem,13vh,7rem)}
+.asteroid{right:10%;top:19%;font-size:clamp(2rem,6vh,3.5rem)}
+.craft{font-size:clamp(2rem,5vh,2.8rem);top:30%}
+.universe.returning .craft{top:65%}.universe.departing .craft{top:30%}
+.distance{top:49%}.flight-caption{bottom:12px;font-size:.78rem}
+.desk{flex:0 0 clamp(245px,38dvh,340px);display:block;min-height:0;width:100%;overflow:hidden;padding:0}
+.desk>div{height:100%;margin:0;padding:clamp(12px,2.3dvh,20px);border-radius:19px;overflow:hidden}
+.desk .deposit,.desk .arrival,.desk .log,.desk .mission-control{display:none}
+.desk[data-view="deposit"] .deposit,.desk[data-view="return"] .mission-control,.desk[data-view="arrival"] .arrival:not([hidden]),.desk[data-view="history"] .log{display:block}
+.desk .mission-control{position:relative;left:auto;right:auto;bottom:auto;max-width:none;background:rgba(26,35,77,.96)}
+.desk .mission-control h2{font-size:clamp(1.25rem,4vw,1.7rem);margin:8px 0 15px}
+.desk .mission-control .section-no{margin:0}
+.desk .mission-control #count{font-size:.87rem;margin:0 0 12px;color:var(--muted)}
+.desk .mission-control .return-controls{display:flex;flex-direction:row}
+.desk .mission-control .return-button,.desk .mission-control .tap-button{min-height:50px;font-size:.9rem}
+.desk .mission-control .notice{min-height:2em;margin:12px 0 3px;font-size:.8rem}
+.desk .mission-control .panel-link{display:block;margin-left:auto}
+.desk .deposit h2,.desk .arrival h2{font-size:clamp(1.2rem,4vw,1.65rem);margin:7px 0 10px}
+.desk .deposit label{font-size:.82rem;margin-bottom:6px}
+.desk textarea{height:clamp(55px,11dvh,92px);min-height:0;resize:none;padding:10px;font-size:.95rem}
+.desk .deposit-button{min-height:44px;margin-top:10px}
+.desk .deposit .notice{min-height:0;margin:5px 0 0;font-size:.8rem}
+.desk .arrival h2{max-height:52%;font-size:clamp(.95rem,3.6vw,1.4rem);overflow:hidden}
+.desk .choices button{min-height:45px}
+.desk .log-title .panel-link{display:inline-block}
+.desk footer{display:none}
+.account-bar{top:27px;bottom:auto;right:17px;max-width:45%;font-size:.62rem;line-height:1.25}
+@media(max-width:620px){
+  .app{width:100%;padding:8px 10px max(8px,env(safe-area-inset-bottom))}
+  .layout{margin-top:5px;gap:6px}
+  .mission{flex:1 1 auto;min-height:0}
+  .universe{height:100%;min-height:0}
+  .mission-copy{top:10px;left:17px;max-width:70%}
+  .mission-copy h1{font-size:clamp(1.7rem,7.5vw,2.6rem);line-height:1.12}
+  .earth{font-size:clamp(3.7rem,12vw,5.5rem);bottom:16%}
+  .asteroid{top:22%;font-size:2.2rem}.craft{font-size:2rem;top:33%}
+  .universe.returning .craft{top:65%}.universe.departing .craft{top:33%}
+  .distance{top:51%}.flight-caption{bottom:10px}
+  .desk{flex:0 0 clamp(235px,40dvh,320px);padding:0;overflow:hidden}
+  .desk>div{padding:clamp(10px,2dvh,17px)}
+  .desk .mission-control{position:relative;left:auto;right:auto;bottom:auto;margin:0;max-width:none}
+  .desk .mission-control .return-controls{flex-direction:row}
+  .desk .mission-control .return-button,.desk .mission-control .tap-button{min-height:44px;font-size:.81rem}
+  .desk .mission-control .notice{display:block;font-size:.72rem;margin:8px 0 0}
+  .desk .deposit h2,.desk .arrival h2{font-size:1.2rem;margin:5px 0 8px}
+  .desk textarea{height:clamp(50px,9dvh,75px)}
+  .desk .deposit-button{min-height:42px;margin-top:8px}
+  .desk .choices button{min-height:40px}
+  .account-bar{top:25px;right:13px;bottom:auto;max-width:43%;font-size:.59rem}
+}
+@media(max-height:650px){.desk{flex-basis:235px}.mission-copy h1{font-size:1.7rem}.desk .mission-control h2{margin:3px 0 8px}.desk .mission-control #count{margin-bottom:6px}.desk .mission-control .notice{margin-top:5px}}
