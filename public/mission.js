@@ -73,9 +73,12 @@
     return wishes.filter(wish => wish.status !== 'waiting').sort((a, b) => b.updatedAt - a.updatedAt);
   }
 
+  function dispositionLabel(status) {
+    return ({returned: '帰還・未整理', doing: 'やってみる', later: '保留', expired: '手放した', done: '完了'})[status] || '地球に保管';
+  }
+
   function refreshInterface() {
     const count = orbiting().length;
-    $('#orbit-count').textContent = String(count).padStart(2, '0');
     $('#archive-count').textContent = String(recovered().length);
     $('#shake').disabled = $('#fallback').disabled = count === 0 || Boolean(returningWish) || Boolean(returnFlight);
     $('#gesture-hint').textContent = landed
@@ -86,10 +89,13 @@
     for (const wish of recovered()) {
       const row = document.createElement('li');
       const text = document.createElement('span');
+      const disposition = document.createElement('span');
       const date = document.createElement('time');
       text.textContent = wish.text;
+      disposition.className = 'archive-state';
+      disposition.textContent = dispositionLabel(wish.status);
       date.textContent = new Intl.DateTimeFormat('ja-JP', {month: 'short', day: 'numeric'}).format(wish.updatedAt);
-      row.append(text, date);
+      row.append(text, disposition, date);
       list.append(row);
     }
     $('#archive-empty').hidden = recovered().length > 0;
@@ -117,10 +123,28 @@
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
   }
 
+  function syncVisualViewport() {
+    const viewport = window.visualViewport;
+    const visibleHeight = viewport?.height ?? window.innerHeight;
+    app.style.setProperty('--visual-height', `${Math.round(visibleHeight)}px`);
+    app.style.setProperty('--visual-offset-top', `${Math.round(viewport?.offsetTop ?? 0)}px`);
+    app.classList.toggle('keyboard-open', document.activeElement === wishInput && matchMedia('(max-width: 900px)').matches);
+    resize();
+  }
+
   function hash(text) {
     let value = 2166136261;
     for (const character of text) value = Math.imul(value ^ character.charCodeAt(0), 16777619);
     return value >>> 0;
+  }
+
+  function createWishId() {
+    if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = [...bytes].map(byte => byte.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
 
   function orbitPosition(wish, index, time) {
@@ -238,7 +262,7 @@
     context.stroke();
     context.restore();
 
-    if (!returnFlight) drawHayabusa(centerX - orbitX * .48, centerY - orbitY * .82, -.22, 1);
+    drawHayabusa(centerX - orbitX * .48, centerY - orbitY * .82, -.22, 1);
 
     orbiting().forEach((wish, index) => {
       if (launchFlight?.wish.id === wish.id) return;
@@ -312,13 +336,8 @@
       if (progress >= 1) launchFlight = null;
     }
     if (returnFlight) {
-      const progress = Math.min(1, (time - returnFlight.startedAt) / (reducedMotion ? 60 : 1900));
-      const capsule = drawComet(returnFlight.from.x, returnFlight.from.y, width * .5, geometry().earthY, progress);
-      if (progress < .86) drawHayabusa(capsule.x - 16, capsule.y - 13, -.7, .92);
-      else {
-        const release = (progress - .86) / .14;
-        drawHayabusa(capsule.x - release * 42, capsule.y - release * 95, -.7, .92);
-      }
+      const progress = Math.min(1, (time - returnFlight.startedAt) / (reducedMotion ? 60 : 2600));
+      drawComet(returnFlight.from.x, returnFlight.from.y, width * .5, geometry().earthY, progress);
     }
     if (landed) {
       const {earthY} = geometry();
@@ -376,7 +395,7 @@
   async function finishReturn(wish) {
     if (!returnFlight || returnFlight.wish.id !== wish.id) return;
     returnFlight = null;
-    const returned = {...wish, status: 'done', updatedAt: Date.now()};
+    const returned = {...wish, status: 'returned', updatedAt: Date.now()};
     try {
       await store('readwrite', object => object.put(returned));
       wishes = wishes.map(item => item.id === wish.id ? returned : item);
@@ -391,6 +410,79 @@
       returningWish = null;
       $('#mission-status').textContent = '帰還記録を保存できません。通信を確認してください';
     }
+  }
+
+  function playReturnWhoosh() {
+    try {
+      audioContext ||= new AudioContext();
+      if (audioContext.state === 'suspended') audioContext.resume();
+      const duration = reducedMotion ? .45 : 2.6;
+      const now = audioContext.currentTime;
+      const buffer = audioContext.createBuffer(1, Math.ceil(audioContext.sampleRate * duration), audioContext.sampleRate);
+      const samples = buffer.getChannelData(0);
+      for (let index = 0; index < samples.length; index++) {
+        samples[index] = Math.random() * 2 - 1;
+      }
+
+      const source = audioContext.createBufferSource();
+  const lowFilter = audioContext.createBiquadFilter();
+  const midFilter = audioContext.createBiquadFilter();
+  const lowGain = audioContext.createGain();
+  const midGain = audioContext.createGain();
+  const compressor = audioContext.createDynamicsCompressor();
+  compressor.threshold.setValueAtTime(-20, now);
+  compressor.knee.setValueAtTime(16, now);
+  compressor.ratio.setValueAtTime(4, now);
+  compressor.attack.setValueAtTime(.004, now);
+  compressor.release.setValueAtTime(.2, now);
+  compressor.connect(audioContext.destination);
+      source.buffer = buffer;
+  lowFilter.type = 'lowpass';
+  lowFilter.frequency.setValueAtTime(150, now);
+  lowFilter.frequency.exponentialRampToValueAtTime(820, now + duration * .38);
+  lowFilter.frequency.exponentialRampToValueAtTime(220, now + duration);
+  midFilter.type = 'bandpass';
+  midFilter.frequency.setValueAtTime(340, now);
+  midFilter.frequency.exponentialRampToValueAtTime(760, now + duration * .34);
+  midFilter.frequency.exponentialRampToValueAtTime(280, now + duration);
+  midFilter.Q.setValueAtTime(.7, now);
+  lowGain.gain.setValueAtTime(.0001, now);
+  lowGain.gain.exponentialRampToValueAtTime(.24, now + duration * .16);
+  lowGain.gain.setValueAtTime(.2, now + duration * .55);
+  lowGain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+  midGain.gain.setValueAtTime(.0001, now);
+  midGain.gain.exponentialRampToValueAtTime(.11, now + duration * .2);
+  midGain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+  source.connect(lowFilter).connect(lowGain).connect(compressor);
+  source.connect(midFilter).connect(midGain).connect(compressor);
+      source.start(now);
+      source.stop(now + duration);
+
+      const rumble = audioContext.createOscillator();
+      const rumbleGain = audioContext.createGain();
+      rumble.type = 'triangle';
+  rumble.frequency.setValueAtTime(92, now);
+  rumble.frequency.exponentialRampToValueAtTime(48, now + duration);
+      rumbleGain.gain.setValueAtTime(.0001, now);
+  rumbleGain.gain.exponentialRampToValueAtTime(.1, now + duration * .12);
+  rumbleGain.gain.setValueAtTime(.075, now + duration * .58);
+      rumbleGain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+  rumble.connect(rumbleGain).connect(compressor);
+      rumble.start(now);
+      rumble.stop(now + duration);
+
+  const impact = audioContext.createOscillator();
+  const impactGain = audioContext.createGain();
+  impact.type = 'triangle';
+  impact.frequency.setValueAtTime(118, now);
+  impact.frequency.exponentialRampToValueAtTime(46, now + .32);
+  impactGain.gain.setValueAtTime(.0001, now);
+  impactGain.gain.exponentialRampToValueAtTime(.16, now + .018);
+  impactGain.gain.exponentialRampToValueAtTime(.0001, now + .34);
+  impact.connect(impactGain).connect(compressor);
+  impact.start(now);
+  impact.stop(now + .36);
+    } catch {}
   }
 
   function playRecoveryTone() {
@@ -411,6 +503,48 @@
     } catch {}
   }
 
+  function playLaunchTone() {
+    try {
+      audioContext ||= new AudioContext();
+      if (audioContext.state === 'suspended') audioContext.resume();
+      const now = audioContext.currentTime;
+      const duration = reducedMotion ? .32 : .72;
+      const buffer = audioContext.createBuffer(1, Math.ceil(audioContext.sampleRate * duration), audioContext.sampleRate);
+      const samples = buffer.getChannelData(0);
+      for (let index = 0; index < samples.length; index++) {
+        samples[index] = Math.random() * 2 - 1;
+      }
+
+      const source = audioContext.createBufferSource();
+      const filter = audioContext.createBiquadFilter();
+      const gain = audioContext.createGain();
+      source.buffer = buffer;
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(260, now);
+      filter.frequency.exponentialRampToValueAtTime(1450, now + duration * .62);
+      filter.frequency.exponentialRampToValueAtTime(620, now + duration);
+      filter.Q.setValueAtTime(.8, now);
+      gain.gain.setValueAtTime(.0001, now);
+      gain.gain.exponentialRampToValueAtTime(.11, now + .08);
+      gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+      source.connect(filter).connect(gain).connect(audioContext.destination);
+      source.start(now);
+      source.stop(now + duration);
+
+      const tone = audioContext.createOscillator();
+      const toneGain = audioContext.createGain();
+      tone.type = 'sine';
+      tone.frequency.setValueAtTime(240, now);
+      tone.frequency.exponentialRampToValueAtTime(720, now + duration * .72);
+      toneGain.gain.setValueAtTime(.0001, now);
+      toneGain.gain.exponentialRampToValueAtTime(.055, now + .1);
+      toneGain.gain.exponentialRampToValueAtTime(.0001, now + duration);
+      tone.connect(toneGain).connect(audioContext.destination);
+      tone.start(now);
+      tone.stop(now + duration);
+    } catch {}
+  }
+
   function returnOne() {
     if (returningWish || returnFlight) return;
     const candidates = orbiting();
@@ -424,17 +558,18 @@
       startedAt: performance.now(),
       from: orbitPosition(returningWish, candidates.indexOf(returningWish), performance.now()),
     };
-    setTimeout(() => finishReturn(returningWish), reducedMotion ? 60 : 1900);
+    playReturnWhoosh();
+    setTimeout(() => finishReturn(returningWish), reducedMotion ? 60 : 2700);
     landed = false;
     sampleButton.hidden = true;
     $('#mission-status').textContent = '2005 — イトカワで採取したサンプルを地球へ';
     $('#gesture-hint').textContent = '星はひとつだけ。はやぶさの帰還を見届けてください';
     setTimeout(() => {
       if (returnFlight) $('#mission-status').textContent = '2007 — イオンエンジンで地球帰還の航路へ';
-    }, 780);
+    }, 1150);
     setTimeout(() => {
       if (returnFlight) $('#mission-status').textContent = '2010 — 帰還カプセルを分離';
-    }, 1420);
+    }, 2050);
     refreshInterface();
   }
 
@@ -450,21 +585,51 @@
     $('#card-close').focus({preventScroll: true});
   }
 
+  async function chooseDisposition(status) {
+    if (!returningWish || !landed) return;
+    const actions = [...document.querySelectorAll('#try-wish, #return-to-orbit, #finish-wish')];
+    actions.forEach(button => { button.disabled = true; });
+    const updated = {...returningWish, status, updatedAt: Date.now()};
+    try {
+      await store('readwrite', object => object.put(updated));
+      wishes = wishes.map(wish => wish.id === updated.id ? updated : wish);
+      returningWish = updated;
+      if (status === 'waiting') launchFlight = {wish: updated, startedAt: performance.now()};
+      closeCard();
+      refreshInterface();
+    } catch {
+      $('#mission-status').textContent = '保存できませんでした。もう一度お試しください';
+    } finally {
+      actions.forEach(button => { button.disabled = false; });
+    }
+  }
+
   function closeCard() {
     returnCard.classList.remove('card-open');
-    setTimeout(() => { returnCard.hidden = true; }, 300);
+    setTimeout(() => {
+      returnCard.hidden = true;
+      $('#deposit-open').focus({preventScroll: true});
+    }, 300);
     returningWish = null;
     landed = false;
     sampleButton.hidden = true;
     sampleButton.classList.remove('sample-arrived');
-    $('#mission-status').textContent = orbiting().length ? 'イトカワの軌道に次の願いが待っています' : 'すべての願いは地球にあります';
+    $('#mission-status').textContent = '';
     refreshInterface();
   }
 
   function openDeposit() {
+    try {
+      audioContext ||= new AudioContext();
+      if (audioContext.state === 'suspended') audioContext.resume();
+    } catch {}
     depositSheet.hidden = false;
     setTimeout(() => depositSheet.classList.add('sheet-open'), 20);
-    setTimeout(() => wishInput.focus({preventScroll: true}), 220);
+    setTimeout(() => {
+      wishInput.focus({preventScroll: true});
+      syncVisualViewport();
+      setTimeout(() => wishInput.scrollIntoView({block: 'nearest', behavior: 'smooth'}), 160);
+    }, 220);
   }
 
   function closeDeposit() {
@@ -481,16 +646,17 @@
     }
     launchButton.disabled = true;
     const now = Date.now();
-    const wish = {id: crypto.randomUUID(), text, status: 'waiting', createdAt: now, updatedAt: now};
+    const wish = {id: createWishId(), text, status: 'waiting', createdAt: now, updatedAt: now};
     try {
       await store('readwrite', object => object.put(wish));
       wishes = [...wishes, wish];
       refreshInterface();
       wishInput.value = '';
       $('#wish-length').textContent = '0';
-      depositStatus.textContent = '送信完了。星をイトカワへ投入します。';
+      depositStatus.textContent = '送信完了';
       $('#mission-status').textContent = '2003 — 地球を出発 / 願いを軌道へ投入';
-  launchFlight = {wish, startedAt: performance.now()};
+        playLaunchTone();
+        launchFlight = {wish, startedAt: performance.now()};
       closeDeposit();
       setTimeout(() => {
         if (!returnFlight) $('#mission-status').textContent = '2005 — イトカワの軌道に願いの星を確認';
@@ -505,6 +671,8 @@
   async function enableMotion() {
     if (!orbiting().length || returningWish || returnFlight) return;
     try {
+      audioContext ||= new AudioContext();
+      if (audioContext.state === 'suspended') await audioContext.resume();
       if (typeof DeviceMotionEvent === 'undefined') throw Error('unsupported');
       if (typeof DeviceMotionEvent.requestPermission === 'function') {
         if (await DeviceMotionEvent.requestPermission() !== 'granted') throw Error('denied');
@@ -537,9 +705,25 @@
   $('#fallback').addEventListener('click', returnOne);
   sampleButton.addEventListener('click', openCard);
   $('#card-close').addEventListener('click', closeCard);
+  $('#try-wish').addEventListener('click', () => chooseDisposition('doing'));
+  $('#return-to-orbit').addEventListener('click', () => chooseDisposition('waiting'));
+  $('#finish-wish').addEventListener('click', () => chooseDisposition('done'));
   $('#archive-open').addEventListener('click', () => { $('#archive-sheet').hidden = false; });
   $('#archive-close').addEventListener('click', () => { $('#archive-sheet').hidden = true; });
   window.addEventListener('keydown', event => {
+    if (event.key === 'Tab' && !returnCard.hidden) {
+      const focusable = [...returnCard.querySelectorAll('button:not([disabled])')];
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+      return;
+    }
     if (event.code === 'Space' && !event.repeat && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
       event.preventDefault();
       returnOne();
@@ -550,7 +734,13 @@
       else $('#archive-sheet').hidden = true;
     }
   });
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', syncVisualViewport);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncVisualViewport);
+    window.visualViewport.addEventListener('scroll', syncVisualViewport);
+  }
+  wishInput.addEventListener('focus', syncVisualViewport);
+  wishInput.addEventListener('blur', () => setTimeout(syncVisualViewport, 80));
 
   async function init() {
     try {
@@ -565,7 +755,7 @@
       }
       wishes = await store('readonly', object => object.getAll());
       refreshInterface();
-      resize();
+      syncVisualViewport();
       requestAnimationFrame(render);
       if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
         $('#shake').addEventListener('click', () => $('#mission-status').textContent = 'スマホを振ると、ひとつの願いが帰還します', {once: true});
