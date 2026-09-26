@@ -31,3 +31,42 @@
   .arrival{scroll-margin-top:12px}
   .desk footer{margin:19px 7px 5px;font-size:.75rem}
 }
+.panel-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}.panel-heading .section-no{margin:0}.panel-link{border:0;background:transparent;color:var(--gold);font-size:.82rem;font-weight:700;padding:5px}.log-pages{display:flex;align-items:center;justify-content:center;gap:18px;margin-top:8px;font-size:.8rem}.log-pages[hidden]{display:none}.log-pages button{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:8px;padding:5px 12px}.log-title .panel-link{display:none}
+@media(max-width:620px){
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+  .app{height:100dvh;padding:8px 10px max(8px,env(safe-area-inset-bottom));overflow:hidden}
+  .masthead{font-size:.62rem;line-height:1.2;min-height:18px}
+  .layout{margin-top:5px;gap:6px;overflow:hidden}
+  .mission{flex:1 1 54%;min-height:0;display:flex;flex-direction:column}
+  .universe{flex:1;min-height:0;height:auto;border-radius:18px}
+  .mission-copy{top:8px;left:16px}
+  .mission-copy h1{font-size:clamp(1.6rem,7.5vw,2.6rem);line-height:1.1;margin:3px 0}
+  .eyebrow{font-size:.64rem}
+  .earth{font-size:clamp(3rem,11vw,4.5rem);bottom:26%}
+  .asteroid{font-size:1.9rem;top:20%}
+  .craft{font-size:1.8rem;top:29%}
+  .universe.returning .craft{top:61%}
+  .universe.departing .craft{top:29%}
+  .distance{top:47%}
+  .flight-caption{bottom:93px;font-size:.7rem}
+  .mission-control{position:absolute;left:7px;right:7px;bottom:7px;margin:0;padding:8px 10px;border-radius:13px}
+  .mission-control>p:first-child{font-size:.72rem;margin:0 0 4px}
+  .return-button,.tap-button{min-height:38px;font-size:.77rem}
+  .mission-control .notice{font-size:.7rem;line-height:1.2;margin:4px 0 0;min-height:0}
+  .desk{flex:0 0 43%;display:block;min-height:0;overflow:hidden;padding:0;scrollbar-gutter:auto}
+  .deposit,.arrival,.log{height:100%;margin:0;padding:clamp(10px,2dvh,18px);border-radius:18px;overflow:hidden}
+  .desk .arrival,.desk .log{display:none}
+  .desk[data-view="arrival"] .deposit,.desk[data-view="history"] .deposit{display:none}
+  .desk[data-view="arrival"] .arrival:not([hidden]),.desk[data-view="history"] .log{display:block}
+  .deposit h2,.arrival h2{font-size:clamp(1.12rem,4vw,1.45rem);margin:3px 0 7px;line-height:1.25}
+  .deposit label{font-size:.77rem;margin-bottom:4px}
+  textarea{height:clamp(42px,8dvh,85px);min-height:0;resize:none;padding:7px 10px;line-height:1.4;font-size:.9rem}
+  .deposit-button{min-height:40px;margin-top:7px;padding:0 12px}
+  .deposit .notice{margin:4px 0 0;min-height:0;font-size:.74rem}
+  .arrival .section-no{margin:0}.arrival h2{max-height:55%;overflow:hidden;font-size:clamp(.88rem,3.5vw,1.25rem);line-height:1.25}
+  .arrival>p:not(.section-no){margin:4px 0;font-size:.78rem}
+  .choices{gap:5px}.choices button{min-height:39px;padding:4px;font-size:.8rem}
+  .log-title{align-items:center}.log-title .panel-link{display:inline-block}.log ul{margin:5px 0 0}.log li{padding:6px 0;font-size:.78rem}.log li span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.log li span:last-child{font-size:.72rem}
+  .desk footer{display:none}
+}
+@media(max-width:620px) and (max-height:650px){.mission-copy h1{font-size:1.55rem}.mission-control .notice{display:none}.desk{flex-basis:47%}.flight-caption{bottom:81px}.deposit h2{margin:2px 0 4px}textarea{height:43px}.deposit-button{min-height:36px}}
