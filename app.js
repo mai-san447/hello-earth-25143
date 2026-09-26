@@ -1,16 +1,15 @@
 (() => {
   const $ = selector => document.querySelector(selector);
-  const wish = $('#wish'), speak = $('#speak'), speechNote = $('#speech-note');
+  const wish = $('#wish');
   const deposit = $('#deposit'), depositStatus = $('#deposit-status');
   const count = $('#count'), shake = $('#shake'), fallback = $('#fallback');
   const universe = $('#universe'), distanceText = $('#distance-text');
   const flightCaption = $('#flight-caption'), returnStatus = $('#return-status');
   const arrival = $('#arrival'), returnedText = $('#returned-text'), legacyPlay = $('#legacy-play');
   const choices = $('#choices'), history = $('#history');
-  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const labels = { doing:'取り組み中', expired:'用済み', done:'対応済み' };
   let db, items = [], current = null, traveling = false, lastId = null;
-  let recognition, listening = false, motionListening = false, lastMotion = 0, audioUrl = null;
+  let motionListening = false, lastMotion = 0, audioUrl = null;
 
   function openDB() {
     return new Promise((resolve, reject) => {
@@ -44,20 +43,6 @@
       title.textContent = item.text || '以前、声で預けた願い'; status.textContent = labels[item.status];
       li.append(title, status); history.append(li);
     }
-  }
-  function speakWish() {
-    if (!Recognition) { depositStatus.textContent = 'このブラウザでは音声入力を利用できません。キーボードのマイクか文字入力を使ってください。'; return; }
-    if (listening) { recognition.stop(); return; }
-    recognition = new Recognition(); recognition.lang = 'ja-JP'; recognition.interimResults = false; recognition.continuous = false;
-    recognition.onresult = event => {
-      const text = Array.from(event.results).map(result => result[0]?.transcript || '').join('');
-      wish.value = [wish.value.trim(), text.trim()].filter(Boolean).join(' ');
-      depositStatus.textContent = '声を文字にしました。内容を確認して預けてください。';
-    };
-    recognition.onerror = event => { depositStatus.textContent = event.error === 'not-allowed' ? 'マイクが許可されませんでした。文字入力を使ってください。' : '聞き取れませんでした。もう一度話すか、文字で入力してください。'; };
-    recognition.onend = () => { listening = false; speak.classList.remove('listening'); speak.textContent = '🎙 音声で入力'; speechNote.textContent = '文字で入力してもOK'; };
-    try { recognition.start(); listening = true; speak.classList.add('listening'); speak.textContent = '■ 入力を終了'; speechNote.textContent = '話してください'; depositStatus.textContent = '聞いています…'; }
-    catch (_) { depositStatus.textContent = '音声入力を開始できませんでした。文字入力を使ってください。'; }
   }
   async function saveWish() {
     const text = wish.value.trim();
@@ -129,7 +114,7 @@
       installMotion(); returnStatus.textContent = 'スマホを軽く振ってください。反応しないときは「タップで帰還」を押してください。';
     } catch (_) { returnStatus.textContent = '動きのセンサーを使えません。「タップで帰還」を押してください。'; }
   }
-  speak.addEventListener('click', speakWish); deposit.addEventListener('click', saveWish);
+  deposit.addEventListener('click', saveWish);
   shake.addEventListener('click', requestMotion); fallback.addEventListener('click', returnOne);
   choices.addEventListener('click', event => { const action = event.target.closest('button')?.dataset.action; if (action) decide(action); });
   legacyPlay.addEventListener('click', async () => {
