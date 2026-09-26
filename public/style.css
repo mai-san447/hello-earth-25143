@@ -345,13 +345,13 @@ body:has(.mission-app){background:transparent}
 .mission-step-panel[hidden]{display:none}
 .mission-step-panel{min-width:0}
 .mission-step-panel .mission-controls{display:grid;gap:0}
-.mission-choose-panel{display:grid;justify-items:center;gap:10px;min-height:48px}
+.mission-choose-panel{display:grid;justify-items:center;gap:10px;min-height:82px;padding:3px 0 2px}
 .choose-status{margin:0;color:rgba(223,232,240,.69);font:500 11px/1.5 "Zen Kaku Gothic New",sans-serif;text-align:center}
-.mission-step-panel .sample-trigger{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:max-content;max-width:100%;padding:10px 20px;opacity:1;transform:none}
+.mission-step-panel .sample-trigger{position:relative;left:auto;right:auto;top:auto;bottom:auto;width:max-content;max-width:100%;margin-top:1px;padding:10px 20px;opacity:1;transform:none}
 .mission-step-panel .sample-trigger[hidden]{display:none}
-.mission-dock-meta{margin-top:1px}
+.mission-dock-meta{margin-top:4px}
 .mission-app~.account-bar{display:none}
-@media(max-width:620px){.observer-pill{top:max(56px,calc(env(safe-area-inset-top) + 42px));left:14px;gap:6px;max-width:calc(100% - 70px);padding:6px 9px;font-size:8px;letter-spacing:.04em}.account-trigger{top:max(16px,env(safe-area-inset-top));right:14px;width:36px;height:36px}.account-sheet{top:max(60px,calc(env(safe-area-inset-top) + 52px));right:12px;width:min(290px,calc(100% - 24px))}.mission-segmented{gap:2px;padding:3px}.mission-segmented button{gap:5px;min-height:40px;padding:5px 5px;font-size:11px}.mission-segmented button span{font-size:8px}.mission-choose-panel{min-height:48px}.mission-dock-meta{margin-top:0}}
+@media(max-width:620px){.observer-pill{top:max(56px,calc(env(safe-area-inset-top) + 42px));left:14px;gap:6px;max-width:calc(100% - 70px);padding:6px 9px;font-size:8px;letter-spacing:.04em}.account-trigger{top:max(16px,env(safe-area-inset-top));right:14px;width:36px;height:36px}.account-sheet{top:max(60px,calc(env(safe-area-inset-top) + 52px));right:12px;width:min(290px,calc(100% - 24px))}.mission-segmented{gap:2px;padding:3px}.mission-segmented button{gap:5px;min-height:40px;padding:5px 5px;font-size:11px}.mission-segmented button span{font-size:8px}.mission-choose-panel{min-height:82px;padding-top:2px}.mission-dock-meta{margin-top:4px}}
 @media(max-width:360px){.observer-pill{max-width:calc(100% - 64px);font-size:7px;letter-spacing:.025em}.mission-segmented button{gap:4px;font-size:10px}}
 @media(prefers-reduced-motion:reduce){.observer-dot{animation:none}.account-trigger,.mission-segmented button{transition:none}}
 .mission-app button:not(:disabled){transition:transform .18s cubic-bezier(.2,.75,.25,1),box-shadow .2s ease,background .2s ease,border-color .2s ease}
