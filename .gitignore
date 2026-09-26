@@ -1,0 +1,9 @@
+# Deployment package
+*.tar
+
+# Generated documents
+*.docx
+
+# OS files
+.DS_Store
+Thumbs.db
