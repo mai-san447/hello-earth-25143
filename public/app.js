@@ -43,6 +43,7 @@
     return request.type === 'all' ? cloudRequest('GET') : cloudRequest('POST',request.item);
   }
   async function init() {
+    if (cloud) $('.desk footer').textContent = '願いはログインしたアカウントごとに保存され、同じアカウントの端末で同期されます。';
     try { db = await openDB(); } catch (_) { if (!cloud) throw Error('local-storage-unavailable'); }
     if (cloud) {
       const remote = await cloudRequest('GET');
