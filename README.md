@@ -7,22 +7,25 @@
 ## 保存と同期
 
 - ログイン前は願いを端末のブラウザ内に保存します。
-- ChatGPTでログインすると、願いをサイトのD1データベースに保存し、同じChatGPTアカウントのスマホ間で同期します。
+- ChatGPTでログインすると、願いをSupabaseの`wishes`テーブルに保存し、同じChatGPTアカウントのスマホ間で同期します。
 - 最初のログイン時、その端末内にある願いのテキストと状態をクラウドに取り込みます。
 - ログインしていない端末のデータは自動では同期しません。
 
 ## 開発構成
 
 - フロントエンド: `app/page.tsx` と `app/mission-experience.tsx` が画面を構成し、`app/mission-runtime.tsx` がReactの初回描画後に `public/mission.js` を読み込みます。宇宙と探査機はCanvas 2Dで描画します。
-- サーバー側: `app/api/wishes/route.ts` がChatGPTのログイン情報を確認し、ユーザーごとに願いを分離します。
-- データベース: Sites D1。定義は `db/schema.ts`、マイグレーションは `drizzle/`。
+- サーバー側: `app/api/wishes/route.ts` がChatGPTのログイン情報を確認し、Supabase経由でユーザーごとに願いを分離します。
+- データベース: Supabase Postgres。定義は `supabase/migrations/001_create_wishes.sql`。サービスロール鍵は `app/supabase.ts` 内でサーバー側からのみ利用します。
 - 公開: Sites。GitHubはソース管理用で、GitHubからの自動デプロイは設定していません。
 
 ## Cloudflare Workers移行
 
 - `wrangler.jsonc` と `.github/workflows/deploy-cloudflare.yml` がWorkers向けの独立デプロイ設定です。GitHub Actionsには `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` を登録します。
-- Workers版はログイン不要のゲスト利用を有効にし、願いを各端末のIndexedDBへ保存します。ChatGPTログインとD1同期はWorkers版では無効です。
-- 既存のChatGPT Sites D1データは別環境に残ります。データとアカウント認証の移行が完了するまでは、既存公開URLを新Workerへ切り替えません。
+- Workers版はログイン不要のゲスト利用を有効にし、願いを各端末のIndexedDBへ保存します。`CHATGPT_SYNC_ENABLED` を有効にした環境では、同じ画面の同期 API がSupabaseを利用します。
+- WorkerへSupabaseを接続する場合は、次のSecretを登録します。値はGitへコミットしません。
+	- `SUPABASE_URL`
+	- `SUPABASE_SERVICE_ROLE_KEY`
+- Supabase SQL Editorで `supabase/migrations/001_create_wishes.sql` を実行してから、Workerをデプロイします。
 - 初回デプロイは `workers.dev` の検証用URLで行います。独自ドメインを使う場合は、Workers版の検証後にDNSとカスタムドメインを設定します。
 
 ## JAXA素材
