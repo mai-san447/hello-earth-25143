@@ -1172,9 +1172,7 @@
       if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
         $('#shake').addEventListener('click', () => $('#mission-status').textContent = 'シグナルを探すと、ひとつの想いが帰還します', {once: true});
       }
-      $('#mission-status').textContent = orbiting().length
-        ? '2005 — イトカワ到着・サンプル採取'
-        : '2003 — はやぶさ、地球を出発';
+      $('#mission-status').textContent = '';
     } catch (error) {
       $('#mission-status').textContent = cloud ? `同期できません。${error.message || '通信を確認してください'}` : '願いを読み込めません。ブラウザを確認してください';
       launchButton.disabled = $('#shake').disabled = $('#fallback').disabled = true;

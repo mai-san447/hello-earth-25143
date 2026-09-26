@@ -368,3 +368,4 @@ body:has(.mission-app){background:transparent}
 @media(prefers-reduced-motion:reduce){.splash-screen{transition-duration:.2s}.splash-screen span{animation:none}}
 @media(max-width:360px){.mission-segmented button{gap:3px;padding-inline:3px;font-size:9px}.mission-segmented button span{font-size:7px}}
 .mission-title .mission-kicker{font-family:"Noto Sans JP","Zen Kaku Gothic New",sans-serif;font-size:8px;font-weight:500;letter-spacing:.18em}
+.telemetry:has(#mission-status:empty){visibility:hidden}
