@@ -1,145 +1,24 @@
 <!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#10152f">
-  <meta name="description" content="25143から、未来の自分へ帰る声を預ける。">
-  <title>25143 | HELLO EARTH</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310152f'/%3E%3Cpath d='M32 10l4.2 17.8L54 32l-17.8 4.2L32 54l-4.2-17.8L10 32l17.8-4.2z' fill='%23ff8b66'/%3E%3C/svg%3E">
-  <style>
-    :root { color-scheme: dark; --ink:#f9f6f1; --night:#10152f; --night-2:#1c2450; --mist:#cbd4fb; --coral:#ff8b66; --sun:#ffc461; --line:rgba(255,255,255,.17); }
-    * { box-sizing:border-box; }
-    body { margin:0; min-height:100dvh; color:var(--ink); font-family:"Yu Gothic UI","Hiragino Sans",system-ui,sans-serif; background:radial-gradient(circle at 10% 4%,#38467c 0,transparent 27rem),radial-gradient(circle at 90% 94%,#672f57 0,transparent 30rem),var(--night); }
-    button, input { font:inherit; }
-    button { cursor:pointer; }
-    .app { width:min(100%, 720px); min-height:100dvh; margin:auto; padding:24px 20px 30px; display:flex; flex-direction:column; gap:24px; overflow:hidden; }
-    .topbar { display:flex; justify-content:space-between; align-items:center; font-size:.8rem; letter-spacing:.11em; color:var(--mist); }
-    .brand { color:var(--ink); font-weight:700; }
-    .stage { position:relative; min-height:290px; padding:32px 24px 28px; border:1px solid var(--line); border-radius:30px; background:linear-gradient(145deg,rgba(39,50,104,.82),rgba(15,20,47,.94)); box-shadow:0 24px 80px rgba(0,0,0,.25); overflow:hidden; display:flex; flex-direction:column; justify-content:flex-end; }
-    .stage::before, .stage::after { content:""; position:absolute; width:3px; height:3px; border-radius:50%; background:#fff; box-shadow:48px 26px #fff, 110px -8px #fff, 166px 43px #fff, 232px 16px #fff, 304px 73px #fff, 380px 11px #fff, 432px 63px #fff, 520px 28px #fff, 598px 96px #fff; opacity:.72; }
-    .stage::before { top:45px; left:7px; } .stage::after { top:111px; left:42px; opacity:.35; transform:scale(.7); }
-    .eyebrow { position:relative; z-index:1; margin:0 0 8px; color:var(--sun); font-size:.82rem; font-weight:700; letter-spacing:.12em; }
-    h1 { position:relative; z-index:1; margin:0; font-size:clamp(2.7rem,11vw,5.25rem); line-height:.91; letter-spacing:-.06em; }
-    .lead { position:relative; z-index:1; max-width:29rem; margin:18px 0 0; color:#e9edff; line-height:1.75; }
-    .capsule { position:absolute; top:42px; right:11%; width:78px; height:116px; border:3px solid rgba(255,255,255,.9); border-radius:48% 48% 42% 42%; background:linear-gradient(120deg,var(--coral),#d34e75); box-shadow:inset -11px -12px 18px rgba(73,11,59,.26),0 0 45px rgba(255,139,102,.28); transform:rotate(19deg); transition:transform 1.15s cubic-bezier(.2,.85,.2,1), top 1.15s cubic-bezier(.2,.85,.2,1), box-shadow .6s; }
-    .capsule::after { content:"25143"; position:absolute; inset:42px 8px auto; color:#3e1738; font-size:.73rem; font-weight:800; letter-spacing:.04em; transform:rotate(-19deg); }
-    .capsule.arrived { top:158px; transform:rotate(-6deg) scale(1.08); box-shadow:0 0 0 14px rgba(255,196,97,.15),0 0 70px rgba(255,139,102,.8); }
-    .card { border:1px solid var(--line); border-radius:24px; padding:21px; background:rgba(9,13,35,.52); }
-    label { display:block; margin:0 0 9px; font-size:.9rem; font-weight:700; }
-    input { width:100%; border:1px solid rgba(255,255,255,.28); border-radius:13px; padding:14px 15px; color:var(--ink); background:rgba(255,255,255,.08); outline:none; }
-    input:focus { border-color:var(--sun); box-shadow:0 0 0 3px rgba(255,196,97,.17); }
-    .hint { margin:9px 0 0; color:var(--mist); font-size:.8rem; line-height:1.5; }
-    .record-row { display:flex; align-items:center; gap:12px; margin-top:20px; }
-    .round { width:57px; height:57px; flex:0 0 auto; border:0; border-radius:50%; color:#411a38; background:var(--coral); font-size:1.2rem; font-weight:800; box-shadow:0 6px 22px rgba(255,139,102,.25); }
-    .round.is-recording { animation:pulse 1s infinite; background:#ff6363; color:white; }
-    @keyframes pulse { 50% { transform:scale(1.08); box-shadow:0 0 0 12px rgba(255,99,99,.14); } }
-    .record-copy strong { display:block; } .record-copy span { display:block; margin-top:3px; color:var(--mist); font-size:.82rem; }
-    .return { border:0; border-radius:15px; padding:16px 18px; color:#36203a; background:linear-gradient(135deg,var(--sun),#ff9b70); font-weight:800; letter-spacing:.03em; box-shadow:0 8px 30px rgba(255,183,97,.22); }
-    .return:disabled { opacity:.44; cursor:not-allowed; }
-    .return-row { display:flex; gap:12px; align-items:center; margin-top:20px; }
-    .fallback { border:1px solid var(--line); border-radius:15px; padding:14px 13px; color:var(--ink); background:transparent; font-size:.88rem; }
-    .status { min-height:1.4em; margin:14px 0 0; color:var(--mist); font-size:.9rem; line-height:1.55; }
-    .returned { display:none; padding:18px; border-radius:18px; background:rgba(255,196,97,.13); border:1px solid rgba(255,196,97,.35); }
-    .returned.show { display:block; }
-    .returned p { margin:0 0 12px; line-height:1.6; }
-    .play { width:100%; border:0; border-radius:13px; padding:14px; color:var(--night); background:var(--ink); font-weight:800; }
-    footer { margin-top:auto; color:var(--mist); font-size:.76rem; line-height:1.55; }
-    @media (min-width:700px) { .app { padding-top:36px; } .stage { min-height:332px; } }
-  </style>
-</head>
-<body>
-  <main class="app">
-    <header class="topbar"><span class="brand">HELLO EARTH</span><span>RETURN CAPSULE / 25143</span></header>
-    <section class="stage" aria-labelledby="title">
-      <div class="capsule" id="capsule" aria-hidden="true"></div>
-      <p class="eyebrow">SMALL WISHES, RETURNED</p>
-      <h1 id="title">25143</h1>
-      <p class="lead">すぐには戻れない場所へ行く前に。<br>いまの願いを、未来の自分へ預けよう。</p>
-    </section>
-    <section class="card" aria-labelledby="wish-label">
-      <label id="wish-label" for="wish">帰ってきたら、したいこと</label>
-      <input id="wish" maxlength="42" placeholder="例：家族で海を見に行く" autocomplete="off">
-      <p class="hint">声を30秒以内で録音します。録音はこの端末のこの画面だけで使われ、外部には送信されません。</p>
-      <div class="record-row">
-        <button class="round" id="record" type="button" aria-label="録音を開始">●</button>
-        <div class="record-copy"><strong id="record-title">声を預ける</strong><span id="record-sub">タップして録音を開始</span></div>
-      </div>
-      <div class="return-row">
-        <button class="return" id="return" type="button" disabled>スマホを振って、帰還を呼ぶ</button>
-        <button class="fallback" id="fallback" type="button" disabled>落とす</button>
-      </div>
-      <p class="status" id="status" aria-live="polite">まず、未来の自分へ声を預けてください。</p>
-      <div class="returned" id="returned" aria-live="polite">
-        <p id="returned-copy">帰還カプセルを受信しました。</p>
-        <button class="play" id="play" type="button">未来から届いた声を聴く</button>
-      </div>
-    </section>
-    <footer>小惑星 25143 Itokawa から地球へ戻った微粒子のように、いまのあなたの声を、いつかのあなたへ。</footer>
-  </main>
-  <script>
-    (() => {
-      const record = document.querySelector('#record');
-      const recordTitle = document.querySelector('#record-title');
-      const recordSub = document.querySelector('#record-sub');
-      const returnButton = document.querySelector('#return');
-      const fallback = document.querySelector('#fallback');
-      const status = document.querySelector('#status');
-      const capsule = document.querySelector('#capsule');
-      const returned = document.querySelector('#returned');
-      const returnedCopy = document.querySelector('#returned-copy');
-      const play = document.querySelector('#play');
-      const wish = document.querySelector('#wish');
-      let recorder, chunks = [], audioUrl = '', audio, isRecording = false, returnedOnce = false;
-
-      function setStatus(text) { status.textContent = text; }
-      function updateReturn() { const ready = Boolean(audioUrl); returnButton.disabled = !ready; fallback.disabled = !ready; }
-      function stopTracks(stream) { stream.getTracks().forEach(track => track.stop()); }
-      function endRecording() { if (recorder && recorder.state === 'recording') recorder.stop(); }
-      async function startRecording() {
-        if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) { setStatus('このブラウザでは録音を利用できません。ChromeまたはSafariで開いてください。'); return; }
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
-          chunks = []; recorder = new MediaRecorder(stream);
-          recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-          recorder.onstop = () => {
-            stopTracks(stream); isRecording = false; record.classList.remove('is-recording'); record.setAttribute('aria-label','録音を開始');
-            const blob = new Blob(chunks,{type:recorder.mimeType || 'audio/webm'});
-            if (audioUrl) URL.revokeObjectURL(audioUrl); audioUrl = URL.createObjectURL(blob); audio = new Audio(audioUrl);
-            recordTitle.textContent = '声を預けました'; recordSub.textContent = '準備ができたら、スマホを振ってください。'; setStatus('帰還カプセルは発射準備完了です。'); updateReturn();
-          };
-          recorder.start(); isRecording = true; record.classList.add('is-recording'); record.setAttribute('aria-label','録音を終了'); recordTitle.textContent = '録音中'; recordSub.textContent = 'もう一度タップすると、声を預けます。'; setStatus('録音中です。30秒以内で話してください。');
-          setTimeout(() => { if (isRecording) { endRecording(); setStatus('30秒の録音を預かりました。'); } }, 30000);
-        } catch (_) { setStatus('マイクが許可されませんでした。ブラウザの設定からマイクを許可してください。'); }
-      }
-      async function returnCapsule() {
-        if (!audioUrl || returnedOnce) return;
-        returnedOnce = true; capsule.classList.add('arrived'); returnButton.disabled = true; fallback.disabled = true;
-        const label = wish.value.trim() ? `「${wish.value.trim()}」という願い` : 'あなたの願い';
-        setStatus('地球に向けて、帰還カプセルが落下しています…');
-        setTimeout(() => { returned.classList.add('show'); returnedCopy.textContent = `${label}を預けた声が、未来から帰ってきました。`; setStatus('帰還成功。声を聴いてください。'); }, 1050);
-      }
-      async function requestShake() {
-        if (!audioUrl) return;
-        try {
-          if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            const result = await DeviceMotionEvent.requestPermission(); if (result !== 'granted') throw new Error('denied');
-          }
-          let last = 0;
-          window.addEventListener('devicemotion', event => {
-            const a = event.accelerationIncludingGravity; if (!a || returnedOnce) return;
-            const force = Math.abs(a.x || 0)+Math.abs(a.y || 0)+Math.abs(a.z || 0);
-            if (force > 30 && Date.now()-last > 900) { last = Date.now(); returnCapsule(); }
-          }, {once:false});
-          setStatus('端末を軽く一度振ってください。反応しない場合は「落とす」を押してください。');
-        } catch (_) { setStatus('端末の動きを使えないため、「落とす」を押して帰還させてください。'); }
-      }
-      record.addEventListener('click', () => isRecording ? endRecording() : startRecording());
-      returnButton.addEventListener('click', requestShake);
-      fallback.addEventListener('click', returnCapsule);
-      play.addEventListener('click', async () => { if (!audio) return; audio.currentTime = 0; try { await audio.play(); } catch (_) { setStatus('再生できませんでした。もう一度押してください。'); } });
-      window.addEventListener('beforeunload', () => { if (audioUrl) URL.revokeObjectURL(audioUrl); });
-    })();
-  </script>
-</body>
-</html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><meta name="theme-color" content="#10152f"><meta name="description" content="やりたいことをイトカワへ預け、ひとつずつ地球へ帰還させる。"><title>25143 | HELLO EARTH</title><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2310152f'/%3E%3Cpath d='M32 10l4.2 17.8L54 32l-17.8 4.2L32 54l-4.2-17.8L10 32l17.8-4.2z' fill='%23ff8b66'/%3E%3C/svg%3E"><style>
+:root{color-scheme:dark;--night:#10152f;--ink:#f9f6f1;--muted:#d5dcfa;--coral:#ff8b66;--sun:#ffc461;--line:rgba(255,255,255,.2)}*{box-sizing:border-box}body{margin:0;min-height:100dvh;background:radial-gradient(circle at 12% 0%,#37467b 0,transparent 28rem),radial-gradient(circle at 95% 80%,#512d58 0,transparent 25rem),var(--night);color:var(--ink);font-family:"Yu Gothic UI","Hiragino Sans",system-ui,sans-serif}button,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.48}button:focus-visible,textarea:focus-visible{outline:3px solid var(--sun);outline-offset:3px}.app{width:min(100%,760px);margin:auto;padding:20px 18px 36px}header{display:flex;justify-content:space-between;gap:16px;color:var(--muted);font-size:.86rem;letter-spacing:.08em}.brand{color:var(--ink);font-weight:800}h1{margin:20px 0 6px;font-size:clamp(2.3rem,10vw,4.6rem);letter-spacing:-.07em;line-height:1}.intro{margin:0 0 20px;color:var(--muted);line-height:1.6}.sky{position:relative;height:180px;overflow:hidden;border:1px solid var(--line);border-radius:26px;background:radial-gradient(circle at 78% 26%,#374981 0,transparent 32%),linear-gradient(145deg,#252d62,#0b1029)}.sky:before{content:"";position:absolute;inset:15px;opacity:.55;background-image:radial-gradient(#fff 1px,transparent 1px);background-size:42px 39px}.world{position:absolute;z-index:1;bottom:19px;display:grid;gap:5px;text-align:center;font-size:1.6rem}.world small{font-size:.78rem;font-weight:700}.earth{left:22px}.itokawa{right:22px}.route{position:absolute;left:18%;right:18%;top:50%;border-top:1px dashed rgba(255,255,255,.38)}.probe{position:absolute;z-index:2;top:58px;left:75%;font-size:2.1rem;filter:drop-shadow(0 0 12px var(--sun));transition:left 1.1s ease-in-out,transform 1.1s ease-in-out}.probe.returning{left:22%;transform:rotate(-20deg)}.probe.departing{left:75%;transform:rotate(20deg)}.sky-note{position:absolute;z-index:2;top:15px;left:18px;margin:0;color:var(--sun);font-size:.87rem;font-weight:700}.panel{margin-top:16px;padding:20px;border:1px solid var(--line);border-radius:22px;background:rgba(10,15,40,.7)}h2{margin:0 0 13px;font-size:1.18rem}label{display:block;margin-bottom:8px;font-size:.94rem;font-weight:700}textarea{width:100%;min-height:86px;resize:vertical;padding:13px;border:1px solid rgba(255,255,255,.3);border-radius:12px;background:rgba(255,255,255,.08);color:var(--ink);font-size:1rem;line-height:1.5}textarea::placeholder{color:#b7c1e6}.hint{margin:8px 0 0;color:var(--muted);font-size:.83rem;line-height:1.55}.record-row{display:flex;align-items:center;gap:12px;margin:14px 0}.record{flex:0 0 auto;min-width:55px;height:55px;border:0;border-radius:50%;background:var(--coral);color:#361a38;font-weight:800;font-size:1.15rem}.record.active{background:#ff6363;color:white;animation:pulse 1s infinite}@keyframes pulse{50%{box-shadow:0 0 0 12px rgba(255,99,99,.15)}}.record-copy{color:var(--muted);font-size:.9rem;line-height:1.5}.primary{width:100%;min-height:52px;border:0;border-radius:13px;padding:12px 16px;background:linear-gradient(130deg,var(--sun),#ff9b70);color:#34203b;font-weight:800}.secondary{min-height:46px;border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:rgba(255,255,255,.08);color:var(--ink);font-weight:700}.status{min-height:1.5em;margin:12px 0 0;color:var(--muted);font-size:.9rem;line-height:1.5}.count{margin:0 0 12px;color:var(--muted);font-size:.93rem}.return-actions{display:flex;gap:10px}.return-actions .primary{flex:1}.wish-card{display:none;margin-top:16px;padding:18px;border:1px solid rgba(255,196,97,.5);border-radius:18px;background:rgba(255,196,97,.11)}.wish-card.show{display:block}.overline{margin:0 0 8px;color:var(--sun);font-size:.83rem;font-weight:800}.wish-text{margin:0 0 15px;font-size:1.25rem;line-height:1.5;overflow-wrap:anywhere}.choice-label{margin:16px 0 9px;color:var(--muted);font-size:.9rem}.choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.choices button{min-height:49px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.1);color:var(--ink);font-weight:700}.choices button:first-child{border-color:var(--sun);color:var(--sun)}.history{margin:14px 0 0;padding:0;list-style:none}.history li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--line);font-size:.9rem}.history span:first-child{overflow-wrap:anywhere}.history span:last-child{flex:0 0 auto;color:var(--muted)}footer{padding:22px 2px 0;color:var(--muted);font-size:.8rem;line-height:1.6}@media(max-width:420px){.app{padding:15px 14px 30px}.panel{padding:17px}.return-actions{flex-direction:column}.choices{gap:7px}}@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style></head><body><main class="app"><header><span class="brand">HELLO EARTH</span><span>RETURN CAPSULE / 25143</span></header><h1>25143</h1><p class="intro">やりたいことをイトカワへ預ける。<br>振ると、ひとつだけ地球に帰ってきます。</p><div class="sky" aria-label="イトカワと地球を行き来するはやぶさ"><p class="sky-note" id="sky-note">はやぶさはイトカワで待機中</p><div class="route"></div><span class="world earth" aria-hidden="true">🌏<small>地球</small></span><span class="world itokawa" aria-hidden="true">✦<small>イトカワ</small></span><span class="probe" id="probe" aria-hidden="true">🛰️</span></div>
+<section class="panel" aria-labelledby="deposit-title"><h2 id="deposit-title">イトカワへ預ける</h2><label for="wish">帰ってきたら、やりたいこと</label><textarea id="wish" maxlength="180" placeholder="例：家族で海を見に行く"></textarea><p class="hint">テキストだけでも、声だけでも預けられます。両方でも大丈夫。</p><div class="record-row"><button class="record" id="record" type="button" aria-label="声の録音を開始">●</button><span class="record-copy" id="record-copy">声も預ける（30秒まで・任意）</span></div><button class="primary" id="deposit" type="button">願いを預ける</button><p class="status" id="deposit-status" role="status"></p></section>
+<section class="panel" aria-labelledby="return-title"><h2 id="return-title">サンプルリターン</h2><p class="count" id="count">預けた願いを読み込み中…</p><div class="return-actions"><button class="primary" id="shake" type="button">スマホを振って、帰還を呼ぶ</button><button class="secondary" id="fallback" type="button">振れないときはタップ</button></div><p class="status" id="return-status" role="status">まず願いをひとつ預けてください。</p><div class="wish-card" id="wish-card" aria-live="polite"><p class="overline">地球に帰還した、ひとつの願い</p><p class="wish-text" id="returned-text"></p><button class="secondary" id="play" type="button" hidden>預けた声を聴く</button><p class="choice-label">この願いを、どうしますか？</p><div class="choices" id="choices"><button type="button" data-action="doing">これやろう</button><button type="button" data-action="later">いまはいいや</button><button type="button" data-action="expired">もう用済み</button><button type="button" data-action="done">既に対応済み</button></div></div></section>
+<section class="panel" aria-labelledby="history-title"><h2 id="history-title">地球に残った願い</h2><p class="hint" id="history-empty">選んだ願いはここに表示されます。</p><ul class="history" id="history"></ul></section><footer>録音と願いはこの端末のブラウザ内だけに保存され、外部へ送信されません。ブラウザのデータを消すと失われます。小惑星 25143 Itokawa へのオマージュ。</footer></main>
+<script>(()=>{
+const $=s=>document.querySelector(s),wish=$('#wish'),record=$('#record'),recordCopy=$('#record-copy'),deposit=$('#deposit'),depositStatus=$('#deposit-status'),returnStatus=$('#return-status'),count=$('#count'),shake=$('#shake'),fallback=$('#fallback'),card=$('#wish-card'),returnedText=$('#returned-text'),play=$('#play'),choices=$('#choices'),probe=$('#probe'),skyNote=$('#sky-note');
+let db,recorder,stream,chunks=[],voice=null,recording=false,timer,current=null,items=[],lastId=null,motionListening=false,lastMotion=0,playingUrl=null,animating=false;const statuses={doing:'取り組み中',done:'対応済み',expired:'用済み'};
+function openDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open('hello-earth-25143',1);request.onupgradeneeded=()=>request.result.createObjectStore('wishes',{keyPath:'id'});request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error)})}
+function requestStore(mode,operation){return new Promise((resolve,reject)=>{const tx=db.transaction('wishes',mode),req=operation(tx.objectStore('wishes'));let result;req.onsuccess=()=>{result=req.result};tx.oncomplete=()=>resolve(result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)})}
+async function refresh(){items=await requestStore('readonly',store=>store.getAll());render()}
+function render(){const waiting=items.filter(item=>item.status==='waiting').length;count.textContent=`イトカワで待機中 ${waiting}件 ／ 取り組み中 ${items.filter(item=>item.status==='doing').length}件`;shake.disabled=fallback.disabled=!waiting||Boolean(current)||animating;const history=$('#history');history.replaceChildren();const settled=items.filter(item=>statuses[item.status]).sort((a,b)=>b.updatedAt-a.updatedAt);$('#history-empty').hidden=settled.length>0;settled.forEach(item=>{const li=document.createElement('li'),text=document.createElement('span'),state=document.createElement('span');text.textContent=item.text||'声で預けた願い';state.textContent=statuses[item.status];li.append(text,state);history.append(li)})}
+function setRecordState(on){recording=on;record.classList.toggle('active',on);record.setAttribute('aria-label',on?'声の録音を終了':'声の録音を開始');recordCopy.textContent=on?'録音中。もう一度タップして終了':'声も預ける（30秒まで・任意）'}
+async function startRecord(){if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){depositStatus.textContent='このブラウザでは録音できません。テキストで預けてください。';return}try{stream=await navigator.mediaDevices.getUserMedia({audio:true});chunks=[];recorder=new MediaRecorder(stream);recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};recorder.onstop=()=>{clearTimeout(timer);stream.getTracks().forEach(track=>track.stop());setRecordState(false);voice=new Blob(chunks,{type:recorder.mimeType||'audio/webm'});recordCopy.textContent='声を録音しました。願いを預けると保存されます。';depositStatus.textContent='録音を受け取りました。'};recorder.start();setRecordState(true);depositStatus.textContent='録音中です。30秒以内で話してください。';timer=setTimeout(stopRecord,30000)}catch(_){depositStatus.textContent='マイクを使えませんでした。テキストで預けるか、マイクを許可してください。'}}
+function stopRecord(){if(recorder?.state==='recording')recorder.stop()}
+async function saveWish(){if(recording){depositStatus.textContent='録音を終了してから預けてください。';return}const text=wish.value.trim();if(!text&&!voice){depositStatus.textContent='テキストか声を入力してください。';wish.focus();return}deposit.disabled=true;const item={id:crypto.randomUUID(),text,audio:voice,status:'waiting',createdAt:Date.now(),updatedAt:Date.now()};try{await requestStore('readwrite',store=>store.put(item));wish.value='';voice=null;recordCopy.textContent='声も預ける（30秒まで・任意）';depositStatus.textContent='イトカワへ預けました。';returnStatus.textContent='スマホを振ると、ひとつ帰ってきます。';await refresh()}catch(_){depositStatus.textContent='端末に保存できませんでした。空き容量やブラウザの設定を確認してください。入力は残しています。'}finally{deposit.disabled=false}}
+function chooseOne(){const pool=items.filter(item=>item.status==='waiting'),others=pool.filter(item=>item.id!==lastId),from=others.length?others:pool;return from[Math.floor(Math.random()*from.length)]}
+function returnOne(){if(current||animating)return;const picked=chooseOne();if(!picked)return;current=picked;lastId=picked.id;animating=true;render();skyNote.textContent='はやぶさ、地球へ帰還中';returnStatus.textContent='願いをひとつ運んでいます…';probe.classList.remove('departing');probe.classList.add('returning');setTimeout(()=>{returnedText.textContent=picked.text||'声で預けた願い';play.hidden=!picked.audio;card.classList.add('show');skyNote.textContent='地球に帰還しました';returnStatus.textContent='内容を確かめて、ひとつ選んでください。';animating=false;render()},1150)}
+async function act(action){if(!current||animating)return;const item=current,next={...item,status:action==='later'?'waiting':action,updatedAt:Date.now()};choices.querySelectorAll('button').forEach(b=>b.disabled=true);try{await requestStore('readwrite',store=>store.put(next));current=null;card.classList.remove('show');animating=true;if(playingUrl){URL.revokeObjectURL(playingUrl);playingUrl=null}const messages={doing:'「これやろう」を地球に残しました。',later:'願いをイトカワへ預け直しました。',expired:'役目を終えた願いとして記録しました。',done:'対応済みとして記録しました。'};returnStatus.textContent=messages[action]+' はやぶさは次の迎えに向かいます。';skyNote.textContent='はやぶさ、イトカワへ出発';probe.classList.remove('returning');probe.classList.add('departing');await refresh();setTimeout(()=>{skyNote.textContent='はやぶさはイトカワで待機中';animating=false;render()},1200)}catch(_){returnStatus.textContent='保存できませんでした。もう一度選んでください。'}finally{choices.querySelectorAll('button').forEach(b=>b.disabled=false)}}
+async function requestMotion(){if(!items.some(item=>item.status==='waiting')||current||animating)return;try{if(typeof DeviceMotionEvent==='undefined')throw Error('unsupported');if(typeof DeviceMotionEvent.requestPermission==='function'){const permission=await DeviceMotionEvent.requestPermission();if(permission!=='granted')throw Error('denied')}if(!motionListening){window.addEventListener('devicemotion',event=>{const a=event.accelerationIncludingGravity;if(!a)return;const magnitude=Math.abs(a.x||0)+Math.abs(a.y||0)+Math.abs(a.z||0);if(magnitude>30&&Date.now()-lastMotion>1200){lastMotion=Date.now();returnOne()}});motionListening=true}returnStatus.textContent='スマホを軽く振ってください。反応しないときは下のボタンを押してください。'}catch(_){returnStatus.textContent='端末の動きを使えません。「振れないときはタップ」で帰還できます。'}}
+record.addEventListener('click',()=>recording?stopRecord():startRecord());deposit.addEventListener('click',saveWish);shake.addEventListener('click',requestMotion);fallback.addEventListener('click',returnOne);choices.addEventListener('click',event=>{const action=event.target.closest('button')?.dataset.action;if(action)act(action)});play.addEventListener('click',async()=>{if(!current?.audio)return;if(playingUrl)URL.revokeObjectURL(playingUrl);playingUrl=URL.createObjectURL(current.audio);try{await new Audio(playingUrl).play()}catch(_){returnStatus.textContent='再生できませんでした。もう一度押してください。'}});window.addEventListener('beforeunload',()=>{if(playingUrl)URL.revokeObjectURL(playingUrl)});openDB().then(database=>{db=database;return refresh()}).then(()=>{returnStatus.textContent=items.some(item=>item.status==='waiting')?'スマホを振ると、ひとつ帰ってきます。':'まず願いをひとつ預けてください。'}).catch(()=>{deposit.disabled=shake.disabled=fallback.disabled=true;count.textContent='端末内の保存を利用できません。';depositStatus.textContent='通常モードのブラウザで開き直してください。'})
+})();</script></body></html>
