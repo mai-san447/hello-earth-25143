@@ -11,6 +11,9 @@ export function MissionExperience({
   return (
     <>
       <div id="sync-mode" data-sync={syncMode} hidden />
+      <div className="splash-screen" id="splash-screen" role="status" aria-live="polite">
+        <span>SIGNAL SEARCHING...</span>
+      </div>
       <canvas id="starfield-canvas" aria-hidden="true" />
       <main className="mission-app" id="mission-app">
         <MissionRuntime />
@@ -41,9 +44,9 @@ export function MissionExperience({
         </div>
         <section className="mission-dock" id="mission-dock" data-step="deposit" aria-label="ミッション操作">
           <nav className="mission-segmented" role="tablist" aria-label="ミッションの段階">
-            <button id="step-deposit" type="button" role="tab" aria-selected="true" aria-controls="step-panel-deposit" data-mission-step="deposit"><span>01</span>預ける</button>
-            <button id="step-receive" type="button" role="tab" aria-selected="false" aria-controls="step-panel-receive" data-mission-step="receive"><span>02</span>受け取る</button>
-            <button id="step-choose" type="button" role="tab" aria-selected="false" aria-controls="step-panel-choose" data-mission-step="choose"><span>03</span>選ぶ</button>
+            <button id="step-deposit" type="button" role="tab" aria-selected="true" aria-controls="step-panel-deposit" data-mission-step="deposit"><span>01</span>送信 (SEND)</button>
+            <button id="step-receive" type="button" role="tab" aria-selected="false" aria-controls="step-panel-receive" data-mission-step="receive"><span>02</span>帰還 (RETURN)</button>
+            <button id="step-choose" type="button" role="tab" aria-selected="false" aria-controls="step-panel-choose" data-mission-step="choose"><span>03</span>記録 (ARCHIVE)</button>
           </nav>
           <div className="mission-step-panel" id="step-panel-deposit" role="tabpanel" aria-labelledby="step-deposit" data-step-panel="deposit">
             <div className="mission-controls">
@@ -53,8 +56,8 @@ export function MissionExperience({
           <div className="mission-step-panel" id="step-panel-receive" role="tabpanel" aria-labelledby="step-receive" data-step-panel="receive" hidden>
             <div className="mission-controls">
               <div className="mission-secondary-actions">
-                <button className="shake-control" id="shake" type="button">スマホを振ってサンプル回収</button>
-                <button className="fallback-control" id="fallback" type="button">タップで帰還</button>
+                <button className="shake-control" id="shake" type="button">シグナルを探す</button>
+                <button className="fallback-control" id="fallback" type="button">カプセルを開く</button>
               </div>
             </div>
           </div>

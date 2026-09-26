@@ -14,6 +14,7 @@
   const accountSheet = $('#account-sheet');
   const missionDock = $('#mission-dock');
   const stepButtons = [...document.querySelectorAll('[data-mission-step]')];
+  const splashScreen = $('#splash-screen');
   const context = canvas.getContext('2d');
   const wishInput = $('#wish');
   const launchButton = $('#deposit');
@@ -23,6 +24,24 @@
   const sampleButton = $('#sample-trigger');
   const cloud = $('#sync-mode')?.dataset.sync === 'cloud';
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (splashScreen) {
+    setTimeout(() => {
+      splashScreen.classList.add('splash-screen-dismissed');
+      setTimeout(() => splashScreen.remove(), 1300);
+    }, 2000);
+  }
+
+  document.addEventListener('click', event => {
+    if (!(event.target instanceof Element)) return;
+    const button = event.target.closest('button');
+    if (!button || button.disabled || typeof navigator.vibrate !== 'function') return;
+    try {
+      navigator.vibrate([15]);
+    } catch {
+      // Haptics are optional and can be blocked by the browser or device.
+    }
+  }, true);
   const stars = Array.from({length: 185}, () => ({
     x: Math.random(), y: Math.random(), size: 0.25 + Math.random() * 1.15,
     phase: Math.random() * Math.PI * 2, speed: 0.15 + Math.random() * 0.55,
@@ -126,8 +145,8 @@
     $('#shake').disabled = $('#fallback').disabled = count === 0 || Boolean(returningWish) || Boolean(returnFlight);
     $('#choose-status').textContent = landed ? '帰還カプセルを回収しました' : 'カプセルの帰還を待っています';
     $('#gesture-hint').textContent = landed
-      ? '着地したサンプルをタップして、あの日の言葉を開いてください'
-      : count ? 'スマホを振ると、星がひとつ地球へ帰還します' : '願いを預けると、星がイトカワの軌道に浮かびます';
+      ? '着地したカプセルを開いて、あの日の言葉を受信してください'
+      : count ? 'シグナルを探すと、想いがひとつ地球へ帰還します' : '願いを預けると、星がイトカワの軌道に浮かびます';
     const list = $('#archive-list');
     list.replaceChildren();
     for (const wish of recovered()) {
@@ -1038,10 +1057,10 @@
         });
         motionActive = true;
       }
-      $('#mission-status').textContent = '探査機との接続完了。スマホを振ってください';
+      $('#mission-status').textContent = '探査機との接続完了。シグナルを探してください';
       $('#shake').classList.add('motion-enabled');
     } catch {
-      $('#mission-status').textContent = 'この端末では振動センサーが使えません。タップで回収できます';
+      $('#mission-status').textContent = 'この端末では振動センサーが使えません。カプセルを開いて回収できます';
       $('#fallback').classList.add('fallback-ready');
     }
   }
@@ -1151,7 +1170,7 @@
       syncVisualViewport();
       requestAnimationFrame(render);
       if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
-        $('#shake').addEventListener('click', () => $('#mission-status').textContent = 'スマホを振ると、ひとつの願いが帰還します', {once: true});
+        $('#shake').addEventListener('click', () => $('#mission-status').textContent = 'シグナルを探すと、ひとつの想いが帰還します', {once: true});
       }
       $('#mission-status').textContent = orbiting().length
         ? '2005 — イトカワ到着・サンプル採取'
