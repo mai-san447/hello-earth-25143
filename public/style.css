@@ -70,3 +70,6 @@
   .desk footer{display:none}
 }
 @media(max-width:620px) and (max-height:650px){.mission-copy h1{font-size:1.55rem}.mission-control .notice{display:none}.desk{flex-basis:47%}.flight-caption{bottom:81px}.deposit h2{margin:2px 0 4px}textarea{height:43px}.deposit-button{min-height:36px}}
+
+.account-bar{position:fixed;right:12px;top:3px;z-index:20;font-size:.72rem;background:#141d3bdf;border:1px solid #6376a4;border-radius:8px;padding:4px 8px;color:#fff9f1}.account-bar a{color:#ffc66d}
+@media(max-width:620px){.account-bar{top:auto;right:13px;bottom:max(3px,env(safe-area-inset-bottom));font-size:.65rem;padding:2px 5px}}

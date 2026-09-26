@@ -12,6 +12,7 @@
   let db, items = [], current = null, traveling = false, lastId = null;
   let motionListening = false, lastMotion = 0, audioUrl = null;
   let historyPage = 0;
+  const cloud = $('#sync-mode')?.dataset.sync === 'cloud';
 
   function openDB() {
     return new Promise((resolve, reject) => {
@@ -21,7 +22,7 @@
       request.onerror = () => reject(request.error);
     });
   }
-  function store(mode, operation) {
+  function localStore(mode, operation) {
     return new Promise((resolve, reject) => {
       const tx = db.transaction('wishes', mode), request = operation(tx.objectStore('wishes'));
       let result;
@@ -30,6 +31,32 @@
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error);
     });
+  }
+  async function cloudRequest(method, item) {
+    const response = await fetch('/api/wishes', {method,headers:method === 'POST' ? {'Content-Type':'application/json'} : {},body:item ? JSON.stringify(item) : undefined});
+    if (!response.ok) throw Error(response.status === 401 ? 'ログインし直してください。' : '通信を確認して、もう一度お試しください。');
+    return response.json();
+  }
+  function store(mode, operation) {
+    if (!cloud) return localStore(mode, operation);
+    const request = operation({getAll:()=>({type:'all'}),put:item=>({type:'put',item})});
+    return request.type === 'all' ? cloudRequest('GET') : cloudRequest('POST',request.item);
+  }
+  async function init() {
+    try { db = await openDB(); } catch (_) { if (!cloud) throw Error('local-storage-unavailable'); }
+    if (cloud) {
+      const remote = await cloudRequest('GET');
+      if (db) {
+        const local = await localStore('readonly',object=>object.getAll());
+        const known = new Set(remote.map(item=>item.id));
+        for (const item of local.filter(item=>!known.has(item.id))) {
+          await cloudRequest('POST',{id:item.id,text:item.text || '以前、声で預けた願い',status:item.status,createdAt:item.createdAt,updatedAt:item.updatedAt});
+        }
+      }
+    }
+    await refresh();
+    returnStatus.textContent = waiting().length ? 'スマホを振ると、はやぶさが一つ連れ帰ります。' : 'まず願いを預けてください。';
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') installMotion();
   }
   async function refresh() { items = await store('readonly', object => object.getAll()); render(); }
   function waiting() { return items.filter(item => item.status === 'waiting'); }
@@ -62,7 +89,7 @@
       returnStatus.textContent = 'スマホを振ると、はやぶさが一つ連れ帰ります。';
       await refresh();
       desk.dataset.view = 'deposit';
-    } catch (_) { depositStatus.textContent = '保存できませんでした。入力は残しています。ブラウザの空き容量を確認してください。'; }
+    } catch (error) { depositStatus.textContent = `保存できませんでした。入力は残しています。${error.message || '通信を確認してください。'}`; }
     finally { deposit.disabled = false; }
   }
   function chooseOne() {
@@ -138,8 +165,5 @@
     try { await new Audio(audioUrl).play(); } catch (_) { returnStatus.textContent = '以前の録音を再生できませんでした。'; }
   });
   window.addEventListener('beforeunload', () => { if (audioUrl) URL.revokeObjectURL(audioUrl); });
-  openDB().then(database => { db = database; return refresh(); }).then(() => {
-    returnStatus.textContent = waiting().length ? 'スマホを振ると、はやぶさが一つ連れ帰ります。' : 'まず願いを預けてください。';
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') installMotion();
-  }).catch(() => { deposit.disabled = shake.disabled = fallback.disabled = true; count.textContent = '端末内の保存を利用できません。'; depositStatus.textContent = '通常モードのブラウザで開き直してください。'; });
+  init().catch(error => { deposit.disabled = shake.disabled = fallback.disabled = true; count.textContent = '願いを読み込めません。'; depositStatus.textContent = cloud ? `同期できません。${error.message || '通信を確認してください。'}` : '通常モードのブラウザで開き直してください。'; });
 })();
