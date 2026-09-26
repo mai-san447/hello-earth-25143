@@ -84,10 +84,12 @@ export function MissionExperience({
           <button className="sheet-close" id="card-close" type="button" aria-label="閉じる">×</button>
           <p className="card-kicker">SAMPLE CAPSULE / 25143</p>
           <p className="returned-stamp">HAYABUSA SAMPLE RETURNED</p>
-          <div className="capsule-display" aria-label="カプセルの中にイトカワの試料粒子がある">
-            <div className="capsule-lid" aria-hidden="true"><span /></div>
-            <div className="capsule-well" aria-hidden="true" />
-            <div className="sample-grain" aria-hidden="true"><i /><i /><i /><i /></div>
+          <div className="sample-particle-stage" role="img" aria-label="イトカワから帰還した微小なサンプル粒子">
+            <span className="sample-particle-orbit sample-particle-orbit-outer" aria-hidden="true" />
+            <span className="sample-particle-orbit sample-particle-orbit-inner" aria-hidden="true" />
+            <span className="sample-particle-aura" aria-hidden="true">
+              <span className="sample-particle-core" />
+            </span>
             <span className="sample-name">ITOKAWA / GRAIN 01</span>
           </div>
           <p className="sample-caption">イトカワから届いた、小さな粒子。</p>
@@ -95,9 +97,9 @@ export function MissionExperience({
           <time id="returned-date" />
           <p className="card-footnote">あの日のあなたから、今日のあなたへ。</p>
           <div className="return-actions" aria-label="帰還した願いの扱い">
-            <button className="return-action-primary" id="try-wish" type="button">やってみる</button>
-            <button id="return-to-orbit" type="button">戻す</button>
-            <button className="return-action-later" id="finish-wish" type="button">終える</button>
+            <button className="return-action-primary" id="try-wish" type="button">想いを受け取る</button>
+            <button id="return-to-orbit" type="button">軌道へ戻す</button>
+            <button className="return-action-later" id="finish-wish" type="button">アーカイブに保存</button>
           </div>
         </section>
         <section className="archive-sheet" id="archive-sheet" aria-labelledby="archive-title" hidden>
