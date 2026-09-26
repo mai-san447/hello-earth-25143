@@ -82,17 +82,17 @@ export function MissionExperience({
         <section className="return-card" id="return-card" role="dialog" aria-modal="true" aria-labelledby="returned-text" hidden>
           <div className="card-light" aria-hidden="true" />
           <button className="sheet-close" id="card-close" type="button" aria-label="閉じる">×</button>
-          <p className="card-kicker">SAMPLE CAPSULE / 25143</p>
-          <p className="returned-stamp">HAYABUSA SAMPLE RETURNED</p>
-          <div className="sample-particle-stage" role="img" aria-label="イトカワから帰還した微小なサンプル粒子">
+          <p className="card-kicker">WISH CAPSULE / 25143</p>
+          <p className="returned-stamp">WISH STAR / RETURNED</p>
+          <div className="sample-particle-stage" role="img" aria-label="イトカワの軌道から地球へ帰還した願い星">
             <span className="sample-particle-orbit sample-particle-orbit-outer" aria-hidden="true" />
             <span className="sample-particle-orbit sample-particle-orbit-inner" aria-hidden="true" />
             <span className="sample-particle-aura" aria-hidden="true">
               <span className="sample-particle-core" />
             </span>
-            <span className="sample-name">ITOKAWA / GRAIN 01</span>
+            <span className="sample-name">WISH STAR / 01</span>
           </div>
-          <p className="sample-caption">イトカワから届いた、小さな粒子。</p>
+          <p className="sample-caption">イトカワの軌道をめぐり、地球へ帰ってきた願い星。</p>
           <h2 id="returned-text" />
           <time id="returned-date" />
           <p className="card-footnote">あの日のあなたから、今日のあなたへ。</p>
