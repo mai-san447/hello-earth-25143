@@ -35,8 +35,8 @@ export function MissionExperience({
           <div className="account-identity">{accountLabel}</div>
         </section>
         <section className="mission-title" aria-labelledby="mission-title">
-          <p className="mission-kicker">HAYABUSA / ITOKAWA</p>
-          <h1 id="mission-title">願いを、<br /><span>星に預ける。</span></h1>
+          <p className="mission-kicker">SIGNAL: はやぶさ、地球を撮って。</p>
+          <h1 id="mission-title">3億キロ先へ、<br /><span>想いを飛ばす。</span></h1>
         </section>
         <div className="telemetry" aria-live="polite">
           <span className="telemetry-dot" />
