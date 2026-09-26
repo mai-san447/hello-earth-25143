@@ -33,6 +33,7 @@ export function MissionExperience({
           <button className="account-close" id="account-close" type="button" aria-label="閉じる"><X size={16} aria-hidden="true" /></button>
           <p className="account-sheet-kicker">ACCOUNT / SYNC</p>
           <div className="account-identity">{accountLabel}</div>
+          <button className="policy-open" id="policy-open" type="button" aria-haspopup="dialog">利用規約・プライバシー <span aria-hidden="true">›</span></button>
         </section>
         <section className="mission-title" aria-labelledby="mission-title">
           <p className="mission-kicker">SIGNAL: はやぶさ、地球を撮って。</p>
@@ -108,6 +109,47 @@ export function MissionExperience({
           <h2 id="archive-title">地球へ帰還した願い</h2>
           <p className="archive-empty" id="archive-empty">まだ帰還した願いはありません。</p>
           <ul id="archive-list" />
+          <div className="archive-management">
+            <label className="archive-select-all"><input id="archive-select-all" type="checkbox" disabled />すべて選択</label>
+            <div className="archive-management-actions">
+              <button id="archive-delete-selected" type="button" disabled>選択した願いを削除 <span id="archive-selection-count">0</span></button>
+              <button id="archive-reset" type="button">すべてリセット</button>
+            </div>
+            <p id="archive-status" role="status" aria-live="polite" />
+            <button id="archive-next" className="archive-next" type="button">次の願いを送る <span aria-hidden="true">↗</span></button>
+          </div>
+        </section>
+        <section className="policy-backdrop" id="policy-sheet" role="dialog" aria-modal="true" aria-labelledby="policy-title" hidden>
+          <div className="policy-panel">
+            <button className="policy-close" id="policy-close" type="button" aria-label="利用規約を閉じる">×</button>
+            <p className="sheet-kicker">TERMS / PRIVACY</p>
+            <h2 id="policy-title">利用規約・プライバシー</h2>
+            <p className="policy-updated">内容更新日：2026年9月27日</p>
+            <div className="policy-content" id="policy-content" tabIndex={0}>
+              <section>
+                <h3>このサービスについて</h3>
+                <p>本サービスは、想いを短いテキストとして端末に預け、はやぶさとイトカワをモチーフにした演出で見返す個人制作の試験公開版です。「SIGNAL: はやぶさ、地球を撮って。」は演出上のコピーで、実際の交信記録やJAXAの公式発表からの引用ではありません。JAXAその他の機関が運営・承認するサービスではありません。</p>
+              </section>
+              <section>
+                <h3>入力内容と保存</h3>
+                <p>願いは60文字以内で入力できます。現在のCloudflare版では、願いと回収記録はこのブラウザーのIndexedDBに保存され、アプリのサーバーやクラウドへ送信されません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。</p>
+                <p>氏名、住所、連絡先、健康情報、パスワード、秘密情報や、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
+              </section>
+              <section>
+                <h3>位置情報</h3>
+                <p>位置情報の利用は任意です。許可した場合、座標はこのブラウザー内で星空の向きとObserver表示を調整するために使い、アプリの願い保存APIへ送信しません。「位置情報なしで見る」を選んでも利用できます。許可の扱いはブラウザーや端末の設定にも従います。</p>
+              </section>
+              <section>
+                <h3>通信と外部サービス</h3>
+                <p>ページ配信にはCloudflareを利用し、フォントや描画ライブラリーの読み込みにGoogle Fonts、jsDelivrなど外部配信元を利用します。ページ表示時には、各サービスへIPアドレスやブラウザー情報など通信に通常必要な情報が送られる場合があります。これらの情報の取り扱いは各提供者のポリシーにも従います。</p>
+              </section>
+              <section>
+                <h3>利用上の注意</h3>
+                <p>画面内のイトカワ・探査機表現は創作上の演出で、公式の科学資料ではありません。サービスは試験公開中のため、予告なく変更・停止する場合があります。データの永続性、特定目的への適合性、常時利用可能であることは保証しません。大切な記録の保管には使わないでください。</p>
+              </section>
+              <p className="policy-contact-note">個人制作の試験公開版です。運営者情報と問い合わせ窓口は未掲載のため、正式提供・商用提供の前に整備が必要です。</p>
+            </div>
+          </div>
         </section>
         <div className="itokawa-label" id="itokawa-label" aria-hidden="true" hidden>25143 ITOKAWA</div>
         <section className="location-backdrop" id="location-modal" role="dialog" aria-modal="true" aria-labelledby="location-title" aria-describedby="location-description">

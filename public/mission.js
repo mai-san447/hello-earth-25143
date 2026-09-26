@@ -12,6 +12,9 @@
   const observerReading = $('#observer-reading');
   const accountTrigger = $('#account-open');
   const accountSheet = $('#account-sheet');
+  const policySheet = $('#policy-sheet');
+  const policyOpen = $('#policy-open');
+  const policyClose = $('#policy-close');
   const missionDock = $('#mission-dock');
   const stepButtons = [...document.querySelectorAll('[data-mission-step]')];
   const splashScreen = $('#splash-screen');
@@ -48,6 +51,7 @@
   }));
   let database;
   let wishes = [];
+  const selectedArchiveIds = new Set();
   let width = 0;
   let height = 0;
   let pixelRatio = 1;
@@ -94,7 +98,7 @@
   async function cloudRequest(method, item) {
     const response = await fetch('/api/wishes', {
       method,
-      headers: method === 'POST' ? {'Content-Type': 'application/json'} : {},
+      headers: method === 'GET' ? {} : {'Content-Type': 'application/json'},
       body: item ? JSON.stringify(item) : undefined,
     });
     if (!response.ok) throw Error(response.status === 401 ? 'ログインし直してください。' : '通信を確認してください。');
@@ -105,6 +109,50 @@
     if (!cloud) return localStore(mode, operation);
     const request = operation({getAll: () => ({type: 'all'}), put: item => ({type: 'put', item})});
     return request.type === 'all' ? cloudRequest('GET') : cloudRequest('POST', request.item);
+  }
+
+  function deleteLocalWishes(ids, all) {
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction('wishes', 'readwrite');
+      const objectStore = transaction.objectStore('wishes');
+      if (all) objectStore.clear();
+      else ids.forEach(id => objectStore.delete(id));
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error);
+      transaction.onabort = () => reject(transaction.error);
+    });
+  }
+
+  async function deleteWishes(ids, all = false) {
+    const removedIds = all ? wishes.map(wish => wish.id) : [...new Set(ids)];
+    if (!all && removedIds.length === 0) return;
+    const localItemsToRestore = cloud
+      ? (await localStore('readonly', object => object.getAll())).filter(wish => all || removedIds.includes(wish.id))
+      : [];
+    await deleteLocalWishes(removedIds, all);
+    if (cloud) {
+      try {
+        await cloudRequest('DELETE', all ? {all: true} : {ids: removedIds});
+      } catch (error) {
+        await Promise.all(localItemsToRestore.map(item => localStore('readwrite', object => object.put(item))));
+        throw error;
+      }
+    }
+    const removed = new Set(removedIds);
+    wishes = all ? [] : wishes.filter(wish => !removed.has(wish.id));
+    removedIds.forEach(id => selectedArchiveIds.delete(id));
+    if (all || removed.has(returningWish?.id) || removed.has(returnFlight?.wish.id)) {
+      returningWish = null;
+      returnFlight = null;
+      landed = false;
+      returnCard.hidden = true;
+      returnCard.classList.remove('card-open');
+      sampleButton.hidden = true;
+      sampleButton.classList.remove('sample-arrived');
+      setMissionStep('deposit');
+    }
+    if (all || removed.has(launchFlight?.wish.id)) launchFlight = null;
+    refreshInterface();
   }
 
   function orbiting() {
@@ -139,9 +187,24 @@
     return ({returned: '帰還・未整理', doing: 'やってみる', later: '保留', expired: '手放した', done: '完了'})[status] || '地球に保管';
   }
 
+  function refreshArchiveControls(archiveItems) {
+    const selectAll = $('#archive-select-all');
+    const deleteSelected = $('#archive-delete-selected');
+    const selectedCount = archiveItems.filter(wish => selectedArchiveIds.has(wish.id)).length;
+    selectAll.disabled = archiveItems.length === 0;
+    selectAll.checked = archiveItems.length > 0 && selectedCount === archiveItems.length;
+    selectAll.indeterminate = selectedCount > 0 && selectedCount < archiveItems.length;
+    deleteSelected.disabled = selectedCount === 0;
+    $('#archive-selection-count').textContent = String(selectedCount);
+    $('#archive-reset').disabled = wishes.length === 0;
+  }
+
   function refreshInterface() {
     const count = orbiting().length;
-    $('#archive-count').textContent = String(recovered().length);
+    const archiveItems = recovered();
+    const archiveIds = new Set(archiveItems.map(wish => wish.id));
+    selectedArchiveIds.forEach(id => { if (!archiveIds.has(id)) selectedArchiveIds.delete(id); });
+    $('#archive-count').textContent = String(archiveItems.length);
     $('#shake').disabled = $('#fallback').disabled = count === 0 || Boolean(returningWish) || Boolean(returnFlight);
     $('#choose-status').textContent = landed ? '帰還カプセルを回収しました' : 'カプセルの帰還を待っています';
     $('#gesture-hint').textContent = landed
@@ -149,19 +212,33 @@
       : count ? 'シグナルを探すと、想いがひとつ地球へ帰還します' : '願いを預けると、星がイトカワの軌道に浮かびます';
     const list = $('#archive-list');
     list.replaceChildren();
-    for (const wish of recovered()) {
+    for (const wish of archiveItems) {
       const row = document.createElement('li');
+      const label = document.createElement('label');
+      const checkbox = document.createElement('input');
       const text = document.createElement('span');
       const disposition = document.createElement('span');
       const date = document.createElement('time');
+      label.className = 'archive-item-label';
+      checkbox.type = 'checkbox';
+      checkbox.className = 'archive-item-checkbox';
+      checkbox.checked = selectedArchiveIds.has(wish.id);
+      checkbox.setAttribute('aria-label', `${wish.text}を選択`);
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) selectedArchiveIds.add(wish.id);
+        else selectedArchiveIds.delete(wish.id);
+        refreshArchiveControls(archiveItems);
+      });
       text.textContent = wish.text;
       disposition.className = 'archive-state';
       disposition.textContent = dispositionLabel(wish.status);
       date.textContent = new Intl.DateTimeFormat('ja-JP', {month: 'short', day: 'numeric'}).format(wish.updatedAt);
-      row.append(text, disposition, date);
+      label.append(checkbox, text);
+      row.append(label, disposition, date);
       list.append(row);
     }
-    $('#archive-empty').hidden = recovered().length > 0;
+    $('#archive-empty').hidden = archiveItems.length > 0;
+    refreshArchiveControls(archiveItems);
   }
 
   function geometry() {
@@ -870,10 +947,17 @@
     } catch {}
   }
 
-  function playLaunchTone() {
+  function unlockAudioFromGesture() {
     try {
       audioContext ||= new AudioContext();
-      if (audioContext.state === 'suspended') audioContext.resume();
+      if (audioContext.state === 'suspended') void audioContext.resume().catch(() => {});
+    } catch {}
+  }
+
+  function playLaunchTone() {
+    try {
+      unlockAudioFromGesture();
+      if (!audioContext) return;
       const now = audioContext.currentTime;
       const duration = reducedMotion ? .32 : .72;
       const buffer = audioContext.createBuffer(1, Math.ceil(audioContext.sampleRate * duration), audioContext.sampleRate);
@@ -892,7 +976,7 @@
       filter.frequency.exponentialRampToValueAtTime(620, now + duration);
       filter.Q.setValueAtTime(.8, now);
       gain.gain.setValueAtTime(.0001, now);
-      gain.gain.exponentialRampToValueAtTime(.11, now + .08);
+      gain.gain.exponentialRampToValueAtTime(.17, now + .08);
       gain.gain.exponentialRampToValueAtTime(.0001, now + duration);
       source.connect(filter).connect(gain).connect(audioContext.destination);
       source.start(now);
@@ -904,7 +988,7 @@
       tone.frequency.setValueAtTime(240, now);
       tone.frequency.exponentialRampToValueAtTime(720, now + duration * .72);
       toneGain.gain.setValueAtTime(.0001, now);
-      toneGain.gain.exponentialRampToValueAtTime(.055, now + .1);
+      toneGain.gain.exponentialRampToValueAtTime(.085, now + .1);
       toneGain.gain.exponentialRampToValueAtTime(.0001, now + duration);
       tone.connect(toneGain).connect(audioContext.destination);
       tone.start(now);
@@ -987,10 +1071,7 @@
   }
 
   function openDeposit() {
-    try {
-      audioContext ||= new AudioContext();
-      if (audioContext.state === 'suspended') audioContext.resume();
-    } catch {}
+    unlockAudioFromGesture();
     depositSheet.hidden = false;
     setTimeout(() => depositSheet.classList.add('sheet-open'), 20);
     setTimeout(() => {
@@ -1012,6 +1093,7 @@
       wishInput.focus();
       return;
     }
+    unlockAudioFromGesture();
     launchButton.disabled = true;
     const now = Date.now();
     const wish = {id: createWishId(), text, status: 'waiting', createdAt: now, updatedAt: now};
@@ -1100,6 +1182,22 @@
     accountTrigger.setAttribute('aria-expanded', 'false');
     accountTrigger.focus({preventScroll: true});
   });
+  policyOpen.addEventListener('click', () => {
+    accountSheet.hidden = true;
+    accountTrigger.setAttribute('aria-expanded', 'false');
+    policySheet.hidden = false;
+    policyClose.focus({preventScroll: true});
+  });
+  function closePolicy() {
+    policySheet.hidden = true;
+    accountSheet.hidden = false;
+    accountTrigger.setAttribute('aria-expanded', 'true');
+    policyOpen.focus({preventScroll: true});
+  }
+  policyClose.addEventListener('click', closePolicy);
+  policySheet.addEventListener('click', event => {
+    if (event.target === policySheet) closePolicy();
+  });
   launchButton.addEventListener('click', launchWish);
   wishInput.addEventListener('input', () => { $('#wish-length').textContent = String(wishInput.value.length); });
   $('#shake').addEventListener('click', enableMotion);
@@ -1111,7 +1209,59 @@
   $('#finish-wish').addEventListener('click', () => chooseDisposition('done'));
   $('#archive-open').addEventListener('click', () => { $('#archive-sheet').hidden = false; });
   $('#archive-close').addEventListener('click', () => { $('#archive-sheet').hidden = true; });
+  $('#archive-select-all').addEventListener('change', event => {
+    const archiveItems = recovered();
+    if (event.currentTarget.checked) archiveItems.forEach(wish => selectedArchiveIds.add(wish.id));
+    else archiveItems.forEach(wish => selectedArchiveIds.delete(wish.id));
+    refreshInterface();
+  });
+  $('#archive-delete-selected').addEventListener('click', async () => {
+    const ids = recovered().filter(wish => selectedArchiveIds.has(wish.id)).map(wish => wish.id);
+    if (!ids.length || !window.confirm(`選択した${ids.length}件を削除します。この操作は取り消せません。続けますか？`)) return;
+    const button = $('#archive-delete-selected');
+    button.disabled = true;
+    try {
+      await deleteWishes(ids);
+      $('#archive-status').textContent = `${ids.length}件の願いを削除しました。`;
+    } catch (error) {
+      $('#archive-status').textContent = `削除できませんでした。${error.message || '時間をおいて再度お試しください'}`;
+    } finally {
+      refreshArchiveControls(recovered());
+    }
+  });
+  $('#archive-reset').addEventListener('click', async () => {
+    const count = wishes.length;
+    if (!count || !window.confirm(`軌道上と回収記録の願い${count}件をすべて削除します。この操作は取り消せません。続けますか？`)) return;
+    const button = $('#archive-reset');
+    button.disabled = true;
+    try {
+      await deleteWishes([], true);
+      $('#archive-status').textContent = 'すべての願いをリセットしました。';
+    } catch (error) {
+      $('#archive-status').textContent = `リセットできませんでした。${error.message || '時間をおいて再度お試しください'}`;
+    } finally {
+      refreshArchiveControls(recovered());
+    }
+  });
+  $('#archive-next').addEventListener('click', () => {
+    $('#archive-sheet').hidden = true;
+    setMissionStep('deposit');
+    openDeposit();
+  });
   window.addEventListener('keydown', event => {
+    if (!policySheet.hidden && event.key === 'Tab') {
+      const focusable = [...policySheet.querySelectorAll('button:not([disabled]), [tabindex="0"]')];
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+      return;
+    }
     if (event.key === 'Tab' && !returnCard.hidden) {
       const focusable = [...returnCard.querySelectorAll('button:not([disabled])')];
       const first = focusable[0];
@@ -1132,6 +1282,7 @@
     if (event.key === 'Escape') {
       if (!returnCard.hidden) closeCard();
       else if (!depositSheet.hidden) closeDeposit();
+      else if (!policySheet.hidden) closePolicy();
       else if (!accountSheet.hidden) {
         accountSheet.hidden = true;
         accountTrigger.setAttribute('aria-expanded', 'false');
