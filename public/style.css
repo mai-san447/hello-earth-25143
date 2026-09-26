@@ -73,3 +73,13 @@
 
 .account-bar{position:fixed;right:12px;top:3px;z-index:20;font-size:.72rem;background:#141d3bdf;border:1px solid #6376a4;border-radius:8px;padding:4px 8px;color:#fff9f1}.account-bar a{color:#ffc66d}
 @media(max-width:620px){.account-bar{top:auto;right:13px;bottom:max(3px,env(safe-area-inset-bottom));font-size:.65rem;padding:2px 5px}}
+.mission-copy{max-width:min(46%,460px)}
+.mission-copy h1{font-size:clamp(2.7rem,4.2vw,4.5rem);line-height:1.1;letter-spacing:-.075em}
+.mission-copy p:last-child{max-width:340px}
+.account-bar{top:auto;bottom:10px;right:14px;max-width:260px;text-align:right}
+@media(min-width:621px) and (max-width:900px){.mission-copy{max-width:54%}.mission-copy h1{font-size:clamp(2.7rem,5vw,4rem)}}
+@media(max-width:620px){
+  .mission-copy{max-width:70%}
+  .mission-copy h1{font-size:clamp(1.6rem,7.5vw,2.6rem);line-height:1.1}
+  .account-bar{bottom:auto;top:27px;right:14px;max-width:42%;font-size:.62rem;line-height:1.2;background:#141d3bee}
+}
