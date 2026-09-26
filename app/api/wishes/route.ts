@@ -3,7 +3,7 @@ import { getDb } from "../../../db";
 import { wishes } from "../../../db/schema";
 import { eq } from "drizzle-orm";
 
-const validStatuses = new Set(["waiting", "doing", "later", "expired", "done"]);
+const validStatuses = new Set(["waiting", "returned", "doing", "later", "expired", "done"]);
 export async function GET() {
   const user = await getChatGPTUser();
   if (!user) return Response.json({error:"ログインが必要です。"}, {status:401});
@@ -18,7 +18,8 @@ export async function POST(request:Request) {
   let body:Record<string,unknown>;
   try { body = await request.json(); } catch { return Response.json({error:"入力を確認してください。"},{status:400}); }
   const {id,text:content,status,createdAt,updatedAt} = body;
-  if (typeof id !== "string" || !/^[a-f0-9-]{36}$/i.test(id) || typeof content !== "string" || content.length > 180 || !validStatuses.has(String(status)) || !Number.isSafeInteger(createdAt) || !Number.isSafeInteger(updatedAt)) return Response.json({error:"入力を確認してください。"},{status:400});
+  // Keep accepting longer legacy entries so local-to-cloud migration does not lose them.
+  if (typeof id !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id) || typeof content !== "string" || content.length > 180 || !validStatuses.has(String(status)) || !Number.isSafeInteger(createdAt) || !Number.isSafeInteger(updatedAt)) return Response.json({error:"入力を確認してください。"},{status:400});
   try {
     const row={userId:user.userId,id,text:content,status:String(status),createdAt:Number(createdAt),updatedAt:Number(updatedAt)};
     await getDb().insert(wishes).values(row).onConflictDoUpdate({target:[wishes.userId,wishes.id],set:{text:row.text,status:row.status,updatedAt:row.updatedAt}});
