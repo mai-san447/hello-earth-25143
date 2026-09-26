@@ -1,5 +1,5 @@
 import { MissionRuntime } from "./mission-runtime";
-import { CircleUserRound, X } from "lucide-react";
+import { CircleUserRound, Smartphone, X } from "lucide-react";
 
 export function MissionExperience({
   syncMode,
@@ -57,7 +57,7 @@ export function MissionExperience({
           <div className="mission-step-panel" id="step-panel-receive" role="tabpanel" aria-labelledby="step-receive" data-step-panel="receive" hidden>
             <div className="mission-controls">
               <div className="mission-secondary-actions">
-                <button className="shake-control" id="shake" type="button">シグナルを探す</button>
+                <button className="shake-control" id="shake" type="button"><span className="shake-glyph" aria-hidden="true"><i /><Smartphone size={18} strokeWidth={1.8} /></span><span>シグナルを探す</span></button>
                 <button className="fallback-control" id="fallback" type="button">カプセルを開く</button>
               </div>
             </div>
