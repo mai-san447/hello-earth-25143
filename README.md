@@ -18,6 +18,13 @@
 - データベース: Sites D1。定義は `db/schema.ts`、マイグレーションは `drizzle/`。
 - 公開: Sites。GitHubはソース管理用で、GitHubからの自動デプロイは設定していません。
 
+## Cloudflare Workers移行
+
+- `wrangler.jsonc` と `.github/workflows/deploy-cloudflare.yml` がWorkers向けの独立デプロイ設定です。GitHub Actionsには `CLOUDFLARE_API_TOKEN` と `CLOUDFLARE_ACCOUNT_ID` を登録します。
+- Workers版はログイン不要のゲスト利用を有効にし、願いを各端末のIndexedDBへ保存します。ChatGPTログインとD1同期はWorkers版では無効です。
+- 既存のChatGPT Sites D1データは別環境に残ります。データとアカウント認証の移行が完了するまでは、既存公開URLを新Workerへ切り替えません。
+- 初回デプロイは `workers.dev` の検証用URLで行います。独自ドメインを使う場合は、Workers版の検証後にDNSとカスタムドメインを設定します。
+
 ## JAXA素材
 
 - 実写候補: JAXAデジタルアーカイブス「『はやぶさ』が見たイトカワ」素材番号 `V100000166`。記録映像・写真、HDプレビュー5分25秒、クレジットはJAXA。

@@ -1,4 +1,5 @@
 import { MissionRuntime } from "./mission-runtime";
+import { CircleUserRound, X } from "lucide-react";
 
 export function MissionExperience({
   syncMode,
@@ -10,6 +11,7 @@ export function MissionExperience({
   return (
     <>
       <div id="sync-mode" data-sync={syncMode} hidden />
+      <canvas id="starfield-canvas" aria-hidden="true" />
       <main className="mission-app" id="mission-app">
         <MissionRuntime />
         <canvas id="orbit-canvas" aria-label="数を数えずに眺める、願いの星がイトカワを周回する宇宙" />
@@ -17,6 +19,18 @@ export function MissionExperience({
           <span className="mission-brand">MORUNE <b>25143</b></span>
           <span className="mission-phase">HAYABUSA SAMPLE RETURN</span>
         </header>
+        <div className="observer-pill" aria-label="観測位置">
+          <span className="observer-dot" aria-hidden="true" />
+          <span id="observer-reading">OBSERVER: TOKYO, EARTH [ 35.68°N, 139.76°E ]</span>
+        </div>
+        <button className="account-trigger" id="account-open" type="button" aria-label="アカウントと同期設定" aria-expanded="false" aria-controls="account-sheet">
+          <CircleUserRound size={19} strokeWidth={1.65} aria-hidden="true" />
+        </button>
+        <section className="account-sheet" id="account-sheet" aria-label="アカウントと同期設定" hidden>
+          <button className="account-close" id="account-close" type="button" aria-label="閉じる"><X size={16} aria-hidden="true" /></button>
+          <p className="account-sheet-kicker">ACCOUNT / SYNC</p>
+          <div className="account-identity">{accountLabel}</div>
+        </section>
         <section className="mission-title" aria-labelledby="mission-title">
           <p className="mission-kicker">HAYABUSA / ITOKAWA</p>
           <h1 id="mission-title">願いを、<br /><span>星に預ける。</span></h1>
@@ -25,13 +39,34 @@ export function MissionExperience({
           <span className="telemetry-dot" />
           <span id="mission-status">イトカワの軌道を観測中</span>
         </div>
-        <div className="mission-controls">
-          <button className="primary-control" id="deposit-open" type="button"><span className="control-icon" aria-hidden="true">＋</span>願いを星に預ける</button>
-          <button className="shake-control" id="shake" type="button">スマホを振ってサンプル回収</button>
-          <button className="fallback-control" id="fallback" type="button">タップで帰還</button>
-        </div>
-        <button className="sample-trigger" id="sample-trigger" type="button" hidden>カプセルを開く <span aria-hidden="true">↗</span></button>
-        <button className="archive-trigger" id="archive-open" type="button">地球の回収記録 <span id="archive-count">0</span></button>
+        <section className="mission-dock" id="mission-dock" data-step="deposit" aria-label="ミッション操作">
+          <nav className="mission-segmented" role="tablist" aria-label="ミッションの段階">
+            <button id="step-deposit" type="button" role="tab" aria-selected="true" aria-controls="step-panel-deposit" data-mission-step="deposit"><span>01</span>預ける</button>
+            <button id="step-receive" type="button" role="tab" aria-selected="false" aria-controls="step-panel-receive" data-mission-step="receive"><span>02</span>受け取る</button>
+            <button id="step-choose" type="button" role="tab" aria-selected="false" aria-controls="step-panel-choose" data-mission-step="choose"><span>03</span>選ぶ</button>
+          </nav>
+          <div className="mission-step-panel" id="step-panel-deposit" role="tabpanel" aria-labelledby="step-deposit" data-step-panel="deposit">
+            <div className="mission-controls">
+              <button className="primary-control" id="deposit-open" type="button"><span className="control-icon" aria-hidden="true">＋</span>願いを星に預ける</button>
+            </div>
+          </div>
+          <div className="mission-step-panel" id="step-panel-receive" role="tabpanel" aria-labelledby="step-receive" data-step-panel="receive" hidden>
+            <div className="mission-controls">
+              <div className="mission-secondary-actions">
+                <button className="shake-control" id="shake" type="button">スマホを振ってサンプル回収</button>
+                <button className="fallback-control" id="fallback" type="button">タップで帰還</button>
+              </div>
+            </div>
+          </div>
+          <div className="mission-step-panel mission-choose-panel" id="step-panel-choose" role="tabpanel" aria-labelledby="step-choose" data-step-panel="choose" hidden>
+            <p className="choose-status" id="choose-status" role="status">カプセルの帰還を待っています</p>
+            <button className="sample-trigger" id="sample-trigger" type="button" hidden>カプセルを開く <span aria-hidden="true">↗</span></button>
+          </div>
+          <div className="mission-dock-meta">
+            <p className="gesture-hint" id="gesture-hint">願いを預けると、星がイトカワの軌道に浮かびます</p>
+            <button className="archive-trigger" id="archive-open" type="button">地球の回収記録 <span id="archive-count">0</span></button>
+          </div>
+        </section>
         <section className="sheet deposit-sheet" id="deposit-sheet" aria-label="願いを星に預ける" hidden>
           <div className="sheet-grip" aria-hidden="true" />
           <button className="sheet-close" id="deposit-close" type="button" aria-label="閉じる">×</button>
@@ -69,9 +104,18 @@ export function MissionExperience({
           <p className="archive-empty" id="archive-empty">まだ帰還した願いはありません。</p>
           <ul id="archive-list" />
         </section>
-        <p className="gesture-hint" id="gesture-hint">願いを預けると、星がイトカワの軌道に浮かびます</p>
+        <div className="itokawa-label" id="itokawa-label" aria-hidden="true" hidden>25143 ITOKAWA</div>
+        <section className="location-backdrop" id="location-modal" role="dialog" aria-modal="true" aria-labelledby="location-title" aria-describedby="location-description">
+          <div className="location-panel">
+            <p className="sheet-kicker">HAYABUSA / ITOKAWA</p>
+            <h2 id="location-title">現在の星空と同期するために位置情報を利用します</h2>
+            <p id="location-description">場所に合わせて、星空の向きを調整します。</p>
+            <button className="location-allow" id="location-allow" type="button">現在地で星空を同期</button>
+            <button className="location-skip" id="location-skip" type="button">位置情報なしで見る</button>
+            <p className="location-status" id="location-status" role="status" aria-live="polite" />
+          </div>
+        </section>
       </main>
-      <div className="account-bar">{accountLabel}</div>
     </>
   );
 }

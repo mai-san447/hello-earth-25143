@@ -2,6 +2,18 @@
   const $ = selector => document.querySelector(selector);
   const app = $('#mission-app');
   const canvas = $('#orbit-canvas');
+  const starfieldCanvas = $('#starfield-canvas');
+  const locationModal = $('#location-modal');
+  const locationAllow = $('#location-allow');
+  const locationSkip = $('#location-skip');
+  const locationStatus = $('#location-status');
+  const itokawaLabel = $('#itokawa-label');
+  const telemetryLabel = $('.telemetry');
+  const observerReading = $('#observer-reading');
+  const accountTrigger = $('#account-open');
+  const accountSheet = $('#account-sheet');
+  const missionDock = $('#mission-dock');
+  const stepButtons = [...document.querySelectorAll('[data-mission-step]')];
   const context = canvas.getContext('2d');
   const wishInput = $('#wish');
   const launchButton = $('#deposit');
@@ -27,6 +39,17 @@
   let motionActive = false;
   let lastShakeAt = 0;
   let audioContext;
+  let threeScene;
+  let threeCamera;
+  let skyGroup;
+  let starfieldGroup;
+  let starMaterial;
+  let itokawaMesh;
+  let hayabusaOrbit;
+  let hayabusaCraft;
+  let updateItokawaLabel = () => {};
+  let pendingLocation;
+  let threeReady = false;
 
   function openDatabase() {
     return new Promise((resolve, reject) => {
@@ -69,6 +92,26 @@
     return wishes.filter(wish => wish.status === 'waiting');
   }
 
+  function setMissionStep(step) {
+    missionDock.dataset.step = step;
+    for (const button of stepButtons) {
+      const selected = button.dataset.missionStep === step;
+      button.setAttribute('aria-selected', String(selected));
+      button.tabIndex = selected ? 0 : -1;
+    }
+    for (const panel of document.querySelectorAll('[data-step-panel]')) {
+      panel.hidden = panel.dataset.stepPanel !== step;
+    }
+    requestAnimationFrame(alignTelemetryToDock);
+  }
+
+  function alignTelemetryToDock() {
+    const appBounds = app.getBoundingClientRect();
+    const dockBounds = missionDock.getBoundingClientRect();
+    const gap = 16;
+    telemetryLabel.style.setProperty('--telemetry-dock-offset', `${Math.max(0, appBounds.bottom - dockBounds.top + gap)}px`);
+  }
+
   function recovered() {
     return wishes.filter(wish => wish.status !== 'waiting').sort((a, b) => b.updatedAt - a.updatedAt);
   }
@@ -81,6 +124,7 @@
     const count = orbiting().length;
     $('#archive-count').textContent = String(recovered().length);
     $('#shake').disabled = $('#fallback').disabled = count === 0 || Boolean(returningWish) || Boolean(returnFlight);
+    $('#choose-status').textContent = landed ? '帰還カプセルを回収しました' : 'カプセルの帰還を待っています';
     $('#gesture-hint').textContent = landed
       ? '着地したサンプルをタップして、あの日の言葉を開いてください'
       : count ? 'スマホを振ると、星がひとつ地球へ帰還します' : '願いを預けると、星がイトカワの軌道に浮かびます';
@@ -154,6 +198,308 @@
     const angle = seed % 628 / 100 + index * 0.37 + (reducedMotion ? 0 : time * (0.000025 + seed % 11 * 0.000001));
     return {x: centerX + Math.cos(angle) * orbitX * lane, y: centerY + Math.sin(angle) * orbitY * lane};
   }
+
+  function applyLocation(latitude, longitude) {
+    const lat = Math.max(-90, Math.min(90, latitude));
+    const lon = ((longitude + 180) % 360 + 360) % 360 - 180;
+    pendingLocation = {lat, lon};
+    const latitudeLabel = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'}`;
+    const longitudeLabel = `${Math.abs(lon).toFixed(2)}°${lon >= 0 ? 'E' : 'W'}`;
+    observerReading.textContent = `OBSERVER: EARTH [ ${latitudeLabel}, ${longitudeLabel} ]`;
+    if (starfieldGroup) {
+      starfieldGroup.rotation.x = lat * Math.PI / 180 * 0.1;
+      starfieldGroup.rotation.y = -lon * Math.PI / 180 * 0.0045;
+      updateItokawaLabel();
+    }
+    locationStatus.textContent = `星空を現在地に合わせました（緯度 ${lat.toFixed(1)}°）。`;
+    setTimeout(() => locationModal.classList.add('is-hidden'), 650);
+  }
+
+  async function initializeThreeBackground() {
+    const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js');
+    const renderer = new THREE.WebGLRenderer({canvas: starfieldCanvas, alpha: true, antialias: false, powerPreference: 'low-power'});
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
+    threeScene = new THREE.Scene();
+    threeCamera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 240);
+    threeCamera.position.set(0, 0, 0);
+    skyGroup = new THREE.Group();
+    threeScene.add(skyGroup);
+    starfieldGroup = new THREE.Group();
+    skyGroup.add(starfieldGroup);
+
+    const starCount = 4600;
+    const positions = new Float32Array(starCount * 3);
+    const sizes = new Float32Array(starCount);
+    const phases = new Float32Array(starCount);
+    const rates = new Float32Array(starCount);
+    for (let index = 0; index < starCount; index++) {
+      const y = Math.random() * 2 - 1;
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 95 + Math.random() * 65;
+      const ring = Math.sqrt(1 - y * y);
+      positions[index * 3] = Math.cos(angle) * ring * radius;
+      positions[index * 3 + 1] = y * radius;
+      positions[index * 3 + 2] = Math.sin(angle) * ring * radius;
+      sizes[index] = 0.65 + Math.pow(Math.random(), 3) * 2.7;
+      phases[index] = Math.random() * Math.PI * 2;
+      rates[index] = 0.3 + Math.random() * 1.2;
+    }
+    const starGeometry = new THREE.BufferGeometry();
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    starGeometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
+    starGeometry.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1));
+    starGeometry.setAttribute('aRate', new THREE.BufferAttribute(rates, 1));
+    starMaterial = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      uniforms: {uTime: {value: 0}, uPixelRatio: {value: renderer.getPixelRatio()}},
+      vertexShader: `
+        attribute float aSize;
+        attribute float aPhase;
+        attribute float aRate;
+        uniform float uTime;
+        uniform float uPixelRatio;
+        varying float vAlpha;
+        void main() {
+          vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * viewPosition;
+          float pulse = 0.7 + 0.3 * sin(uTime * aRate + aPhase);
+          vAlpha = pulse;
+          gl_PointSize = min(aSize * uPixelRatio * pulse * (220.0 / -viewPosition.z), 6.0);
+        }
+      `,
+      fragmentShader: `
+        varying float vAlpha;
+        void main() {
+          float radius = length(gl_PointCoord - vec2(0.5));
+          if (radius > 0.5) discard;
+          float glow = 1.0 - smoothstep(0.02, 0.5, radius);
+          gl_FragColor = vec4(vec3(0.76, 0.86, 0.98), glow * vAlpha * 0.9);
+        }
+      `,
+    });
+    starfieldGroup.add(new THREE.Points(starGeometry, starMaterial));
+
+    const peanutProfile = [
+      [-7.4, 0.12], [-6.8, 1.05], [-5.7, 2.05], [-4.2, 2.65],
+      [-2.8, 2.8], [-1.4, 2.35], [0, 1.85], [1.4, 2.2],
+      [2.8, 3.0], [4.3, 3.45], [5.5, 3.35], [6.5, 2.7],
+      [7.2, 1.45], [7.45, 0.12],
+    ].map(([axis, radius]) => new THREE.Vector2(radius, axis));
+    const asteroidGeometry = new THREE.LatheGeometry(new THREE.SplineCurve(peanutProfile).getPoints(96), 64);
+    asteroidGeometry.rotateZ(-Math.PI / 2);
+    const vertices = asteroidGeometry.attributes.position;
+    const rockColors = new Float32Array(vertices.count * 3);
+    for (let index = 0; index < vertices.count; index++) {
+      const x = vertices.getX(index);
+      const y = vertices.getY(index);
+      const z = vertices.getZ(index);
+      const seed = Math.sin(Math.round(x * 10000) * 127.1 + Math.round(y * 10000) * 311.7 + Math.round(z * 10000) * 74.7) * 43758.5453;
+      const grain = seed - Math.floor(seed);
+      const ridges = Math.sin(x * 2.7 + y * 1.9) * Math.cos(z * 3.1 - y * 1.4);
+      const relief = (grain - 0.5) * 0.16 + ridges * 0.055;
+      const scale = 1 + relief;
+      vertices.setXYZ(index, x * scale, y * scale * 0.98, z * scale * 1.06);
+      const tone = 0.43 + (grain - 0.5) * 0.18 + ridges * 0.06;
+      rockColors[index * 3] = tone * 0.93;
+      rockColors[index * 3 + 1] = tone * 0.96;
+      rockColors[index * 3 + 2] = tone;
+    }
+    asteroidGeometry.setAttribute('color', new THREE.BufferAttribute(rockColors, 3));
+    asteroidGeometry.computeVertexNormals();
+    itokawaMesh = new THREE.Mesh(asteroidGeometry, new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      vertexColors: true,
+      roughness: 0.96,
+      metalness: 0.03,
+      emissive: 0x37332e,
+      emissiveIntensity: 0.12,
+      flatShading: true,
+    }));
+    itokawaMesh.position.set(0, 0, -68);
+    skyGroup.add(itokawaMesh);
+    const asteroidLight = new THREE.PointLight(0xe8d8b6, 5, 28, 2);
+    asteroidLight.position.copy(itokawaMesh.position).add(new THREE.Vector3(-8, 9, 14));
+    skyGroup.add(asteroidLight);
+
+    hayabusaOrbit = new THREE.Group();
+    hayabusaOrbit.position.copy(itokawaMesh.position);
+    skyGroup.add(hayabusaOrbit);
+    hayabusaCraft = new THREE.Group();
+    hayabusaOrbit.add(hayabusaCraft);
+
+    const blanketMaterial = new THREE.MeshStandardMaterial({color: 0xc5a75f, metalness: 0.92, roughness: 0.34, emissive: 0x4a3512, emissiveIntensity: 0.3});
+    const panelMaterial = new THREE.MeshStandardMaterial({
+      color: 0x244b6c,
+      metalness: 0.92,
+      roughness: 0.3,
+      emissive: 0x173954,
+      emissiveIntensity: 0.4,
+    });
+    const panelGridMaterial = new THREE.MeshStandardMaterial({color: 0x8cb7c6, metalness: 0.42, roughness: 0.34, emissive: 0x4d879b, emissiveIntensity: 0.24});
+    const antennaMaterial = new THREE.MeshStandardMaterial({color: 0xc2baa7, metalness: 0.68, roughness: 0.32, side: THREE.DoubleSide});
+    const samplerMaterial = new THREE.MeshStandardMaterial({color: 0xb6a782, metalness: 0.58, roughness: 0.46});
+
+    const spacecraftBody = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.78, 0.9), blanketMaterial);
+    hayabusaCraft.add(spacecraftBody);
+    for (const side of [-1, 1]) {
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(3.35, 0.09, 1.28), panelMaterial);
+      panel.position.set(side * 2.22, 0, 0);
+      hayabusaCraft.add(panel);
+      for (let cell = 1; cell < 4; cell++) {
+        const divider = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.018, 1.22), panelGridMaterial);
+        divider.position.set(panel.position.x + side * (cell - 2) * 0.78, 0.055, 0);
+        hayabusaCraft.add(divider);
+      }
+      for (const row of [-0.4, 0.4]) {
+        const busbar = new THREE.Mesh(new THREE.BoxGeometry(3.25, 0.018, 0.025), panelGridMaterial);
+        busbar.position.set(panel.position.x, 0.055, row);
+        hayabusaCraft.add(busbar);
+      }
+    }
+
+    const antennaMast = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.05, 0.36, 10), antennaMaterial);
+    antennaMast.position.y = 0.55;
+    hayabusaCraft.add(antennaMast);
+    const highGainDish = new THREE.Mesh(new THREE.ConeGeometry(0.58, 0.22, 28, 1, true), antennaMaterial);
+    highGainDish.rotation.x = Math.PI;
+    highGainDish.position.y = 0.78;
+    hayabusaCraft.add(highGainDish);
+    const samplerHorn = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.19, 0.48, 14), samplerMaterial);
+    samplerHorn.position.y = -0.61;
+    hayabusaCraft.add(samplerHorn);
+    hayabusaCraft.scale.setScalar(1.12);
+    const spacecraftBeacon = new THREE.PointLight(0x9dc9df, 1.8, 11, 2);
+    spacecraftBeacon.position.set(0, 1.1, 1.4);
+    hayabusaCraft.add(spacecraftBeacon);
+    const craftGlowCanvas = document.createElement('canvas');
+    craftGlowCanvas.width = craftGlowCanvas.height = 96;
+    const craftGlowContext = craftGlowCanvas.getContext('2d');
+    const craftGlowGradient = craftGlowContext.createRadialGradient(48, 48, 2, 48, 48, 48);
+    craftGlowGradient.addColorStop(0, 'rgba(145,210,245,.34)');
+    craftGlowGradient.addColorStop(.38, 'rgba(110,175,220,.12)');
+    craftGlowGradient.addColorStop(1, 'rgba(90,145,200,0)');
+    craftGlowContext.fillStyle = craftGlowGradient;
+    craftGlowContext.fillRect(0, 0, 96, 96);
+    const craftGlow = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(craftGlowCanvas),
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false,
+      opacity: 0.62,
+    }));
+    craftGlow.position.set(0, 0, -0.25);
+    craftGlow.scale.set(12, 8, 1);
+    hayabusaCraft.add(craftGlow);
+    const hayabusaRimLight = new THREE.DirectionalLight(0x83b9dc, 1.35);
+    hayabusaRimLight.position.set(-4, 3, -8);
+    hayabusaRimLight.target.position.set(0, 0, 0);
+    hayabusaCraft.add(hayabusaRimLight, hayabusaRimLight.target);
+
+    const glowCanvas = document.createElement('canvas');
+    glowCanvas.width = glowCanvas.height = 128;
+    const glowContext = glowCanvas.getContext('2d');
+    const glowGradient = glowContext.createRadialGradient(64, 64, 2, 64, 64, 64);
+    glowGradient.addColorStop(0, 'rgba(255,232,176,.72)');
+    glowGradient.addColorStop(.2, 'rgba(243,190,105,.3)');
+    glowGradient.addColorStop(1, 'rgba(238,174,89,0)');
+    glowContext.fillStyle = glowGradient;
+    glowContext.fillRect(0, 0, 128, 128);
+    const glowSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(glowCanvas),
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false,
+    }));
+    glowSprite.position.copy(itokawaMesh.position);
+    glowSprite.scale.set(23, 23, 1);
+    skyGroup.add(glowSprite);
+    threeScene.add(new THREE.AmbientLight(0x9aa9ba, 0.32));
+    const asteroidKey = new THREE.DirectionalLight(0xd8e2eb, 1.1);
+    asteroidKey.position.set(-16, 20, 22);
+    threeScene.add(asteroidKey);
+
+    function updateSize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      threeCamera.aspect = width / height;
+      threeCamera.fov = width < 560 ? 74 : 58;
+      threeCamera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
+      renderer.setSize(width, height, false);
+      const halfViewWidth = 68 * Math.tan(THREE.MathUtils.degToRad(threeCamera.fov / 2)) * width / height;
+      const asteroidX = Math.min(width < 560 ? 12 : 36, halfViewWidth * 0.52);
+      itokawaMesh.position.set(asteroidX, width < 560 ? -4.5 : -3, -68);
+      asteroidLight.position.copy(itokawaMesh.position).add(new THREE.Vector3(-8, 9, 14));
+      hayabusaOrbit.position.copy(itokawaMesh.position);
+      glowSprite.position.copy(itokawaMesh.position);
+      const radiusX = width < 560 ? 13 : width < 900 ? 12 : 24;
+      const radiusY = width < 560 ? 8 : width < 900 ? 10 : 14;
+      const startAngle = 2.2;
+      const tangentX = -radiusX * Math.sin(startAngle);
+      const tangentY = radiusY * Math.cos(startAngle);
+      hayabusaCraft.position.set(radiusX * Math.cos(startAngle), radiusY * Math.sin(startAngle), 0);
+      hayabusaCraft.rotation.z = Math.atan2(tangentY, tangentX);
+    }
+
+    function updateLabel() {
+      const worldPosition = itokawaMesh.getWorldPosition(new THREE.Vector3());
+      worldPosition.y += 8.5;
+      const projected = worldPosition.project(threeCamera);
+      const visible = projected.z > -1 && projected.z < 1;
+      itokawaLabel.hidden = !visible;
+      if (visible) {
+        itokawaLabel.style.left = `${(projected.x * 0.5 + 0.5) * window.innerWidth}px`;
+        itokawaLabel.style.top = `${(-projected.y * 0.5 + 0.5) * window.innerHeight - 12}px`;
+      }
+    }
+    updateItokawaLabel = updateLabel;
+
+    if (pendingLocation) applyLocation(pendingLocation.lat, pendingLocation.lon);
+    updateSize();
+    threeReady = true;
+    window.addEventListener('resize', updateSize, {passive: true});
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const elapsed = clock.getElapsedTime();
+      starMaterial.uniforms.uTime.value = reducedMotion ? 0 : elapsed;
+      if (!reducedMotion) {
+        starfieldGroup.rotation.y += 0.000035;
+        itokawaMesh.rotation.y += 0.0008;
+        itokawaMesh.rotation.z += 0.00018;
+        hayabusaOrbit.rotation.z += 0.00055;
+        hayabusaCraft.rotation.y += 0.0007;
+      }
+      renderer.render(threeScene, threeCamera);
+      updateLabel();
+    }
+    animate();
+  }
+
+  locationAllow.addEventListener('click', () => {
+    if (!navigator.geolocation) {
+      locationStatus.textContent = '位置情報に対応していません。位置情報なしで続けられます。';
+      return;
+    }
+    locationAllow.disabled = true;
+    locationStatus.textContent = '現在地を確認しています…';
+    navigator.geolocation.getCurrentPosition(
+      ({coords}) => {
+        applyLocation(coords.latitude, coords.longitude);
+        locationAllow.disabled = false;
+      },
+      () => {
+        locationStatus.textContent = '位置情報を取得できませんでした。位置情報なしで続けられます。';
+        locationAllow.disabled = false;
+      },
+      {enableHighAccuracy: false, timeout: 10000, maximumAge: 300000},
+    );
+  });
+  locationSkip.addEventListener('click', () => locationModal.classList.add('is-hidden'));
 
   function drawSpace(time) {
     const sky = context.createLinearGradient(0, 0, width * 0.65, height);
@@ -262,7 +608,7 @@
     context.stroke();
     context.restore();
 
-    drawHayabusa(centerX - orbitX * .48, centerY - orbitY * .82, -.22, 1);
+    if (!threeReady) drawHayabusa(centerX - orbitX * .48, centerY - orbitY * .82, -.22, 1);
 
     orbiting().forEach((wish, index) => {
       if (launchFlight?.wish.id === wish.id) return;
@@ -384,11 +730,12 @@
   }
 
   function render(time) {
-    drawSpace(time);
+    if (threeReady) context.clearRect(0, 0, width, height);
+    else drawSpace(time);
     drawEarth();
     drawOrbit(time);
     drawFlight(time);
-    drawItokawa(time);
+    if (!threeReady) drawItokawa(time);
     requestAnimationFrame(render);
   }
 
@@ -403,6 +750,7 @@
       landed = true;
       sampleButton.hidden = false;
       setTimeout(() => sampleButton.classList.add('sample-arrived'), 20);
+      setMissionStep('choose');
       $('#mission-status').textContent = 'カプセル帰還 / オーストラリアで回収';
       refreshInterface();
       playRecoveryTone();
@@ -596,6 +944,7 @@
       returningWish = updated;
       if (status === 'waiting') launchFlight = {wish: updated, startedAt: performance.now()};
       closeCard();
+      setMissionStep(status === 'waiting' ? 'receive' : 'deposit');
       refreshInterface();
     } catch {
       $('#mission-status').textContent = '保存できませんでした。もう一度お試しください';
@@ -699,6 +1048,39 @@
 
   $('#deposit-open').addEventListener('click', openDeposit);
   $('#deposit-close').addEventListener('click', closeDeposit);
+  stepButtons.forEach((button, index) => {
+    button.addEventListener('click', () => {
+      const step = button.dataset.missionStep;
+      setMissionStep(step);
+      if (step === 'deposit') $('#deposit-open').focus({preventScroll: true});
+      if (step === 'receive') {
+        if (!orbiting().length) $('#mission-status').textContent = '軌道に星はありません';
+        else $('#fallback').focus({preventScroll: true});
+      }
+      if (step === 'choose') {
+        if (landed) sampleButton.focus({preventScroll: true});
+        else $('#choose-status').textContent = 'カプセルの帰還を待っています';
+      }
+    });
+    button.addEventListener('keydown', event => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? stepButtons.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : stepButtons.length - 1)) % stepButtons.length;
+      stepButtons[nextIndex].click();
+      stepButtons[nextIndex].focus({preventScroll: true});
+    });
+  });
+  accountTrigger.addEventListener('click', () => {
+    const open = accountSheet.hidden;
+    accountSheet.hidden = !open;
+    accountTrigger.setAttribute('aria-expanded', String(open));
+    if (open) $('#account-close').focus({preventScroll: true});
+  });
+  $('#account-close').addEventListener('click', () => {
+    accountSheet.hidden = true;
+    accountTrigger.setAttribute('aria-expanded', 'false');
+    accountTrigger.focus({preventScroll: true});
+  });
   launchButton.addEventListener('click', launchWish);
   wishInput.addEventListener('input', () => { $('#wish-length').textContent = String(wishInput.value.length); });
   $('#shake').addEventListener('click', enableMotion);
@@ -731,6 +1113,11 @@
     if (event.key === 'Escape') {
       if (!returnCard.hidden) closeCard();
       else if (!depositSheet.hidden) closeDeposit();
+      else if (!accountSheet.hidden) {
+        accountSheet.hidden = true;
+        accountTrigger.setAttribute('aria-expanded', 'false');
+        accountTrigger.focus({preventScroll: true});
+      }
       else $('#archive-sheet').hidden = true;
     }
   });
@@ -741,6 +1128,11 @@
   }
   wishInput.addEventListener('focus', syncVisualViewport);
   wishInput.addEventListener('blur', () => setTimeout(syncVisualViewport, 80));
+  const dockResizeObserver = new ResizeObserver(alignTelemetryToDock);
+  dockResizeObserver.observe(missionDock);
+  window.addEventListener('resize', alignTelemetryToDock, {passive: true});
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', alignTelemetryToDock, {passive: true});
+  requestAnimationFrame(alignTelemetryToDock);
 
   async function init() {
     try {
@@ -755,6 +1147,7 @@
       }
       wishes = await store('readonly', object => object.getAll());
       refreshInterface();
+      setMissionStep('deposit');
       syncVisualViewport();
       requestAnimationFrame(render);
       if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
@@ -769,5 +1162,8 @@
     }
   }
 
+  initializeThreeBackground().catch(() => {
+    locationStatus.textContent = '3D星空を読み込めません。簡易表示で続けます。';
+  });
   init();
 })();
