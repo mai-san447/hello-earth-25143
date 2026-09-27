@@ -425,17 +425,17 @@
     hayabusaCraft = new THREE.Group();
     hayabusaOrbit.add(hayabusaCraft);
 
-    const blanketMaterial = new THREE.MeshStandardMaterial({color: 0xc5a75f, metalness: 0.92, roughness: 0.34, emissive: 0x4a3512, emissiveIntensity: 0.3});
+    const blanketMaterial = new THREE.MeshStandardMaterial({color: 0xe2c477, metalness: 0.8, roughness: 0.3, emissive: 0x76551e, emissiveIntensity: 0.5});
     const panelMaterial = new THREE.MeshStandardMaterial({
-      color: 0x244b6c,
-      metalness: 0.92,
-      roughness: 0.3,
-      emissive: 0x173954,
-      emissiveIntensity: 0.4,
+      color: 0x4d8fb2,
+      metalness: 0.78,
+      roughness: 0.26,
+      emissive: 0x245d7c,
+      emissiveIntensity: 0.72,
     });
-    const panelGridMaterial = new THREE.MeshStandardMaterial({color: 0x8cb7c6, metalness: 0.42, roughness: 0.34, emissive: 0x4d879b, emissiveIntensity: 0.24});
-    const antennaMaterial = new THREE.MeshStandardMaterial({color: 0xc2baa7, metalness: 0.68, roughness: 0.32, side: THREE.DoubleSide});
-    const samplerMaterial = new THREE.MeshStandardMaterial({color: 0xb6a782, metalness: 0.58, roughness: 0.46});
+    const panelGridMaterial = new THREE.MeshStandardMaterial({color: 0xc5edf1, metalness: 0.35, roughness: 0.28, emissive: 0x78c7d8, emissiveIntensity: 0.5});
+    const antennaMaterial = new THREE.MeshStandardMaterial({color: 0xf1ead2, metalness: 0.58, roughness: 0.28, side: THREE.DoubleSide});
+    const samplerMaterial = new THREE.MeshStandardMaterial({color: 0xe5cf9b, metalness: 0.5, roughness: 0.38});
 
     const spacecraftBody = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.78, 0.9), blanketMaterial);
     hayabusaCraft.add(spacecraftBody);
@@ -484,12 +484,12 @@
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       depthTest: false,
-      opacity: 0.62,
+      opacity: 0.82,
     }));
     craftGlow.position.set(0, 0, -0.25);
     craftGlow.scale.set(12, 8, 1);
     hayabusaCraft.add(craftGlow);
-    const hayabusaRimLight = new THREE.DirectionalLight(0x83b9dc, 1.35);
+    const hayabusaRimLight = new THREE.DirectionalLight(0xb9ecff, 1.8);
     hayabusaRimLight.position.set(-4, 3, -8);
     hayabusaRimLight.target.position.set(0, 0, 0);
     hayabusaCraft.add(hayabusaRimLight, hayabusaRimLight.target);
@@ -725,15 +725,15 @@
     context.translate(x, y);
     context.rotate(rotation);
     context.scale(scale, scale);
-    context.shadowColor = 'rgba(255, 221, 155, .42)';
-    context.shadowBlur = 9;
-    context.strokeStyle = '#ead8aa';
-    context.lineWidth = .7;
+    context.shadowColor = 'rgba(255, 229, 157, .78)';
+    context.shadowBlur = 14;
+    context.strokeStyle = '#fff0bd';
+    context.lineWidth = 1;
     for (const side of [-1, 1]) {
-      context.fillStyle = '#263e4c';
+      context.fillStyle = '#4d91b5';
       context.fillRect(side * 6, -2.7, side * 13, 5.4);
       context.strokeRect(side * 6, -2.7, side * 13, 5.4);
-      context.strokeStyle = 'rgba(155, 206, 211, .58)';
+      context.strokeStyle = 'rgba(214, 247, 250, .9)';
       for (let cell = 1; cell < 4; cell++) {
         context.beginPath();
         context.moveTo(side * (6 + cell * 3.25), -2.7);
@@ -742,7 +742,7 @@
       }
       context.strokeStyle = '#ead8aa';
     }
-    context.fillStyle = '#d7c49a';
+    context.fillStyle = '#f0d58f';
     context.beginPath();
     context.moveTo(-5, -4);
     context.lineTo(2, -5);
@@ -753,7 +753,7 @@
     context.closePath();
     context.fill();
     context.stroke();
-    context.fillStyle = '#f5e7c5';
+    context.fillStyle = '#fffbe5';
     context.beginPath();
     context.arc(0, -1, 1.4, 0, Math.PI * 2);
     context.fill();
