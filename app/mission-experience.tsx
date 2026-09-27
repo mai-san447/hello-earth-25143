@@ -47,7 +47,7 @@ export function MissionExperience({
           <nav className="mission-segmented" role="tablist" aria-label="ミッションの段階">
             <button id="step-deposit" type="button" role="tab" aria-selected="true" aria-controls="step-panel-deposit" data-mission-step="deposit"><span>01</span>送信 (SEND)</button>
             <button id="step-receive" type="button" role="tab" aria-selected="false" aria-controls="step-panel-receive" data-mission-step="receive"><span>02</span>帰還 (RETURN)</button>
-            <button id="step-choose" type="button" role="tab" aria-selected="false" aria-controls="step-panel-choose" data-mission-step="choose"><span>03</span>記録 (ARCHIVE)</button>
+            <button id="step-choose" type="button" role="tab" aria-selected="false" aria-controls="step-panel-choose" data-mission-step="choose"><span>03</span>受け取り (RECEIVE)</button>
           </nav>
           <div className="mission-step-panel" id="step-panel-deposit" role="tabpanel" aria-labelledby="step-deposit" data-step-panel="deposit">
             <div className="mission-controls">
@@ -58,7 +58,7 @@ export function MissionExperience({
             <div className="mission-controls">
               <div className="mission-secondary-actions">
                 <button className="shake-control" id="shake" type="button"><span className="shake-glyph" aria-hidden="true"><i /><Smartphone size={18} strokeWidth={1.8} /></span><span>シグナルを探す</span></button>
-                <button className="fallback-control" id="fallback" type="button">カプセルを開く</button>
+                <button className="fallback-control" id="fallback" type="button">タップで帰還</button>
               </div>
             </div>
           </div>
