@@ -100,7 +100,7 @@ export function MissionExperience({
           <label className="share-comment-label" htmlFor="share-comment">コメントを添えてシェア</label>
           <textarea id="share-comment" maxLength={120} placeholder="いまの気持ちを書く（任意）" />
           <p className="share-status" id="share-status" role="status" aria-live="polite" />
-          <button className="return-action-share" id="share-wish" type="button">願い星をシェア</button>
+          <button className="return-action-share" id="share-wish" type="button">Xで願い星をシェア</button>
           <div className="return-actions" aria-label="帰還した願いの扱い">
             <button className="return-action-primary" id="try-wish" type="button">想いを受け取る</button>
             <button id="return-to-orbit" type="button">軌道へ戻す</button>
