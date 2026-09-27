@@ -37,7 +37,7 @@ export function MissionExperience({
         </section>
         <section className="mission-title" aria-labelledby="mission-title">
           <p className="mission-kicker">SIGNAL: はやぶさ、地球を撮って。</p>
-          <h1 id="mission-title">3億キロ先へ、<br /><span>想いを飛ばす。</span></h1>
+          <h1 id="mission-title">願いを星に、<br /><span>想いを地球へ。</span></h1>
         </section>
         <div className="telemetry" aria-live="polite">
           <span className="telemetry-dot" />
