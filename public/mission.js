@@ -1064,12 +1064,15 @@
     const shareStatus = $('#share-status');
     const comment = $('#share-comment').value.trim();
     const message = [`「${returningWish.text}」`, comment, 'イトカワから帰還した願い星 — MORUNE 25143'].filter(Boolean).join('\n');
-    const shareData = {title: 'MORUNE 25143 — 帰還した願い星', text: message, url: window.location.href};
+    const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(window.location.href)}`;
     shareButton.disabled = true;
     shareStatus.textContent = '';
     try {
-      if (typeof navigator.share === 'function') {
-        await navigator.share(shareData);
+      const popup = window.open(xUrl, '_blank', 'noopener,noreferrer,width=640,height=520');
+      if (popup) {
+        shareStatus.textContent = 'Xの投稿画面を開きました';
+      } else if (typeof navigator.share === 'function') {
+        await navigator.share({title: 'MORUNE 25143 — 帰還した願い星', text: message, url: window.location.href});
         shareStatus.textContent = '共有シートを開きました';
       } else {
         await navigator.clipboard.writeText(`${message}\n${window.location.href}`);
