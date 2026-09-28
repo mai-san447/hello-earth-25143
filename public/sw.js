@@ -7,7 +7,7 @@ importScripts('/offline-routes.js');
 // 自前の部品はネット優先なので、ふつうの公開では上げなくてよい。
 const CACHE_VERSION = '2026-09-29-2';
 const CACHE_NAME = `morune-25143-${CACHE_VERSION}`;
-const APP_SHELL = ['/', '/mission.js', '/wish-state.js', '/itokawa.js', '/itokawa-distance.json', '/style.css', '/manifest.webmanifest', '/icons/icon-192.png'];
+const APP_SHELL = ['/', '/mission.js', '/wish-state.js', '/itokawa.js', '/itokawa-distance.json', '/constellation.js', '/style.css', '/manifest.webmanifest', '/icons/icon-192.png'];
 // 病室の弱い電波で待ち続けないよう、ページの取得はこの時間で諦めて保存した版を出す
 const PAGE_TIMEOUT_MS = 4000;
 
