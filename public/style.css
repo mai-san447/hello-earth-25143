@@ -407,3 +407,5 @@ body:has(.mission-app){background:transparent}
 
 /* 待っていた日数：預けた日付の下に、帰ってきた時間の長さを添える */
 .return-card .returned-wait{margin:6px 0 0;color:#e6c878;font-family:"Yu Mincho","Hiragino Mincho ProN",serif;font-size:12px;line-height:1.6}
+/* イトカワまでの実際の距離（#6） */
+.return-card .returned-distance{margin:2px 0 0;color:#aab5b3;font-size:11px;line-height:1.6}.return-card .returned-distance:empty{display:none}
