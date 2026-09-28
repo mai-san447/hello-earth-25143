@@ -77,6 +77,11 @@ export function MissionExperience({
           <p className="sheet-kicker">01 / SAMPLE TO ORBIT</p>
           <textarea id="wish" aria-label="願い" maxLength={60} />
           <div className="input-meta"><span>MESSAGE TO ITOKAWA</span><span><b id="wish-length">0</b> / 60</span></div>
+          <div className="return-from-field">
+            <label htmlFor="return-from">帰還が始まる日（任意）</label>
+            <input id="return-from" type="date" aria-describedby="return-from-hint" />
+            <p id="return-from-hint">入院中など、しばらく手放しておきたいときに。この日までは振っても帰ってきません。空欄なら、すぐ帰還の候補になります。</p>
+          </div>
           <button className="launch-button" id="deposit" type="button">星を軌道へ送る <span aria-hidden="true">↗</span></button>
           <p className="sheet-status" id="deposit-status" role="status" />
         </section>

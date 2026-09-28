@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CHOICES, STATUS, daysWaited, decide, markReturned, pendingReturn, returnCandidates, waitedMessage} from '../public/wish-state.js';
+import {CHOICES, STATUS, createWish, daysWaited, decide, markReturned, nextReturnFrom, orbitingWishes, parseReturnFrom, pendingReturn, returnCandidates, returnFromLabel, waitedMessage} from '../public/wish-state.js';
 
 const at = (y, m, d, h = 12, min = 0) => new Date(y, m - 1, d, h, min).getTime();
 const wish = (overrides = {}) => ({id: 'a', text: '朝の海を歩きたい', status: STATUS.WAITING, createdAt: at(2026, 9, 22), updatedAt: at(2026, 9, 22), ...overrides});
@@ -55,4 +55,48 @@ test('待っていた日数は時刻ではなく日付で数える', () => {
 test('待っていた日数の文言', () => {
   assert.equal(waitedMessage(0), '今日、預けた願いです。');
   assert.equal(waitedMessage(37), '37日間、イトカワの軌道であなたを待っていました。');
+});
+
+// #7 帰還が始まる日
+const discharge = at(2026, 10, 25, 0);
+
+test('帰還が始まる日の前は、軌道を回っていても帰還の候補にしない', () => {
+  const later = wish({id: 'later', returnFrom: discharge});
+  const now = wish({id: 'now'});
+  assert.deepEqual(orbitingWishes([later, now]).map(item => item.id), ['later', 'now']);
+  assert.deepEqual(returnCandidates([later, now], at(2026, 10, 1)).map(item => item.id), ['now']);
+});
+
+test('帰還が始まる日の当日 0:00 から候補になる', () => {
+  const later = wish({returnFrom: discharge});
+  assert.deepEqual(returnCandidates([later], discharge - 1), []);
+  assert.deepEqual(returnCandidates([later], discharge).map(item => item.id), ['a']);
+});
+
+test('候補がないときは、いちばん早い開始日を知らせる', () => {
+  const wishes = [wish({id: '1', returnFrom: at(2026, 11, 3, 0)}), wish({id: '2', returnFrom: discharge}), wish({id: '3', status: STATUS.DONE, returnFrom: at(2026, 10, 20, 0)})];
+  assert.equal(nextReturnFrom(wishes, at(2026, 10, 1)), discharge);
+  assert.equal(nextReturnFrom([wish()], at(2026, 10, 1)), null);
+  assert.equal(returnFromLabel(discharge), '10月25日');
+});
+
+test('預けるとき、今日より後の日付だけを帰還が始まる日として持たせる', () => {
+  const now = at(2026, 10, 1);
+  assert.equal(createWish({id: 'x', text: '海', now, returnFrom: discharge}).returnFrom, discharge);
+  assert.equal('returnFrom' in createWish({id: 'x', text: '海', now}), false);
+  assert.equal('returnFrom' in createWish({id: 'x', text: '海', now, returnFrom: at(2026, 9, 1, 0)}), false);
+  assert.equal(createWish({id: 'x', text: '海', now}).status, STATUS.WAITING);
+});
+
+test('日付の入力を端末の 0:00 に直す。空や存在しない日付は null', () => {
+  assert.equal(parseReturnFrom('2026-10-25'), discharge);
+  assert.equal(parseReturnFrom(''), null);
+  assert.equal(parseReturnFrom('2026-02-30'), null);
+  assert.equal(parseReturnFrom('10/25'), null);
+});
+
+test('「軌道へ戻す」を選んでも、帰還が始まる日はそのまま残る', () => {
+  const back = decide(wish({status: STATUS.RETURNED, returnFrom: discharge}), 'later', at(2026, 10, 26));
+  assert.equal(back.returnFrom, discharge);
+  assert.deepEqual(returnCandidates([back], at(2026, 10, 26)).map(item => item.id), ['a']);
 });
