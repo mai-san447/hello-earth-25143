@@ -2,7 +2,27 @@
   // 状態遷移は wish-state.js に集め、テストで確かめる。ここは画面・保存・演出を担当する。
   const WishState = await import('/wish-state.js');
   const Itokawa = await import('/itokawa.js');
+  const Constellation = await import('/constellation.js');
   let distanceTable = null;
+
+  // 応援の信号。軌道ID はこの端末で1度だけ作るランダムなUUID。届いた時刻は端末にも控え、病室でも明るさを出す。
+  const ORBIT_KEY = 'morune-25143-orbit-id';
+  const SIGNAL_CACHE_KEY = 'morune-25143-signal-times';
+  function readStorage(key) {
+    try { return localStorage.getItem(key); } catch { return null; }
+  }
+  function writeStorage(key, value) {
+    try { localStorage.setItem(key, value); } catch { /* 保存できなくても使い続けられる */ }
+  }
+  function readSignalCache() {
+    try {
+      const times = JSON.parse(readStorage(SIGNAL_CACHE_KEY) || '[]');
+      return Array.isArray(times) ? times.filter(Number.isFinite) : [];
+    } catch {
+      return [];
+    }
+  }
+  let signalTimes = readSignalCache();
   const $ = selector => document.querySelector(selector);
   const app = $('#mission-app');
   const canvas = $('#orbit-canvas');
@@ -256,6 +276,7 @@
       list.append(row);
     }
     $('#archive-empty').hidden = archiveItems.length > 0;
+    drawConstellation();
     refreshArchiveControls(archiveItems);
   }
 
@@ -727,12 +748,14 @@
     orbiting().forEach((wish, index) => {
       if (launchFlight?.wish.id === wish.id) return;
       const point = orbitPosition(wish, index, time);
+      // 応援の信号が届いた星ほど明るく光る
+      const glow = Constellation.brightness(Constellation.signalsWhileWaiting(wish, signalTimes));
       context.save();
       context.shadowColor = '#ffe4a6';
-      context.shadowBlur = 13;
+      context.shadowBlur = 13 * glow;
       context.fillStyle = '#fff1ce';
       context.beginPath();
-      context.arc(point.x, point.y, 2.2 + index % 3 * .45, 0, Math.PI * 2);
+      context.arc(point.x, point.y, (2.2 + index % 3 * .45) * glow, 0, Math.PI * 2);
       context.fill();
       context.restore();
     });
@@ -1056,6 +1079,7 @@
     $('#returned-date').dateTime = createdAt.toISOString();
     $('#returned-wait').textContent = WishState.waitedMessage(WishState.daysWaited(returningWish, Date.now()));
     $('#returned-distance').textContent = Itokawa.distanceMessage(Itokawa.distanceKmOn(distanceTable, Date.now()));
+    $('#returned-signals').textContent = Constellation.signalMessage(Constellation.signalsWhileWaiting(returningWish, signalTimes));
     $('#share-comment').value = '';
     $('#share-status').textContent = '';
     returnCard.hidden = false;
@@ -1077,6 +1101,14 @@
       if (backToOrbit) launchFlight = {wish: updated, startedAt: performance.now()};
       closeCard({decided: true});
       setMissionStep(backToOrbit ? 'receive' : 'deposit');
+      if (!backToOrbit) {
+        // 受け取った願いは星座に加わる。回収記録のボタンを一度だけ光らせて知らせる
+        $('#mission-status').textContent = 'あなたの星座に、星がひとつ加わりました';
+        const archiveTrigger = $('#archive-open');
+        archiveTrigger.classList.remove('constellation-grew');
+        void archiveTrigger.offsetWidth;
+        archiveTrigger.classList.add('constellation-grew');
+      }
       refreshInterface();
     } catch {
       $('#mission-status').textContent = '保存できませんでした。もう一度お試しください';
@@ -1277,7 +1309,11 @@
   $('#return-to-orbit').addEventListener('click', () => chooseDisposition('later'));
   $('#finish-wish').addEventListener('click', () => chooseDisposition('finish'));
   $('#share-wish').addEventListener('click', shareWish);
-  $('#archive-open').addEventListener('click', () => { $('#archive-sheet').hidden = false; });
+  $('#archive-open').addEventListener('click', () => {
+    $('#archive-sheet').hidden = false;
+    drawConstellation();
+  });
+  $('#signal-share-button').addEventListener('click', shareSignalLink);
   $('#archive-close').addEventListener('click', () => { $('#archive-sheet').hidden = true; });
   $('#archive-select-all').addEventListener('change', event => {
     const archiveItems = recovered();
@@ -1427,6 +1463,99 @@
       });
   }
 
+  function orbitId() {
+    let id = readStorage(ORBIT_KEY);
+    if (!id) {
+      id = createWishId();
+      writeStorage(ORBIT_KEY, id);
+    }
+    return id;
+  }
+
+  // 届いた信号の時刻を取りに行く。応援の信号が使えない環境（保存場所がない）では何も出さない。
+  async function loadSignals() {
+    if (!navigator.onLine) return;
+    try {
+      const response = await fetch(`/api/signals?orbit=${encodeURIComponent(orbitId())}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!data.enabled || !Array.isArray(data.times)) return;
+      signalTimes = data.times.filter(Number.isFinite);
+      writeStorage(SIGNAL_CACHE_KEY, JSON.stringify(signalTimes));
+      $('#signal-share').hidden = false;
+      drawConstellation();
+    } catch {
+      // 読めなければ、端末に控えた分で明るさを出す
+    }
+  }
+
+  async function shareSignalLink() {
+    const url = `${location.origin}/signal?to=${orbitId()}`;
+    const text = 'イトカワの軌道で、私の願いの星が待っています。よければ信号を送ってください（名前も言葉も届きません）。';
+    const shareStatus = $('#signal-share-status');
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share({title: 'MORUNE 25143 — 星に信号を送る', text, url});
+        shareStatus.textContent = '共有シートを開きました';
+      } else {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        shareStatus.textContent = '応援リンクをコピーしました';
+      }
+    } catch (error) {
+      if (error?.name !== 'AbortError') shareStatus.textContent = `応援リンク：${url}`;
+    }
+  }
+
+  // 受け取った願いの星座。言葉の近さでつないだ最小全域木を、回収記録の中に描く。
+  function drawConstellation() {
+    const canvasElement = $('#constellation-canvas');
+    const caption = $('#constellation-caption');
+    if (!canvasElement || $('#archive-sheet').hidden) return;
+    const stars = Constellation.receivedWishes(wishes);
+    const edges = Constellation.constellationEdges(wishes);
+    const ratio = Math.min(devicePixelRatio || 1, 2);
+    const cssWidth = canvasElement.clientWidth || 560;
+    const cssHeight = Math.round(cssWidth * 0.43);
+    canvasElement.width = Math.round(cssWidth * ratio);
+    canvasElement.height = Math.round(cssHeight * ratio);
+    canvasElement.style.height = `${cssHeight}px`;
+    const draw = canvasElement.getContext('2d');
+    draw.setTransform(ratio, 0, 0, ratio, 0, 0);
+    draw.clearRect(0, 0, cssWidth, cssHeight);
+    caption.textContent = stars.length < 2
+      ? '願いを受け取るたびに、ここに星座が育っていきます。'
+      : `受け取った${stars.length}つの願いを、言葉の近さでつないだ星座です。`;
+    if (!stars.length) return;
+    // 置き場所は、預けた順に黄金角で渦を描くように決める（毎回同じ形になる）
+    const positions = new Map(stars.map((star, index) => {
+      const angle = index * 2.399963 + (hash(star.id) % 628) / 1000;
+      const radius = Math.sqrt((index + 0.5) / stars.length);
+      return [star.id, {x: cssWidth / 2 + Math.cos(angle) * radius * cssWidth * 0.42, y: cssHeight / 2 + Math.sin(angle) * radius * cssHeight * 0.4}];
+    }));
+    for (const edge of edges) {
+      const from = positions.get(edge.from);
+      const to = positions.get(edge.to);
+      draw.strokeStyle = `rgba(230, 200, 120, ${0.25 + edge.closeness * 0.6})`;
+      draw.lineWidth = 1 + edge.closeness * 1.5;
+      draw.beginPath();
+      draw.moveTo(from.x, from.y);
+      draw.lineTo(to.x, to.y);
+      draw.stroke();
+    }
+    for (const star of stars) {
+      const {x, y} = positions.get(star.id);
+      const glow = Constellation.brightness(Constellation.signalsWhileWaiting(star, signalTimes));
+      draw.save();
+      draw.shadowColor = '#ffe4a6';
+      draw.shadowBlur = 12 * glow;
+      draw.fillStyle = star.status === 'doing' ? '#fff1ce' : '#cfd8d6';
+      draw.beginPath();
+      draw.arc(x, y, 3 * glow, 0, Math.PI * 2);
+      draw.fill();
+      draw.restore();
+    }
+  }
+
   // #6 同梱した JPL Horizons の暦から、今日のイトカワまでの距離を名札に添える。
   // 読めなくても演出は止めない（名札は「25143 ITOKAWA」のまま）。
   async function loadItokawaDistance() {
@@ -1447,6 +1576,8 @@
   window.addEventListener('offline', showConnection);
   window.addEventListener('online', () => {
     if ($('#mission-status').textContent.startsWith('ネットなし')) $('#mission-status').textContent = '';
+    // 休憩室の Wi-Fi につながったら、届いた信号を取りに行く
+    loadSignals();
   });
 
   initializeThreeBackground().catch(() => {
@@ -1456,4 +1587,5 @@
   await init();
   showConnection();
   registerOfflineSupport();
+  loadSignals();
 })();
