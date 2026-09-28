@@ -15,7 +15,8 @@ const managedLinux = readExecutionProfile() === "managed-linux";
 
 const localBindingConfig = {
   main: "vinext/server/fetch-handler",
-  compatibility_flags: ["nodejs_compat"],
+  // nodejs_compat は wrangler.jsonc に書いてある。プラグインが両方を合体させると
+  // 「Compatibility flag specified multiple times」でローカルの Workers が起動しないため、ここでは指定しない。
   d1_databases: d1
     ? [
         {
@@ -35,7 +36,11 @@ const localBindingConfig = {
     : [],
 };
 
-export default defineConfig(async () => {
+// 手元の Miniflare（wrangler 4.92.0 同梱）が対応する互換日の上限。wrangler.jsonc の
+// compatibility_date は本番の Cloudflare に合わせて新しいため、ローカルの開発サーバーでだけ下げる。
+const LOCAL_DEV_COMPATIBILITY_DATE = "2026-05-22";
+
+export default defineConfig(async ({ command }) => {
   // Use Miniflare's local Request.cf placeholder unless fetching is requested.
   process.env.CLOUDFLARE_CF_FETCH_ENABLED ??= "false";
   process.env.WRANGLER_SEND_METRICS ??= "false";
@@ -61,7 +66,9 @@ export default defineConfig(async () => {
       cloudflare({
         viteEnvironment: { name: "rsc", childEnvironments: ["ssr"] },
         inspectorPort: false,
-        config: localBindingConfig,
+        config: command === "serve"
+          ? { ...localBindingConfig, compatibility_date: LOCAL_DEV_COMPATIBILITY_DATE }
+          : localBindingConfig,
       }),
     ],
   };
