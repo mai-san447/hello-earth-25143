@@ -3,8 +3,9 @@
 // 願いのデータは IndexedDB にあるので、ここでは扱わない。
 importScripts('/offline-routes.js');
 
-// 公開のたびに上げる。古い保存は activate で消す。
-const CACHE_VERSION = '2026-09-29-1';
+// 保存の形を変えたときに上げる。古い保存は activate で消す。
+// 自前の部品はネット優先なので、ふつうの公開では上げなくてよい。
+const CACHE_VERSION = '2026-09-29-2';
 const CACHE_NAME = `morune-25143-${CACHE_VERSION}`;
 const APP_SHELL = ['/', '/mission.js', '/wish-state.js', '/itokawa.js', '/itokawa-distance.json', '/style.css', '/manifest.webmanifest', '/icons/icon-192.png'];
 // 病室の弱い電波で待ち続けないよう、ページの取得はこの時間で諦めて保存した版を出す
@@ -37,13 +38,29 @@ function isStorable(response) {
   return response && (response.ok || response.type === 'opaque');
 }
 
+function fetchWithTimeout(request) {
+  return Promise.race([
+    fetch(request),
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), PAGE_TIMEOUT_MS)),
+  ]);
+}
+
+// 名前が変わらない自前の部品：ネットがあれば新しい版を使い、なければ保存した版を出す
+async function serveFresh(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetchWithTimeout(request);
+    if (response.ok) await cache.put(request, response.clone());
+    return response;
+  } catch {
+    return (await cache.match(request)) || Response.error();
+  }
+}
+
 async function servePage(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
-    const response = await Promise.race([
-      fetch(request),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), PAGE_TIMEOUT_MS)),
-    ]);
+    const response = await fetchWithTimeout(request);
     if (response.ok) await cache.put(pageKey(request.url), response.clone());
     return response;
   } catch {
@@ -76,6 +93,7 @@ self.addEventListener('fetch', event => {
   const {request} = event;
   const route = self.offlineRoute({url: request.url, method: request.method, mode: request.mode, origin: self.location.origin});
   if (route === 'page') event.respondWith(servePage(request));
+  else if (route === 'fresh') event.respondWith(serveFresh(request));
   else if (route === 'asset') event.respondWith(serveAsset(request, event));
 });
 
