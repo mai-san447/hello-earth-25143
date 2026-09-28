@@ -1,6 +1,8 @@
 (async () => {
   // 状態遷移は wish-state.js に集め、テストで確かめる。ここは画面・保存・演出を担当する。
   const WishState = await import('/wish-state.js');
+  const Itokawa = await import('/itokawa.js');
+  let distanceTable = null;
   const $ = selector => document.querySelector(selector);
   const app = $('#mission-app');
   const canvas = $('#orbit-canvas');
@@ -1040,6 +1042,7 @@
     $('#returned-date').textContent = `預けた日 ${new Intl.DateTimeFormat('ja-JP', {year: 'numeric', month: 'long', day: 'numeric'}).format(createdAt)}`;
     $('#returned-date').dateTime = createdAt.toISOString();
     $('#returned-wait').textContent = WishState.waitedMessage(WishState.daysWaited(returningWish, Date.now()));
+    $('#returned-distance').textContent = Itokawa.distanceMessage(Itokawa.distanceKmOn(distanceTable, Date.now()));
     $('#share-comment').value = '';
     $('#share-status').textContent = '';
     returnCard.hidden = false;
@@ -1406,6 +1409,20 @@
       });
   }
 
+  // #6 同梱した JPL Horizons の暦から、今日のイトカワまでの距離を名札に添える。
+  // 読めなくても演出は止めない（名札は「25143 ITOKAWA」のまま）。
+  async function loadItokawaDistance() {
+    try {
+      const response = await fetch('/itokawa-distance.json');
+      if (!response.ok) return;
+      distanceTable = await response.json();
+      const km = Itokawa.distanceKmOn(distanceTable, Date.now());
+      if (km != null) itokawaLabel.textContent = `25143 ITOKAWA · ${Itokawa.formatDistanceJa(km)}`;
+    } catch {
+      distanceTable = null;
+    }
+  }
+
   function showConnection() {
     if (!navigator.onLine) $('#mission-status').textContent = 'ネットなし · 願いはこの端末の中で預かります';
   }
@@ -1417,6 +1434,7 @@
   initializeThreeBackground().catch(() => {
     locationStatus.textContent = '3D星空を読み込めません。簡易表示で続けます。';
   });
+  loadItokawaDistance();
   await init();
   showConnection();
   registerOfflineSupport();

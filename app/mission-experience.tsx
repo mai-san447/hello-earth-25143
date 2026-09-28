@@ -97,6 +97,7 @@ export function MissionExperience({
           <h2 id="returned-text" />
           <time id="returned-date" />
           <p className="returned-wait" id="returned-wait" />
+          <p className="returned-distance" id="returned-distance" />
           <p className="card-footnote">あの日のあなたから、今日のあなたへ。</p>
           <label className="share-comment-label" htmlFor="share-comment">コメントを添えてシェア</label>
           <textarea id="share-comment" maxLength={120} placeholder="いまの気持ちを書く（任意）" />
@@ -150,7 +151,7 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>利用上の注意</h3>
-                <p>画面内のイトカワ・探査機表現は創作上の演出で、公式の科学資料ではありません。サービスは試験公開中のため、予告なく変更・停止する場合があります。データの永続性、特定目的への適合性、常時利用可能であることは保証しません。大切な記録の保管には使わないでください。</p>
+                <p>画面内のイトカワ・探査機表現は創作上の演出で、公式の科学資料ではありません。イトカワまでの距離は、NASA/JPL Horizons の暦（小惑星 25143 Itokawa、地球中心から見た距離、1日ごとの値）をもとにした概算で、アプリに同梱した表から表示しています。サービスは試験公開中のため、予告なく変更・停止する場合があります。データの永続性、特定目的への適合性、常時利用可能であることは保証しません。大切な記録の保管には使わないでください。</p>
               </section>
               <p className="policy-contact-note">個人制作の試験公開版です。運営者情報と問い合わせ窓口は未掲載のため、正式提供・商用提供の前に整備が必要です。</p>
             </div>
