@@ -359,6 +359,9 @@ body:has(.mission-app){background:transparent}
 .mission-controls button:not(:disabled):active,.archive-trigger:active,.launch-button:not(:disabled):active,.return-actions button:not(:disabled):active,.location-panel button:not(:disabled):active,.sheet-close:active{transform:scale(.96)}
 .mission-controls .primary-control:active{transform:scale(.96)}
 .sample-trigger.sample-arrived:active{transform:translate(-50%,0) scale(.96)}
+/* 下のパネル内では中央寄せの translate を使っていない。押した瞬間にボタンが左へ逃げて
+   1回目のタップが空振りしていたため、縮める演出だけにする */
+.mission-step-panel .sample-trigger.sample-arrived:active{transform:scale(.96)}
 .splash-screen{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:#03050a;color:rgba(230,238,247,.76);opacity:1;transition:opacity 1.2s ease;pointer-events:auto}
 .splash-screen span{font:500 8px/1 "Inter",sans-serif;letter-spacing:.2em;animation:signalPulse 1.05s ease-in-out infinite}
 .splash-screen-dismissed{opacity:0;pointer-events:none}

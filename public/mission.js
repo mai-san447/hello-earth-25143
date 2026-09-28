@@ -58,6 +58,7 @@
   let height = 0;
   let pixelRatio = 1;
   let returningWish = null;
+  let cardHideTimer;
   let returnFlight = null;
   let launchFlight = null;
   let landed = false;
@@ -1032,6 +1033,8 @@
 
   function openCard() {
     if (!returningWish || !landed) return;
+    // 閉じた直後に開き直すと、閉じる処理の続き（300ms後に隠す）がカードを隠してしまうため止める
+    clearTimeout(cardHideTimer);
     $('#returned-text').textContent = returningWish.text;
     const createdAt = new Date(returningWish.createdAt);
     $('#returned-date').textContent = `預けた日 ${new Intl.DateTimeFormat('ja-JP', {year: 'numeric', month: 'long', day: 'numeric'}).format(createdAt)}`;
@@ -1097,7 +1100,8 @@
   // × ボタンからはクリックイベントが渡るので、decided は明示したときだけ true になる。
   function closeCard({decided = false} = {}) {
     returnCard.classList.remove('card-open');
-    setTimeout(() => {
+    clearTimeout(cardHideTimer);
+    cardHideTimer = setTimeout(() => {
       returnCard.hidden = true;
       (decided ? $('#deposit-open') : sampleButton).focus({preventScroll: true});
     }, 300);
