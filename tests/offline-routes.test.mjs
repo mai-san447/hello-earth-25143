@@ -15,10 +15,15 @@ test('ページを開くときはネット優先（つながらなければ保�
   assert.equal(route(`${origin}/?nfc=1`, {mode: 'navigate'}), 'page');
 });
 
-test('画面の部品とデータは保存した版を先に出す', () => {
-  for (const path of ['/mission.js', '/wish-state.js', '/style.css', '/_next/static/chunks/framework-abc.js', '/itokawa-distance.json']) {
-    assert.equal(route(`${origin}${path}`), 'asset', path);
+test('名前が変わらない自前の部品は、公開直後に古い版が混ざらないようネット優先', () => {
+  for (const path of ['/mission.js', '/wish-state.js', '/style.css', '/itokawa-distance.json', '/manifest.webmanifest']) {
+    assert.equal(route(`${origin}${path}`), 'fresh', path);
   }
+});
+
+test('ハッシュ付きの部品とアイコンは保存した版を先に出す', () => {
+  assert.equal(route(`${origin}/_next/static/chunks/framework-abc.js`), 'asset');
+  assert.equal(route(`${origin}/icons/icon-192.png`), 'asset');
 });
 
 test('3D星空の Three.js と Google Fonts も保存する', () => {
