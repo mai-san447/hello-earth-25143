@@ -96,6 +96,7 @@ export function MissionExperience({
           <p className="sample-caption">イトカワの軌道をめぐり、地球へ帰ってきた願い星。</p>
           <h2 id="returned-text" />
           <time id="returned-date" />
+          <p className="returned-wait" id="returned-wait" />
           <p className="card-footnote">あの日のあなたから、今日のあなたへ。</p>
           <label className="share-comment-label" htmlFor="share-comment">コメントを添えてシェア</label>
           <textarea id="share-comment" maxLength={120} placeholder="いまの気持ちを書く（任意）" />
