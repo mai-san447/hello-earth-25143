@@ -160,8 +160,19 @@
     refreshInterface();
   }
 
+  // 軌道に描く星（帰還が始まる日の前の願いも含む）
   function orbiting() {
-    return WishState.returnCandidates(wishes);
+    return WishState.orbitingWishes(wishes);
+  }
+
+  // 今、帰還させられる星（#7 帰還が始まる日を過ぎたもの）
+  function readyToReturn() {
+    return WishState.returnCandidates(wishes, Date.now());
+  }
+
+  function waitingForStartMessage() {
+    const next = WishState.nextReturnFrom(wishes, Date.now());
+    return next == null ? '' : `${WishState.returnFromLabel(next)}から、帰還が始まります`;
   }
 
   function setMissionStep(step) {
@@ -205,7 +216,7 @@
   }
 
   function refreshInterface() {
-    const count = orbiting().length;
+    const count = readyToReturn().length;
     const archiveItems = recovered();
     const archiveIds = new Set(archiveItems.map(wish => wish.id));
     selectedArchiveIds.forEach(id => { if (!archiveIds.has(id)) selectedArchiveIds.delete(id); });
@@ -214,7 +225,9 @@
     $('#choose-status').textContent = landed ? '帰還カプセルを回収しました' : 'カプセルの帰還を待っています';
     $('#gesture-hint').textContent = landed
       ? '着地したカプセルを開いて、あの日の言葉を受信してください'
-      : count ? 'シグナルを探すと、想いがひとつ地球へ帰還します' : '願いを預けると、星がイトカワの軌道に浮かびます';
+      : count ? 'シグナルを探すと、想いがひとつ地球へ帰還します'
+        : orbiting().length ? `星はイトカワの軌道で待っています。${waitingForStartMessage()}`
+          : '願いを預けると、星がイトカワの軌道に浮かびます';
     const list = $('#archive-list');
     list.replaceChildren();
     for (const wish of archiveItems) {
@@ -1007,9 +1020,9 @@
       return;
     }
     if (returningWish || returnFlight) return;
-    const candidates = orbiting();
+    const candidates = readyToReturn();
     if (!candidates.length) {
-      $('#mission-status').textContent = 'すべての願いは地球にあります';
+      $('#mission-status').textContent = orbiting().length ? waitingForStartMessage() : 'すべての願いは地球にあります';
       return;
     }
     returningWish = candidates[Math.floor(Math.random() * candidates.length)];
@@ -1147,14 +1160,18 @@
     unlockAudioFromGesture();
     launchButton.disabled = true;
     const now = Date.now();
-    const wish = {id: createWishId(), text, status: 'waiting', createdAt: now, updatedAt: now};
+    const returnFromInput = $('#return-from');
+    const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: WishState.parseReturnFrom(returnFromInput.value)});
     try {
       await store('readwrite', object => object.put(wish));
       wishes = [...wishes, wish];
       refreshInterface();
       wishInput.value = '';
+      returnFromInput.value = '';
       $('#wish-length').textContent = '0';
-      depositStatus.textContent = '送信完了';
+      depositStatus.textContent = wish.returnFrom
+        ? `送信完了。${WishState.returnFromLabel(wish.returnFrom)}まで、イトカワの軌道で預かります`
+        : '送信完了';
       $('#mission-status').textContent = '2003 — 地球を出発 / 願いを軌道へ投入';
         playLaunchTone();
         launchFlight = {wish, startedAt: performance.now()};
@@ -1170,7 +1187,7 @@
   }
 
   async function enableMotion() {
-    if (!orbiting().length || returningWish || returnFlight) return;
+    if (!readyToReturn().length || returningWish || returnFlight) return;
     try {
       audioContext ||= new AudioContext();
       if (audioContext.state === 'suspended') await audioContext.resume();
@@ -1207,6 +1224,7 @@
       if (step === 'deposit') $('#deposit-open').focus({preventScroll: true});
       if (step === 'receive') {
         if (!orbiting().length) $('#mission-status').textContent = '軌道に星はありません';
+        else if (!readyToReturn().length) $('#mission-status').textContent = waitingForStartMessage();
         else $('#fallback').focus({preventScroll: true});
       }
       if (step === 'choose') {

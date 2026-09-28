@@ -17,8 +17,44 @@ export const CHOICES = Object.freeze({
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export function returnCandidates(wishes) {
+// 軌道を回っている願い（画面に星として描くもの）。帰還が始まる日の前でも描く。
+export function orbitingWishes(wishes) {
   return wishes.filter(wish => wish.status === STATUS.WAITING);
+}
+
+// 帰還の候補。#7：帰還が始まる日（returnFrom）が決まっている願いは、その日になるまで帰らない。
+export function returnCandidates(wishes, now = Date.now()) {
+  return orbitingWishes(wishes).filter(wish => !Number.isFinite(wish.returnFrom) || wish.returnFrom <= now);
+}
+
+// まだ帰還の候補がないとき、いちばん早く帰還が始まる日。なければ null。
+export function nextReturnFrom(wishes, now = Date.now()) {
+  const upcoming = orbitingWishes(wishes)
+    .map(wish => wish.returnFrom)
+    .filter(time => Number.isFinite(time) && time > now);
+  return upcoming.length ? Math.min(...upcoming) : null;
+}
+
+export function createWish({id, text, now, returnFrom = null}) {
+  const wish = {id, text, status: STATUS.WAITING, createdAt: now, updatedAt: now};
+  // 今日より後の日付のときだけ持たせる。空欄や過去の日付は「すぐ帰還の候補」
+  if (Number.isFinite(returnFrom) && returnFrom > now) wish.returnFrom = returnFrom;
+  return wish;
+}
+
+// 日付入力（YYYY-MM-DD）を、その日の端末の 0:00 にする。空や不正な値は null。
+export function parseReturnFrom(value) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value ?? '');
+  if (!match) return null;
+  const [, year, month, day] = match.map(Number);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  return date.getTime();
+}
+
+export function returnFromLabel(time) {
+  const date = new Date(time);
+  return `${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
 // 判断せずに閉じた願い。以前はこの状態から抜けられない行き止まりだったため、
