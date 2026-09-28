@@ -1386,8 +1386,38 @@
     }
   }
 
+  // #5 病室（ネットなし）でも開けるように、画面と部品を端末に保存する Service Worker を登録する。
+  // 開発サーバーでは古い部品が残って混乱するため、https の本番だけで動かす。
+  function registerOfflineSupport() {
+    if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
+    const warm = registration => registration.active?.postMessage({
+      type: 'warm',
+      urls: [location.href, ...performance.getEntriesByType('resource').map(entry => entry.name)],
+    });
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => navigator.serviceWorker.ready)
+      .then(registration => {
+        warm(registration);
+        // 3D星空やフォントは少し遅れて読まれるので、もう一度だけ保存を頼む
+        setTimeout(() => warm(registration), 8000);
+      })
+      .catch(() => {
+        // 保存できなくても、ネットがあれば今までどおり使える
+      });
+  }
+
+  function showConnection() {
+    if (!navigator.onLine) $('#mission-status').textContent = 'ネットなし · 願いはこの端末の中で預かります';
+  }
+  window.addEventListener('offline', showConnection);
+  window.addEventListener('online', () => {
+    if ($('#mission-status').textContent.startsWith('ネットなし')) $('#mission-status').textContent = '';
+  });
+
   initializeThreeBackground().catch(() => {
     locationStatus.textContent = '3D星空を読み込めません。簡易表示で続けます。';
   });
-  init();
+  await init();
+  showConnection();
+  registerOfflineSupport();
 })();
