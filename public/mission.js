@@ -1,4 +1,6 @@
-(() => {
+(async () => {
+  // 状態遷移は wish-state.js に集め、テストで確かめる。ここは画面・保存・演出を担当する。
+  const WishState = await import('/wish-state.js');
   const $ = selector => document.querySelector(selector);
   const app = $('#mission-app');
   const canvas = $('#orbit-canvas');
@@ -156,7 +158,7 @@
   }
 
   function orbiting() {
-    return wishes.filter(wish => wish.status === 'waiting');
+    return WishState.returnCandidates(wishes);
   }
 
   function setMissionStep(step) {
@@ -838,7 +840,7 @@
   async function finishReturn(wish) {
     if (!returnFlight || returnFlight.wish.id !== wish.id) return;
     returnFlight = null;
-    const returned = {...wish, status: 'returned', updatedAt: Date.now()};
+    const returned = WishState.markReturned(wish, Date.now());
     try {
       await store('readwrite', object => object.put(returned));
       wishes = wishes.map(item => item.id === wish.id ? returned : item);
@@ -997,6 +999,10 @@
   }
 
   function returnOne() {
+    if (returningWish && landed && !returnFlight) {
+      $('#mission-status').textContent = '帰ってきた願いが待っています。先にカプセルを開いてください';
+      return;
+    }
     if (returningWish || returnFlight) return;
     const candidates = orbiting();
     if (!candidates.length) {
@@ -1030,6 +1036,7 @@
     const createdAt = new Date(returningWish.createdAt);
     $('#returned-date').textContent = `預けた日 ${new Intl.DateTimeFormat('ja-JP', {year: 'numeric', month: 'long', day: 'numeric'}).format(createdAt)}`;
     $('#returned-date').dateTime = createdAt.toISOString();
+    $('#returned-wait').textContent = WishState.waitedMessage(WishState.daysWaited(returningWish, Date.now()));
     $('#share-comment').value = '';
     $('#share-status').textContent = '';
     returnCard.hidden = false;
@@ -1038,18 +1045,19 @@
     $('#card-close').focus({preventScroll: true});
   }
 
-  async function chooseDisposition(status) {
+  async function chooseDisposition(choice) {
     if (!returningWish || !landed) return;
     const actions = [...document.querySelectorAll('#try-wish, #return-to-orbit, #finish-wish, #share-wish')];
     actions.forEach(button => { button.disabled = true; });
-    const updated = {...returningWish, status, updatedAt: Date.now()};
     try {
+      const updated = WishState.decide(returningWish, choice, Date.now());
+      const backToOrbit = updated.status === WishState.STATUS.WAITING;
       await store('readwrite', object => object.put(updated));
       wishes = wishes.map(wish => wish.id === updated.id ? updated : wish);
       returningWish = updated;
-      if (status === 'waiting') launchFlight = {wish: updated, startedAt: performance.now()};
-      closeCard();
-      setMissionStep(status === 'waiting' ? 'receive' : 'deposit');
+      if (backToOrbit) launchFlight = {wish: updated, startedAt: performance.now()};
+      closeCard({decided: true});
+      setMissionStep(backToOrbit ? 'receive' : 'deposit');
       refreshInterface();
     } catch {
       $('#mission-status').textContent = '保存できませんでした。もう一度お試しください';
@@ -1085,12 +1093,19 @@
     }
   }
 
-  function closeCard() {
+  // 判断せずに閉じたときは、願いを判断待ちのまま手元に残す（以前はここが行き止まりだった）。
+  // × ボタンからはクリックイベントが渡るので、decided は明示したときだけ true になる。
+  function closeCard({decided = false} = {}) {
     returnCard.classList.remove('card-open');
     setTimeout(() => {
       returnCard.hidden = true;
-      $('#deposit-open').focus({preventScroll: true});
+      (decided ? $('#deposit-open') : sampleButton).focus({preventScroll: true});
     }, 300);
+    if (!decided && returningWish && landed) {
+      $('#mission-status').textContent = '帰ってきた願いは、ここで待っています';
+      refreshInterface();
+      return;
+    }
     returningWish = null;
     landed = false;
     sampleButton.hidden = true;
@@ -1233,9 +1248,9 @@
   $('#fallback').addEventListener('click', returnOne);
   sampleButton.addEventListener('click', openCard);
   $('#card-close').addEventListener('click', closeCard);
-  $('#try-wish').addEventListener('click', () => chooseDisposition('doing'));
-  $('#return-to-orbit').addEventListener('click', () => chooseDisposition('waiting'));
-  $('#finish-wish').addEventListener('click', () => chooseDisposition('done'));
+  $('#try-wish').addEventListener('click', () => chooseDisposition('try'));
+  $('#return-to-orbit').addEventListener('click', () => chooseDisposition('later'));
+  $('#finish-wish').addEventListener('click', () => chooseDisposition('finish'));
   $('#share-wish').addEventListener('click', shareWish);
   $('#archive-open').addEventListener('click', () => { $('#archive-sheet').hidden = false; });
   $('#archive-close').addEventListener('click', () => { $('#archive-sheet').hidden = true; });
@@ -1346,8 +1361,15 @@
         }
       }
       wishes = await store('readonly', object => object.getAll());
+      const pending = WishState.pendingReturn(wishes);
+      if (pending) {
+        returningWish = pending;
+        landed = true;
+        sampleButton.hidden = false;
+        setTimeout(() => sampleButton.classList.add('sample-arrived'), 20);
+      }
       refreshInterface();
-      setMissionStep('deposit');
+      setMissionStep(pending ? 'choose' : 'deposit');
       syncVisualViewport();
       requestAnimationFrame(render);
       if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {

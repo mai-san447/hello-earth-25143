@@ -401,3 +401,6 @@ body:has(.mission-app){background:transparent}
 @media(max-width:480px){.policy-backdrop{padding:10px 10px max(10px,env(safe-area-inset-bottom))}.policy-panel{max-height:88dvh;padding:24px 20px;border-radius:18px}.policy-close{top:12px;right:12px}}
 @media(prefers-reduced-motion:reduce){.policy-backdrop{backdrop-filter:none;-webkit-backdrop-filter:none}}
 .telemetry:has(#mission-status:empty){visibility:hidden}
+
+/* 待っていた日数：預けた日付の下に、帰ってきた時間の長さを添える */
+.return-card .returned-wait{margin:6px 0 0;color:#e6c878;font-family:"Yu Mincho","Hiragino Mincho ProN",serif;font-size:12px;line-height:1.6}
