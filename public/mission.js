@@ -1256,6 +1256,7 @@
     }
     unlockAudioFromGesture();
     launchButton.disabled = true;
+    depositStatus.textContent = '星を送っています…';
     const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time});
     try {
       await store('readwrite', object => object.put(wish));

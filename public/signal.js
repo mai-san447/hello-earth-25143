@@ -33,6 +33,8 @@
     return;
   }
 
+  // 処理中：確かめている間、ボタンが押せない理由を出す
+  status.textContent = '星の様子を確かめています…';
   try {
     // 受け付けているかだけを聞く（持ち主に届いた信号の時刻は取らない）
     const response = await fetch('/api/signals?check=1');
@@ -54,6 +56,7 @@
     doneForToday();
     return;
   }
+  status.textContent = '';
   button.disabled = false;
 
   async function send() {
@@ -61,6 +64,7 @@
     if (sending || sentToday() || Date.now() - lastSentAt < 2500) return;
     sending = true;
     button.disabled = true;
+    status.textContent = '信号を送っています…';
     try {
       const response = await fetch('/api/signals', {
         method: 'POST',
