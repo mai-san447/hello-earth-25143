@@ -5,6 +5,9 @@ import {isOrbitId} from '../signals/rules.mjs';
 
 export {isOrbitId};
 
+/** @typedef {{ok: false, status: number, error: string}} Rejected */
+/** @typedef {'wish' | 'fulfilled'} Kind */
+
 const STAR_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -58,6 +61,7 @@ export function normalizeText(value) {
 }
 
 // 表示してよいかをルールで確かめる。全角の数字や記号（０９０、＠）も半角にそろえてから見る
+/** @param {string} text @returns {{status: string, reason: string | null}} */
 export function screenText(text) {
   const plain = String(text).normalize('NFKC');
   const lower = plain.toLowerCase();
@@ -82,6 +86,7 @@ function bodyField(body, key) {
 }
 
 // 公開する言葉の形を確かめる。null や数値の JSON でも 500 にならないよう、形を確かめてから読む
+/** @returns {{ok: true, value: {orbitId: string, kind: Kind, text: string}} | Rejected} */
 export function parsePublish(body) {
   const orbitId = bodyField(body, 'orbitId');
   const kind = bodyField(body, 'kind');
@@ -96,6 +101,7 @@ export function parsePublish(body) {
 }
 
 // 1日の上限。dailyCount はこの軌道が直近24時間に流した、同じ種類の数
+/** @param {{kind: Kind, dailyCount: number}} input @returns {{ok: true} | Rejected} */
 export function acceptPublish({kind, dailyCount}) {
   if (dailyCount >= DAILY_LIMIT[kind]) {
     return {
@@ -107,11 +113,13 @@ export function acceptPublish({kind, dailyCount}) {
   return {ok: true};
 }
 
+/** @param {Kind} kind @param {number} now */
 export function expiresAt(kind, now) {
   return now + TTL_MS[kind];
 }
 
 // 通報の形。通報した端末の軌道ID は、同じ星への2回目を数えないためだけに使う
+/** @returns {{ok: true, value: {starId: string, reporterOrbitId: string}} | Rejected} */
 export function parseReport(body) {
   const starId = bodyField(body, 'starId');
   const reporterOrbitId = bodyField(body, 'reporterOrbitId');
@@ -122,23 +130,27 @@ export function parseReport(body) {
 
 // 通報が1件増えたあとの状態。表示中の星だけが、しきい値で非表示になる
 // （保留は人の確認待ちのまま、非表示は非表示のまま）
+/** @param {{status: string, reports: number}} star @returns {string} */
 export function statusAfterReport({status, reports}) {
   if (status === STATUS.VISIBLE && reports >= REPORT_HIDE_THRESHOLD) return STATUS.HIDDEN;
   return status;
 }
 
 // 他の人の星空に出してよいか（表示中・期限内・自分の星ではない）。取得の SQL と同じ条件
+/** @param {{status: string, expiresAt: number, orbitId: string}} star @param {{now: number, ownOrbitId?: string | null}} options */
 export function isShowable(star, {now, ownOrbitId = null}) {
   return star.status === STATUS.VISIBLE && star.expiresAt > now && star.orbitId !== ownOrbitId;
 }
 
 // 応援の信号を送るための星の形
+/** @returns {{ok: true, value: {starId: string}} | Rejected} */
 export function parseStarSignal(body) {
   const starId = bodyField(body, 'starId');
   if (!isStarId(starId)) return {ok: false, status: 400, error: '信号の送り先を確認してください。'};
   return {ok: true, value: {starId}};
 }
 
+/** @param {number | null} number @returns {string | null} */
 export function formatNumber(number) {
   if (!Number.isInteger(number) || number < 1) return null;
   return `${NUMBER_PREFIX}-${String(number).padStart(4, '0')}`;
