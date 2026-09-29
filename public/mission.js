@@ -1125,6 +1125,9 @@
       if (backToOrbit) launchFlight = {wish: updated, startedAt: performance.now()};
       closeCard({decided: true});
       setMissionStep(backToOrbit ? 'receive' : 'deposit');
+      // #17 何度も軌道へ戻した願いには、5回目に一度だけ「手放してもいい」と伝える（戻すことは止めない）
+      const gentle = WishState.gentleMessage(updated);
+      if (gentle) $('#mission-status').textContent = gentle;
       if (!backToOrbit) {
         // 受け取った願いは星座に加わる。回収記録のボタンを一度だけ光らせて知らせる
         $('#mission-status').textContent = 'あなたの星座に、星がひとつ加わりました';
@@ -1193,6 +1196,13 @@
 
   function openDeposit() {
     unlockAudioFromGesture();
+    // #17 帰還が始まる日は、翌日から1年後まで
+    const range = WishState.returnFromRange(Date.now());
+    $('#return-from').min = range.min;
+    $('#return-from').max = range.max;
+    depositStatus.textContent = WishState.canDeposit(wishes)
+      ? ''
+      : `軌道には${WishState.LIMITS.orbit}個まで預けられます。1つ受け取るか、手放してから預けてください。`;
     depositSheet.hidden = false;
     setTimeout(() => depositSheet.classList.add('sheet-open'), 20);
     setTimeout(() => {
@@ -1214,11 +1224,22 @@
       wishInput.focus();
       return;
     }
+    const now = Date.now();
+    // #17 軌道に置ける願いは30個まで。いっぱいのときは預けず、入力は残す
+    if (!WishState.canDeposit(wishes)) {
+      depositStatus.textContent = `軌道には${WishState.LIMITS.orbit}個まで預けられます。1つ受け取るか、手放してから預けてください。`;
+      return;
+    }
+    const returnFromInput = $('#return-from');
+    const returnFrom = WishState.checkReturnFrom(returnFromInput.value, now);
+    if (!returnFrom.ok) {
+      depositStatus.textContent = returnFrom.error;
+      returnFromInput.focus();
+      return;
+    }
     unlockAudioFromGesture();
     launchButton.disabled = true;
-    const now = Date.now();
-    const returnFromInput = $('#return-from');
-    const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: WishState.parseReturnFrom(returnFromInput.value)});
+    const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time});
     try {
       await store('readwrite', object => object.put(wish));
       wishes = [...wishes, wish];

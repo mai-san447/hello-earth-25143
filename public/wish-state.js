@@ -17,6 +17,52 @@ export const CHOICES = Object.freeze({
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// #17 登録できる数とルール（講師の質問から、使う人と場面を想定して決めた）
+export const LIMITS = Object.freeze({
+  // 軌道に置ける願い。1日1つ帰すと約1か月分＝入院（一般病床の平均在院日数は約16日）と回復期に見合う。
+  // 多すぎると「やりたいことリストが重荷になる」という出発点の課題に戻る
+  orbit: 30,
+  // 帰還が始まる日は、翌日から1年後まで。打ち間違いを防ぎ、端末の保存が消えるリスクも抑える
+  returnFromMaxDays: 365,
+  // 軌道へ戻した回数がこの回数になったら、一度だけ「手放してもいい」と伝える。戻すこと自体は止めない
+  gentleLaterCount: 5,
+});
+
+export function canDeposit(wishes) {
+  return orbitingWishes(wishes).length < LIMITS.orbit;
+}
+
+// 帰還が始まる日の入力を確かめる。空欄は「すぐ帰還の候補」でよい
+export function checkReturnFrom(value, now) {
+  if (!value) return {ok: true, time: null};
+  const time = parseReturnFrom(value);
+  if (time == null) return {ok: false, error: '帰還が始まる日を確かめてください。'};
+  const tomorrow = new Date(now);
+  tomorrow.setHours(0, 0, 0, 0);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (time < tomorrow.getTime()) return {ok: false, error: '帰還が始まる日は、明日以降にしてください。'};
+  const latest = new Date(tomorrow);
+  latest.setDate(latest.getDate() - 1 + LIMITS.returnFromMaxDays);
+  if (time > latest.getTime()) return {ok: false, error: '帰還が始まる日は、1年後までにしてください。'};
+  return {ok: true, time};
+}
+
+// 日付欄の min / max に入れる値（YYYY-MM-DD、端末の暦）
+export function returnFromRange(now) {
+  const format = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  const min = new Date(now);
+  min.setDate(min.getDate() + 1);
+  const max = new Date(now);
+  max.setDate(max.getDate() + LIMITS.returnFromMaxDays);
+  return {min: format(min), max: format(max)};
+}
+
+export function gentleMessage(wish) {
+  return wish.laterCount === LIMITS.gentleLaterCount
+    ? `この願いを${LIMITS.gentleLaterCount}回、軌道へ戻しました。いつでも戻せますし、手放しても大丈夫です。`
+    : '';
+}
+
 // 軌道を回っている願い（画面に星として描くもの）。帰還が始まる日の前でも描く。
 export function orbitingWishes(wishes) {
   return wishes.filter(wish => wish.status === STATUS.WAITING);
@@ -74,7 +120,10 @@ export function decide(wish, choice, now) {
   if (wish.status !== STATUS.RETURNED) throw new Error(`判断待ちではない願いです: ${wish.status}`);
   const status = CHOICES[choice];
   if (!status) throw new Error(`不明な選択肢です: ${choice}`);
-  return {...wish, status, updatedAt: now};
+  const decided = {...wish, status, updatedAt: now};
+  // 軌道へ戻した回数を数える（#17：5回目に一度だけ、やさしい一言を出すため）
+  if (choice === 'later') decided.laterCount = (wish.laterCount ?? 0) + 1;
+  return decided;
 }
 
 function startOfLocalDay(time) {

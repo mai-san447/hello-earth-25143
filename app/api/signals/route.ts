@@ -1,8 +1,8 @@
 import { env } from "cloudflare:workers";
-import { and, count, desc, eq, gte } from "drizzle-orm";
+import { and, count, desc, eq, gte, lt } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { signals } from "../../../db/schema";
-import { BURST_WINDOW_MS, MAX_TIMES, acceptSignal, isOrbitId } from "./rules.mjs";
+import { BURST_WINDOW_MS, DAILY_WINDOW_MS, MAX_TIMES, RETENTION_MS, acceptSignal, isOrbitId } from "./rules.mjs";
 
 // 応援の信号。D1 の `DB` が用意されていない環境（今の本番）では機能ごと隠す。
 // 名前・言葉・IPアドレスは受け取らず、保存もしない。
@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const rows = await getDb()
       .select({ createdAt: signals.createdAt })
       .from(signals)
-      .where(eq(signals.orbitId, orbitId as string))
+      .where(and(eq(signals.orbitId, orbitId as string), gte(signals.createdAt, Date.now() - RETENTION_MS)))
       .orderBy(desc(signals.createdAt))
       .limit(MAX_TIMES);
     return Response.json({ enabled: true, times: rows.map(row => row.createdAt) });
@@ -41,13 +41,22 @@ export async function POST(request: Request) {
   try {
     const now = Date.now();
     const db = getDb();
-    const [recent] = await db
-      .select({ value: count() })
-      .from(signals)
-      .where(and(eq(signals.orbitId, orbitId as string), gte(signals.createdAt, now - BURST_WINDOW_MS)));
-    const verdict = acceptSignal({ orbitId, recentCount: recent?.value ?? 0 });
+    const countSince = async (since: number) => {
+      const [row] = await db
+        .select({ value: count() })
+        .from(signals)
+        .where(and(eq(signals.orbitId, orbitId as string), gte(signals.createdAt, since)));
+      return row?.value ?? 0;
+    };
+    const verdict = acceptSignal({
+      orbitId,
+      recentCount: await countSince(now - BURST_WINDOW_MS),
+      dailyCount: await countSince(now - DAILY_WINDOW_MS),
+    });
     if (!verdict.ok) return Response.json({ error: verdict.error }, { status: verdict.status });
     await db.insert(signals).values({ id: crypto.randomUUID(), orbitId: orbitId as string, createdAt: now });
+    // #17 1年を過ぎた信号は、この星に次の信号が届いたときに消す
+    await db.delete(signals).where(and(eq(signals.orbitId, orbitId as string), lt(signals.createdAt, now - RETENTION_MS)));
     return Response.json({ ok: true });
   } catch (error) {
     console.error("signals POST", error);
