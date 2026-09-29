@@ -7,15 +7,29 @@ importScripts('/offline-routes.js');
 // 自前の部品はネット優先なので、ふつうの公開では上げなくてよい。
 const CACHE_VERSION = '2026-09-29-2';
 const CACHE_NAME = `morune-25143-${CACHE_VERSION}`;
-const APP_SHELL = ['/', '/mission.js', '/wish-state.js', '/itokawa.js', '/itokawa-distance.json', '/constellation.js', '/style.css', '/manifest.webmanifest', '/icons/icon-192.png'];
+// これがないと病室で画面が動かない部品。1つでも取れなければ入れ替えを失敗させ、次に開いたときにやり直す
+// （失敗を無視すると「オフラインで開けない状態」に誰も気づけないため）
+const REQUIRED_SHELL = ['/mission.js', '/wish-state.js', '/itokawa.js', '/constellation.js', '/offline-routes.js', '/style.css'];
+// なくても画面は動く部品
+const OPTIONAL_SHELL = ['/itokawa-distance.json', '/manifest.webmanifest', '/icons/icon-192.png'];
 // 病室の弱い電波で待ち続けないよう、ページの取得はこの時間で諦めて保存した版を出す
 const PAGE_TIMEOUT_MS = 4000;
+
+// ログイン同期中のページには、メールアドレスと「同期する」印が入る。これを保存すると、
+// 共有端末にメールアドレスが残り、オフラインで開いたときに同期に失敗して全ボタンが止まるので保存しない。
+async function isCloudPage(response) {
+  const html = await response.clone().text();
+  return html.includes('data-sync="cloud"');
+}
 
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    // 1つ取れなくても入れ替えを止めない（足りない部品は開いたときに保存される）
-    await Promise.allSettled(APP_SHELL.map(path => cache.add(path)));
+    await cache.addAll(REQUIRED_SHELL);
+    const page = await fetch('/');
+    if (!page.ok) throw new Error(`page ${page.status}`);
+    if (!(await isCloudPage(page))) await cache.put(pageKey('/'), page);
+    await Promise.allSettled(OPTIONAL_SHELL.map(path => cache.add(path)));
     await self.skipWaiting();
   })());
 });
@@ -61,10 +75,11 @@ async function servePage(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
     const response = await fetchWithTimeout(request);
-    if (response.ok) await cache.put(pageKey(request.url), response.clone());
+    if (response.ok && !(await isCloudPage(response))) await cache.put(pageKey(request.url), response.clone());
     return response;
   } catch {
-    const saved = await cache.match(pageKey(request.url)) || await cache.match('/');
+    // そのページの保存だけを探す。保存がない応援ページの代わりにミッション画面を出すと戸惑うため、トップで代用しない
+    const saved = await cache.match(pageKey(request.url));
     if (saved) return saved;
     return new Response('<!doctype html><meta charset="utf-8"><title>25143</title><p>ネットにつながったときに、一度この画面を開いてください。次からはネットがなくても開けます。</p>', {
       status: 503,
@@ -111,7 +126,9 @@ self.addEventListener('message', event => {
       const key = isPage ? pageKey(url) : new Request(url, sameOrigin ? {} : {mode: 'cors'});
       if (await cache.match(key)) return;
       const response = await fetch(key).catch(() => null);
-      if (isStorable(response)) await cache.put(key, response);
+      if (!isStorable(response)) return;
+      if (isPage && await isCloudPage(response)) return;
+      await cache.put(key, response);
     }));
   })());
 });
