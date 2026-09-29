@@ -155,6 +155,10 @@ export function MissionExperience({
             <p className="policy-updated">内容更新日：2026年9月30日</p>
             <div className="policy-content" id="policy-content" tabIndex={0}>
               <section>
+                <h3>運営者</h3>
+                <p>西川 舞衣子（個人事業主）</p>
+              </section>
+              <section>
                 <h3>このサービスについて</h3>
                 <p>本サービスは、想いを短いテキストとして端末に預け、はやぶさとイトカワをモチーフにした演出で見返す個人制作の試験公開版です。「SIGNAL: はやぶさ、地球を撮って。」は演出上のコピーで、実際の交信記録やJAXAの公式発表からの引用ではありません。JAXAその他の機関が運営・承認するサービスではありません。</p>
               </section>
@@ -183,7 +187,7 @@ export function MissionExperience({
                 <h3>利用上の注意</h3>
                 <p>画面内のイトカワ・探査機表現は創作上の演出で、公式の科学資料ではありません。イトカワまでの距離は、NASA/JPL Horizons の暦（小惑星 25143 Itokawa、地球中心から見た距離、1日ごとの値）をもとにした概算で、アプリに同梱した表から表示しています。サービスは試験公開中のため、予告なく変更・停止する場合があります。データの永続性、特定目的への適合性、常時利用可能であることは保証しません。大切な記録の保管には使わないでください。</p>
               </section>
-              <p className="policy-contact-note">個人制作の試験公開版です。運営者情報と問い合わせ窓口は未掲載のため、正式提供・商用提供の前に整備が必要です。</p>
+              <p className="policy-contact-note">個人制作の試験公開版です。所在地と問い合わせ窓口は準備中で、確定したらここに掲載します。</p>
             </div>
           </div>
         </section>
