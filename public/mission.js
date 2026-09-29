@@ -1,8 +1,23 @@
 (async () => {
   // 状態遷移は wish-state.js に集め、テストで確かめる。ここは画面・保存・演出を担当する。
-  const WishState = await import('/wish-state.js');
-  const Itokawa = await import('/itokawa.js');
-  const Constellation = await import('/constellation.js');
+  // 部品が1つでも読めないと、この先の登録が何も動かない。スプラッシュが残ったまま固まらないよう、
+  // 失敗したらスプラッシュを外して理由を出す（例：休憩室の遅い回線で、端末への保存も済んでいないとき）。
+  let WishState;
+  let Itokawa;
+  let Constellation;
+  try {
+    [WishState, Itokawa, Constellation] = await Promise.all([
+      import('/wish-state.js'),
+      import('/itokawa.js'),
+      import('/constellation.js'),
+    ]);
+  } catch (error) {
+    console.error('mission modules', error);
+    document.querySelector('#splash-screen')?.remove();
+    const status = document.querySelector('#mission-status');
+    if (status) status.textContent = '画面の部品を読み込めませんでした。ネットにつながる場所で、ページを再読み込みしてください';
+    return;
+  }
   let distanceTable = null;
 
   // 応援の信号。軌道ID はこの端末で1度だけ作るランダムなUUID。届いた時刻は端末にも控え、病室でも明るさを出す。
@@ -1092,8 +1107,17 @@
     if (!returningWish || !landed) return;
     const actions = [...document.querySelectorAll('#try-wish, #return-to-orbit, #finish-wish, #share-wish')];
     actions.forEach(button => { button.disabled = true; });
+    let updated;
     try {
-      const updated = WishState.decide(returningWish, choice, Date.now());
+      updated = WishState.decide(returningWish, choice, Date.now());
+    } catch (error) {
+      // ここに来るのはプログラムの誤り（判断待ちでない願い・不明な選択肢）。保存の失敗とは分けて記録する
+      console.error('decide', error);
+      $('#mission-status').textContent = 'この願いは選び直せない状態です。ページを再読み込みしてください';
+      actions.forEach(button => { button.disabled = false; });
+      return;
+    }
+    try {
       const backToOrbit = updated.status === WishState.STATUS.WAITING;
       await store('readwrite', object => object.put(updated));
       wishes = wishes.map(wish => wish.id === updated.id ? updated : wish);
@@ -1110,7 +1134,8 @@
         archiveTrigger.classList.add('constellation-grew');
       }
       refreshInterface();
-    } catch {
+    } catch (error) {
+      console.error('save disposition', error);
       $('#mission-status').textContent = '保存できませんでした。もう一度お試しください';
     } finally {
       actions.forEach(button => { button.disabled = false; });
@@ -1446,6 +1471,9 @@
   // #5 病室（ネットなし）でも開けるように、画面と部品を端末に保存する Service Worker を登録する。
   // 開発サーバーでは古い部品が残って混乱するため、https の本番だけで動かす。
   function registerOfflineSupport() {
+    // 端末の保存を「消されにくい保存」にしてほしいと頼む。iPhone の Safari は、しばらく開かないサイトの
+    // 保存（願いも含む）を消すことがあり、入院中に長く預ける使い方とぶつかるため。断られても使い続けられる
+    navigator.storage?.persist?.().catch(() => {});
     if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
     const warm = registration => registration.active?.postMessage({
       type: 'warm',
@@ -1588,4 +1616,9 @@
   showConnection();
   registerOfflineSupport();
   loadSignals();
+  // 開いたまま「帰還が始まる日」を迎えたり、日付が変わったりしたときに、ボタンと案内を今の状態に合わせる
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshInterface();
+  });
+  setInterval(refreshInterface, 60 * 1000);
 })();
