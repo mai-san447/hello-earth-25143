@@ -17,6 +17,7 @@ export function isOrbitId(value) {
   return typeof value === 'string' && ORBIT_ID.test(value);
 }
 
+/** @returns {{ok: true} | {ok: false, status: number, error: string}} */
 export function acceptSignal({orbitId, recentCount, dailyCount = 0}) {
   if (!isOrbitId(orbitId)) return {ok: false, status: 400, error: '信号の送り先を確認してください。'};
   if (recentCount >= BURST_LIMIT) return {ok: false, status: 429, error: '信号が混み合っています。少し待ってから送ってください。'};
