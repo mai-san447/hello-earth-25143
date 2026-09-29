@@ -7,9 +7,15 @@
 // （着想：同じハッカソンの「ブクスペ」がブックマークの星を Prim 法でつないでいた）
 
 const RECEIVED = new Set(['doing', 'done']);
+// #17 星座に描くのは、新しく受け取った100件まで（表示が混み合わないように。記録そのものは消さない）
+export const CONSTELLATION_LIMIT = 100;
 
 export function receivedWishes(wishes) {
-  return wishes.filter(wish => RECEIVED.has(wish.status)).sort((a, b) => a.createdAt - b.createdAt);
+  return wishes
+    .filter(wish => RECEIVED.has(wish.status))
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, CONSTELLATION_LIMIT)
+    .sort((a, b) => a.createdAt - b.createdAt);
 }
 
 // 2文字ずつの組の集合。空白と記号は無視する。1文字だけの願いはその1文字を使う。

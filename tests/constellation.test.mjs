@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {bigrams, brightness, constellationEdges, receivedWishes, signalMessage, signalsWhileWaiting, similarity} from '../public/constellation.js';
+import {CONSTELLATION_LIMIT, bigrams, brightness, constellationEdges, receivedWishes, signalMessage, signalsWhileWaiting, similarity} from '../public/constellation.js';
 
 const wish = (id, text, status = 'doing', createdAt = Number(id.replace(/\D/g, '')) || 1) => ({id, text, status, createdAt, updatedAt: createdAt + 100});
 
@@ -62,6 +62,14 @@ test('願いが多くても、星座はすぐに計算できる（300件で1秒�
   const many = Array.from({length: 300}, (_, index) => wish(`w${index + 1}`, `${words[index % 10]}に行って${words[(index * 7) % 10]}を見たい${index}`));
   const started = performance.now();
   const edges = constellationEdges(many);
-  assert.equal(edges.length, 299);
+  assert.equal(edges.length, CONSTELLATION_LIMIT - 1);
   assert.ok(performance.now() - started < 1000);
+});
+
+test('星座に描くのは、新しく受け取った100件まで', () => {
+  const many = Array.from({length: CONSTELLATION_LIMIT + 5}, (_, index) => ({id: `w${index}`, text: `願い${index}`, status: 'doing', createdAt: index, updatedAt: 1000 + index}));
+  const shown = receivedWishes(many);
+  assert.equal(shown.length, CONSTELLATION_LIMIT);
+  assert.equal(shown.some(item => item.id === 'w0'), false);
+  assert.equal(shown.at(-1).id, `w${CONSTELLATION_LIMIT + 4}`);
 });

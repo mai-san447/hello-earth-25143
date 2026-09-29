@@ -10,6 +10,20 @@
   const validOrbit = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(orbitId);
   let sent = 0;
   let sending = false;
+  // #17 同じ星へは、この端末から1日1回まで。持ち主が受け取る「○回」が、応援してくれた人と日数の目安になるように
+  const sentKey = `morune-25143-sent-${orbitId}`;
+  const today = () => new Date().toLocaleDateString('sv-SE');
+  const sentToday = () => {
+    try { return localStorage.getItem(sentKey) === today(); } catch { return false; }
+  };
+  const markSentToday = () => {
+    try { localStorage.setItem(sentKey, today()); } catch { /* 記録できなくても送れる */ }
+  };
+  const doneForToday = () => {
+    button.disabled = true;
+    hint.hidden = true;
+    status.textContent = '今日の信号は、この星に届いています。また明日、送れます。';
+  };
   let lastSentAt = 0;
   let motionReady = false;
 
@@ -36,11 +50,15 @@
     status.textContent = 'ネットにつながったときに、もう一度開いてください。';
     return;
   }
+  if (sentToday()) {
+    doneForToday();
+    return;
+  }
   button.disabled = false;
 
   async function send() {
     // 連打で数が膨らまないよう、1回ごとに少し間をあける
-    if (sending || Date.now() - lastSentAt < 2500) return;
+    if (sending || sentToday() || Date.now() - lastSentAt < 2500) return;
     sending = true;
     button.disabled = true;
     try {
@@ -53,17 +71,20 @@
       if (!response.ok) throw new Error(data.error || '信号を送れませんでした。');
       sent++;
       lastSentAt = Date.now();
+      markSentToday();
       star.style.setProperty('--glow', String(Math.min(2.2, 1 + Math.log2(1 + sent) * 0.25)));
       star.classList.remove('signal-pulse');
       void star.offsetWidth;
       star.classList.add('signal-pulse');
       try { navigator.vibrate?.([12, 40, 12]); } catch { /* 振動は任意 */ }
-      status.textContent = sent === 1 ? '信号を送りました。星が少し明るくなりました。' : `信号を送りました（${sent}回）。`;
+      status.textContent = '信号を送りました。星が少し明るくなりました。また明日、送れます。';
+      button.disabled = true;
+      hint.hidden = true;
     } catch (error) {
       status.textContent = error.message || '信号を送れませんでした。';
+      button.disabled = false;
     } finally {
       sending = false;
-      button.disabled = false;
     }
   }
 

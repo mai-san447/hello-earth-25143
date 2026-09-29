@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CHOICES, STATUS, createWish, daysWaited, decide, markReturned, nextReturnFrom, orbitingWishes, parseReturnFrom, pendingReturn, returnCandidates, returnFromLabel, waitedMessage} from '../public/wish-state.js';
+import {CHOICES, LIMITS, STATUS, canDeposit, checkReturnFrom, createWish, daysWaited, decide, gentleMessage, markReturned, nextReturnFrom, orbitingWishes, parseReturnFrom, pendingReturn, returnCandidates, returnFromLabel, returnFromRange, waitedMessage} from '../public/wish-state.js';
 
 const at = (y, m, d, h = 12, min = 0) => new Date(y, m - 1, d, h, min).getTime();
 const wish = (overrides = {}) => ({id: 'a', text: '朝の海を歩きたい', status: STATUS.WAITING, createdAt: at(2026, 9, 22), updatedAt: at(2026, 9, 22), ...overrides});
@@ -99,4 +99,36 @@ test('「軌道へ戻す」を選んでも、帰還が始まる日はそのま�
   const back = decide(wish({status: STATUS.RETURNED, returnFrom: discharge}), 'later', at(2026, 10, 26));
   assert.equal(back.returnFrom, discharge);
   assert.deepEqual(returnCandidates([back], at(2026, 10, 26)).map(item => item.id), ['a']);
+});
+
+// #17 登録できる数とルール
+test('軌道に置ける願いは30件まで。受け取った願いは数えない', () => {
+  const orbit = Array.from({length: LIMITS.orbit}, (_, index) => wish({id: `o${index}`}));
+  assert.equal(canDeposit(orbit.slice(0, LIMITS.orbit - 1)), true);
+  assert.equal(canDeposit(orbit), false);
+  assert.equal(canDeposit([...orbit.slice(0, LIMITS.orbit - 1), wish({id: 'r', status: STATUS.DONE})]), true);
+});
+
+test('帰還が始まる日は翌日から1年後まで。空欄はすぐ帰還の候補', () => {
+  const now = at(2026, 10, 1, 15);
+  assert.deepEqual(checkReturnFrom('', now), {ok: true, time: null});
+  assert.equal(checkReturnFrom('2026-10-01', now).ok, false);
+  assert.equal(checkReturnFrom('2026-10-02', now).time, at(2026, 10, 2, 0));
+  assert.equal(checkReturnFrom('2027-10-01', now).ok, true);
+  assert.equal(checkReturnFrom('2027-10-02', now).ok, false);
+  assert.equal(checkReturnFrom('2026-02-30', now).ok, false);
+  assert.deepEqual(returnFromRange(now), {min: '2026-10-02', max: '2027-10-01'});
+});
+
+test('軌道へ戻した回数を数え、5回目に一度だけやさしい一言を出す', () => {
+  let current = wish({status: STATUS.RETURNED});
+  const messages = [];
+  for (let count = 1; count <= 6; count++) {
+    current = decide(current, 'later', count);
+    messages.push(gentleMessage(current));
+    current = {...current, status: STATUS.RETURNED};
+  }
+  assert.equal(current.laterCount, 6);
+  assert.deepEqual(messages.map(Boolean), [false, false, false, false, true, false]);
+  assert.equal('laterCount' in decide(wish({status: STATUS.RETURNED}), 'try', 1), false);
 });
