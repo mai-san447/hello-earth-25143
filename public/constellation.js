@@ -23,8 +23,10 @@ export function bigrams(text) {
 
 // 0（まったく違う）〜1（同じ）の近さ。Jaccard 係数。
 export function similarity(a, b) {
-  const left = bigrams(a);
-  const right = bigrams(b);
+  return jaccard(bigrams(a), bigrams(b));
+}
+
+function jaccard(left, right) {
   if (!left.size && !right.size) return 0;
   let shared = 0;
   for (const gram of left) if (right.has(gram)) shared++;
@@ -32,25 +34,38 @@ export function similarity(a, b) {
 }
 
 // Prim 法で最小全域木の辺を返す。辺の長さは 1 - 近さ。
+// 2文字の組は先に1回だけ作り、各星の「木までの最短の長さ」を持ち回す O(n²) の形にする
+// （願いが数百件あっても、回収記録を開くたびに重くならないように）。
 // 長さが同じときは古い願いを優先し、同じ入力なら必ず同じ星座になるようにする。
 export function constellationEdges(wishes) {
   const stars = receivedWishes(wishes);
-  if (stars.length < 2) return [];
-  const inTree = new Set([0]);
+  const n = stars.length;
+  if (n < 2) return [];
+  const grams = stars.map(star => bigrams(star.text));
+  const EPSILON = 1e-12;
+  const inTree = new Array(n).fill(false);
+  const bestWeight = new Array(n).fill(Infinity);
+  const bestFrom = new Array(n).fill(-1);
   const edges = [];
-  while (inTree.size < stars.length) {
-    let best = null;
-    for (const from of inTree) {
-      for (let to = 0; to < stars.length; to++) {
-        if (inTree.has(to)) continue;
-        const weight = 1 - similarity(stars[from].text, stars[to].text);
-        if (!best || weight < best.weight - 1e-12 || (Math.abs(weight - best.weight) < 1e-12 && (to < best.to || (to === best.to && from < best.from)))) {
-          best = {from, to, weight};
-        }
+  let added = 0;
+  inTree[0] = true;
+  for (;;) {
+    for (let to = 0; to < n; to++) {
+      if (inTree[to]) continue;
+      const weight = 1 - jaccard(grams[added], grams[to]);
+      if (weight < bestWeight[to] - EPSILON || (Math.abs(weight - bestWeight[to]) < EPSILON && added < bestFrom[to])) {
+        bestWeight[to] = weight;
+        bestFrom[to] = added;
       }
     }
-    inTree.add(best.to);
-    edges.push({from: stars[best.from].id, to: stars[best.to].id, closeness: 1 - best.weight});
+    let next = -1;
+    for (let to = 0; to < n; to++) {
+      if (!inTree[to] && (next === -1 || bestWeight[to] < bestWeight[next] - EPSILON)) next = to;
+    }
+    if (next === -1) break;
+    inTree[next] = true;
+    edges.push({from: stars[bestFrom[next]].id, to: stars[next].id, closeness: 1 - bestWeight[next]});
+    added = next;
   }
   return edges;
 }

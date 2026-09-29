@@ -56,3 +56,12 @@ test('信号が届くほど明るくなるが、眩しくなりすぎない', ()
   assert.equal(signalMessage(0), '');
   assert.equal(signalMessage(23), '預けているあいだに、23回の信号が届いていました。');
 });
+
+test('願いが多くても、星座はすぐに計算できる（300件で1秒未満）', () => {
+  const words = ['海', '山', '空', '川', '森', '街', '旅', '本', '歌', '絵'];
+  const many = Array.from({length: 300}, (_, index) => wish(`w${index + 1}`, `${words[index % 10]}に行って${words[(index * 7) % 10]}を見たい${index}`));
+  const started = performance.now();
+  const edges = constellationEdges(many);
+  assert.equal(edges.length, 299);
+  assert.ok(performance.now() - started < 1000);
+});
