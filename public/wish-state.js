@@ -57,6 +57,36 @@ export function returnFromRange(now) {
   return {min: format(min), max: format(max)};
 }
 
+// 検証・評価（docs/検証計画.md）のための数。願いの中身は使わず、端末の中の記録から数だけを出す。
+// openDays は、この端末でアプリを開いた日（YYYY-MM-DD）の一覧。
+export function summarize(wishes, openDays = [], now = Date.now()) {
+  const count = status => wishes.filter(wish => wish.status === status).length;
+  const received = count(STATUS.DOING);
+  const archived = count(STATUS.DONE);
+  const days = [...new Set(openDays)].sort();
+  const dayNumber = day => {
+    const [year, month, date] = day.split('-').map(Number);
+    return Math.round(new Date(year, month - 1, date).getTime() / DAY_MS);
+  };
+  const today = dayNumber(new Date(now).toLocaleDateString('sv-SE'));
+  const firstDay = days.length ? dayNumber(days[0]) : null;
+  return {
+    deposited: wishes.length,
+    orbiting: count(STATUS.WAITING),
+    pending: count(STATUS.RETURNED),
+    received,
+    archived,
+    // 受け取り率：帰ってきて決めた願いのうち「想いを受け取る」を選んだ割合（決めた願いがなければ null）
+    receiveRate: received + archived ? Math.round((received / (received + archived)) * 100) : null,
+    backToOrbit: wishes.reduce((sum, wish) => sum + (wish.laterCount ?? 0), 0),
+    withReturnFrom: wishes.filter(wish => Number.isFinite(wish.returnFrom)).length,
+    openDays: days.length,
+    activeDaysLast7: days.filter(day => today - dayNumber(day) < 7).length,
+    // 初めて開いた日から7日以上たってから、もう一度開いたか
+    cameBackAfter7Days: firstDay != null && days.some(day => dayNumber(day) - firstDay >= 7),
+  };
+}
+
 export function gentleMessage(wish) {
   return wish.laterCount === LIMITS.gentleLaterCount
     ? `この願いを${LIMITS.gentleLaterCount}回、軌道へ戻しました。いつでも戻せますし、手放しても大丈夫です。`
