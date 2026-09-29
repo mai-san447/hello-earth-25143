@@ -1,0 +1,24 @@
+name: CI
+
+# push と Pull Request のたびに、テスト・lint・ビルドを自動で確かめる。
+# 公開はしない（公開は deploy-cloudflare.yml と、README の手動手順）。
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
