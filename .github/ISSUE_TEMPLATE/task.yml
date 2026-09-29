@@ -1,0 +1,51 @@
+name: やること（タスク）
+description: 作る・直す・調べる・決めること。講義資料の Issue テンプレートと、タスクの定番の項目をあわせたもの
+title: "[P1] 実装: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        題名は「[優先度] 種類: 動詞で終わる一言」。優先度 P0＝提出に必須、P1＝提出までに入れたい、P2＝提出後。種類は 実装／設計／検証／発表／運用。
+        看板（GitHub Projects）に置いたら、優先度・カテゴリ・目安（日）・締め切りも入れる。
+  - type: textarea
+    id: purpose
+    attributes:
+      label: 目的
+      description: なぜやるのか。誰の、どんな困りごとに効くのかを1〜2行で
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: 完了条件
+      description: 何ができたら終わりか。確かめられる形で、チェックボックスにする
+      value: |
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: やらないこと
+      description: 書いていない「やらないこと」は、AI には「やってもいいこと」に見える
+  - type: textarea
+    id: open-questions
+    attributes:
+      label: 未確認事項
+      description: まだ分からないこと。想像で埋めない
+  - type: textarea
+    id: depends
+    attributes:
+      label: 依存関係
+      description: 先に終わっている必要がある Issue や、人の判断（例：#5、本人のスマホ確認）
+  - type: textarea
+    id: references
+    attributes:
+      label: 参考
+      description: 設計資料、画面、リンク
+      placeholder: docs/機能要件.md の F01 など
+  - type: input
+    id: estimate
+    attributes:
+      label: 見積もり
+      description: 目安の日数（例：0.5日）
