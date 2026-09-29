@@ -43,6 +43,7 @@
 
   // 検証・評価（docs/検証計画.md）：アプリを開いた日だけを端末に控える。願いの中身は含まない
   const OPEN_DAYS_KEY = 'morune-25143-open-days';
+  const TRIAL_KEY = 'morune-25143-first-return-used';
   function readOpenDays() {
     try {
       const days = JSON.parse(readStorage(OPEN_DAYS_KEY) || '[]');
@@ -218,9 +219,15 @@
     return WishState.orbitingWishes(wishes);
   }
 
-  // 今、帰還させられる星（#7 帰還が始まる日を過ぎたもの）
+  // #27 はじめての1回を使ったか。端末ごとに覚える（保存できない端末では毎回「未使用」になるが、
+  // 一度帰ってきた願いがあれば trialAvailable が止めるので、何度も使えるわけではない）
+  function trialUsed() {
+    return readStorage(TRIAL_KEY) === '1';
+  }
+
+  // 今、帰還させられる星（#7 帰還が始まる日を過ぎたもの。#27 はじめての1回を含む）
   function readyToReturn() {
-    return WishState.returnCandidates(wishes, Date.now());
+    return WishState.candidatesWithTrial(wishes, Date.now(), trialUsed());
   }
 
   function waitingForStartMessage() {
@@ -1083,6 +1090,7 @@
       return;
     }
     returningWish = candidates[Math.floor(Math.random() * candidates.length)];
+    if (WishState.trialAvailable(wishes, trialUsed())) writeStorage(TRIAL_KEY, '1');
     returnFlight = {
       wish: returningWish,
       startedAt: performance.now(),
@@ -1374,6 +1382,7 @@
     launchButton.disabled = true;
     depositStatus.textContent = '星を送っています…';
     const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time});
+    const firstWish = wishes.length === 0 && !trialUsed();
     try {
       await store('readwrite', object => object.put(wish));
       wishes = [...wishes, wish];
@@ -1391,6 +1400,14 @@
       setTimeout(() => {
         if (!returnFlight) $('#mission-status').textContent = '2005 — イトカワの軌道に願いの星を確認';
       }, 1850);
+      // #27 はじめての人には、星が軌道に着いたところで「試しに1つ帰す」へ案内する
+      if (firstWish) {
+        setTimeout(() => {
+          if (returnFlight || returningWish) return;
+          setMissionStep('receive');
+          $('#mission-status').textContent = '試しに1つ、帰してみましょう。スマホを振るか、カプセルのボタンを押してください';
+        }, 2600);
+      }
     } catch (error) {
       depositStatus.textContent = `送信に失敗しました。入力は残しています。${error.message || ''}`;
     } finally {

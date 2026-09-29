@@ -103,6 +103,18 @@ export function returnCandidates(wishes, now = Date.now()) {
   return orbitingWishes(wishes).filter(wish => !Number.isFinite(wish.returnFrom) || wish.returnFrom <= now);
 }
 
+// #27 はじめての1回。まだ一度も帰ってきたことがない人は、帰還が始まる日の前でも1回だけ帰せる。
+// やりたいことのアプリは最初の1週間で価値が見えないと離れるため、預けた直後に「帰ってくる」まで体験してもらう。
+export function trialAvailable(wishes, trialUsed) {
+  return !trialUsed && orbitingWishes(wishes).length > 0 && wishes.every(wish => wish.status === STATUS.WAITING);
+}
+
+// 帰還の候補（はじめての1回を含む）。ふつうの候補があれば、そちらを優先する
+export function candidatesWithTrial(wishes, now, trialUsed) {
+  const ready = returnCandidates(wishes, now);
+  return ready.length || !trialAvailable(wishes, trialUsed) ? ready : orbitingWishes(wishes);
+}
+
 // まだ帰還の候補がないとき、いちばん早く帰還が始まる日。なければ null。
 export function nextReturnFrom(wishes, now = Date.now()) {
   const upcoming = orbitingWishes(wishes)

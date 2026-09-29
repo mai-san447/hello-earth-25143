@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CHOICES, LIMITS, STATUS, canDeposit, checkReturnFrom, createWish, daysWaited, decide, gentleMessage, markReturned, nextReturnFrom, orbitingWishes, parseReturnFrom, pendingReturn, returnCandidates, returnFromLabel, returnFromRange, summarize, waitedMessage} from '../public/wish-state.js';
+import {CHOICES, LIMITS, STATUS, candidatesWithTrial, canDeposit, checkReturnFrom, createWish, daysWaited, decide, gentleMessage, markReturned, nextReturnFrom, orbitingWishes, parseReturnFrom, pendingReturn, returnCandidates, returnFromLabel, returnFromRange, summarize, trialAvailable, waitedMessage} from '../public/wish-state.js';
 
 const at = (y, m, d, h = 12, min = 0) => new Date(y, m - 1, d, h, min).getTime();
 const wish = (overrides = {}) => ({id: 'a', text: '朝の海を歩きたい', status: STATUS.WAITING, createdAt: at(2026, 9, 22), updatedAt: at(2026, 9, 22), ...overrides});
@@ -156,4 +156,27 @@ test('まだ何も決めていないときの受け取り率は null', () => {
   const summary = summarize([wish()], [], at(2026, 10, 1));
   assert.equal(summary.receiveRate, null);
   assert.equal(summary.cameBackAfter7Days, false);
+});
+
+test('#27 はじめての1回：一度も帰ってきたことがなければ、帰還が始まる日の前でも1回だけ帰せる', () => {
+  const now = at(2026, 9, 30);
+  const future = [wish({id: '1', returnFrom: at(2026, 10, 20, 0)})];
+  assert.equal(trialAvailable(future, false), true);
+  assert.deepEqual(candidatesWithTrial(future, now, false).map(item => item.id), ['1']);
+  // 使ったあとは、ふつうのきまり（帰還が始まる日まで帰らない）に戻る
+  assert.deepEqual(candidatesWithTrial(future, now, true), []);
+});
+
+test('#27 はじめての1回：一度でも帰ってきた人や、軌道が空の人には出さない', () => {
+  const now = at(2026, 9, 30);
+  const returnedBefore = [wish({id: '1', returnFrom: at(2026, 10, 20, 0)}), wish({id: '2', status: STATUS.DONE})];
+  assert.equal(trialAvailable(returnedBefore, false), false);
+  assert.deepEqual(candidatesWithTrial(returnedBefore, now, false), []);
+  assert.equal(trialAvailable([], false), false);
+});
+
+test('#27 ふつうの候補があれば、そちらだけを出す', () => {
+  const now = at(2026, 9, 30);
+  const wishes = [wish({id: '1'}), wish({id: '2', returnFrom: at(2026, 10, 20, 0)})];
+  assert.deepEqual(candidatesWithTrial(wishes, now, false).map(item => item.id), ['1']);
 });
