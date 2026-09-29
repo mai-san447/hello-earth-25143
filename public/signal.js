@@ -20,7 +20,12 @@
   }
 
   try {
-    const response = await fetch(`/api/signals?orbit=${encodeURIComponent(orbitId)}`);
+    // 受け付けているかだけを聞く（持ち主に届いた信号の時刻は取らない）
+    const response = await fetch('/api/signals?check=1');
+    if (!response.ok) {
+      status.textContent = '今は信号を受け付けられません。少し時間をおいて開き直してください。';
+      return;
+    }
     const data = await response.json();
     if (!data.enabled) {
       status.textContent = 'この星への信号は、まだ受け付けていません。';
