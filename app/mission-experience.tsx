@@ -105,6 +105,14 @@ export function MissionExperience({
           <p className="returned-distance" id="returned-distance" />
           <p className="returned-signals" id="returned-signals" />
           <p className="card-footnote">あの日のあなたから、今日のあなたへ。</p>
+          <div className="certificate">
+            <label className="certificate-option">
+              <input id="certificate-include-text" type="checkbox" />
+              願いの言葉も入れる
+            </label>
+            <button className="return-action-share" id="certificate-save" type="button">帰還証明書を保存</button>
+            <p className="share-status" id="certificate-status" role="status" aria-live="polite" />
+          </div>
           <label className="share-comment-label" htmlFor="share-comment">コメントを添えてシェア</label>
           <textarea id="share-comment" maxLength={120} placeholder="いまの気持ちを書く（任意）" />
           <p className="share-status" id="share-status" role="status" aria-live="polite" />

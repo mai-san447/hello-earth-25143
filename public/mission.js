@@ -5,11 +5,13 @@
   let WishState;
   let Itokawa;
   let Constellation;
+  let Certificate;
   try {
-    [WishState, Itokawa, Constellation] = await Promise.all([
+    [WishState, Itokawa, Constellation, Certificate] = await Promise.all([
       import('/wish-state.js'),
       import('/itokawa.js'),
       import('/constellation.js'),
+      import('/certificate.js'),
     ]);
   } catch (error) {
     console.error('mission modules', error);
@@ -1114,6 +1116,8 @@
     $('#returned-signals').textContent = Constellation.signalMessage(Constellation.signalsWhileWaiting(returningWish, signalTimes));
     $('#share-comment').value = '';
     $('#share-status').textContent = '';
+    $('#certificate-include-text').checked = false;
+    $('#certificate-status').textContent = '';
     returnCard.hidden = false;
     setTimeout(() => returnCard.classList.add('card-open'), 20);
     $('#mission-status').textContent = '2010 — 帰還カプセル / 願い星を回収';
@@ -1159,6 +1163,118 @@
       $('#mission-status').textContent = '保存できませんでした。もう一度お試しください';
     } finally {
       actions.forEach(button => { button.disabled = false; });
+    }
+  }
+
+  // #26 帰還証明書。端末の中で画像を描いて保存する（願いの言葉はサーバーへ送らない）
+  function drawCertificate(content) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080;
+    canvas.height = 1350;
+    const context = canvas.getContext('2d');
+    const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, '#07101c');
+    gradient.addColorStop(1, '#141a2e');
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    // 星は決まった並びで描く（保存するたびに見た目が変わらないよう乱数を使わない）
+    context.fillStyle = 'rgba(255, 248, 230, 0.7)';
+    for (let index = 0; index < 90; index += 1) {
+      const size = index % 7 === 0 ? 3 : 2;
+      context.fillRect((index * 397) % canvas.width, (index * 241) % canvas.height, size, size);
+    }
+    context.strokeStyle = 'rgba(237, 203, 140, 0.55)';
+    context.lineWidth = 3;
+    context.strokeRect(60, 60, canvas.width - 120, canvas.height - 120);
+    const serif = '"Yu Mincho", "Hiragino Mincho ProN", serif';
+    const center = canvas.width / 2;
+    context.textAlign = 'center';
+    context.fillStyle = '#edcb8c';
+    context.font = '28px ui-monospace, monospace';
+    context.fillText(content.kicker, center, 170);
+    context.fillStyle = '#fff9ed';
+    context.font = `72px ${serif}`;
+    context.fillText(content.title, center, 280);
+    let y = 400;
+    if (content.wishText) {
+      context.font = `46px ${serif}`;
+      const chars = [...`「${content.wishText}」`];
+      const perLine = 16;
+      for (let start = 0; start < chars.length; start += perLine) {
+        context.fillText(chars.slice(start, start + perLine).join(''), center, y);
+        y += 66;
+      }
+      y += 30;
+    }
+    context.font = `40px ${serif}`;
+    for (const line of content.lines) {
+      context.fillStyle = '#aab5b3';
+      context.textAlign = 'right';
+      context.fillText(line.label, center - 24, y);
+      context.fillStyle = '#fff9ed';
+      context.textAlign = 'left';
+      context.fillText(line.value, center + 24, y);
+      y += 76;
+    }
+    context.textAlign = 'center';
+    if (content.distanceLine) {
+      // 「距離。」と「光でも〜」の2行に分けて、はみ出さないようにする
+      const split = content.distanceLine.indexOf('。') + 1;
+      context.fillStyle = '#c1cbc4';
+      context.font = `30px ${serif}`;
+      context.fillText(content.distanceLine.slice(0, split), center, y + 30);
+      context.fillText(content.distanceLine.slice(split), center, y + 76);
+    }
+    context.fillStyle = '#edcb8c';
+    context.font = `44px ${serif}`;
+    context.fillText('願いを星に、想いを地球へ。', center, canvas.height - 200);
+    context.fillStyle = '#829090';
+    context.font = '24px "Zen Kaku Gothic New", sans-serif';
+    context.fillText(content.footnote, center, canvas.height - 110);
+    return canvas;
+  }
+
+  async function saveCertificate() {
+    if (!returningWish || !landed) return;
+    const status = $('#certificate-status');
+    const button = $('#certificate-save');
+    button.disabled = true;
+    status.textContent = '証明書を描いています…';
+    try {
+      const now = Date.now();
+      const content = Certificate.certificateContent({
+        wish: returningWish,
+        now,
+        includeText: $('#certificate-include-text').checked,
+        distanceLine: Itokawa.distanceMessage(Itokawa.distanceKmOn(distanceTable, now)),
+      });
+      const blob = await new Promise((resolve, reject) => {
+        drawCertificate(content).toBlob(result => (result ? resolve(result) : reject(new Error('画像を作れませんでした'))), 'image/png');
+      });
+      const file = new File([blob], content.fileName, {type: 'image/png'});
+      // スマホでは共有シートの「画像を保存」で写真に残せる。使えない端末ではダウンロードにする
+      if (typeof navigator.canShare === 'function' && navigator.canShare({files: [file]})) {
+        await navigator.share({files: [file], title: 'MORUNE 25143 帰還証明書'});
+        status.textContent = '共有シートを開きました。「画像を保存」で端末に残せます';
+      } else {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = content.fileName;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        status.textContent = '帰還証明書を保存しました';
+      }
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        // 共有シートを閉じただけ。失敗ではない
+        status.textContent = '';
+      } else {
+        console.error('certificate', error);
+        status.textContent = '証明書を保存できませんでした。もう一度お試しください';
+      }
+    } finally {
+      button.disabled = false;
     }
   }
 
@@ -1373,6 +1489,7 @@
   $('#return-to-orbit').addEventListener('click', () => chooseDisposition('later'));
   $('#finish-wish').addEventListener('click', () => chooseDisposition('finish'));
   $('#share-wish').addEventListener('click', shareWish);
+  $('#certificate-save').addEventListener('click', saveCertificate);
   $('#archive-open').addEventListener('click', () => {
     $('#archive-sheet').hidden = false;
     drawConstellation();

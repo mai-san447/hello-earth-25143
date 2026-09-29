@@ -5,11 +5,11 @@ importScripts('/offline-routes.js');
 
 // 保存の形を変えたときに上げる。古い保存は activate で消す。
 // 自前の部品はネット優先なので、ふつうの公開では上げなくてよい。
-const CACHE_VERSION = '2026-09-29-2';
+const CACHE_VERSION = '2026-09-30-1';
 const CACHE_NAME = `morune-25143-${CACHE_VERSION}`;
 // これがないと病室で画面が動かない部品。1つでも取れなければ入れ替えを失敗させ、次に開いたときにやり直す
 // （失敗を無視すると「オフラインで開けない状態」に誰も気づけないため）
-const REQUIRED_SHELL = ['/mission.js', '/wish-state.js', '/itokawa.js', '/constellation.js', '/offline-routes.js', '/style.css'];
+const REQUIRED_SHELL = ['/mission.js', '/wish-state.js', '/itokawa.js', '/constellation.js', '/certificate.js', '/offline-routes.js', '/style.css'];
 // なくても画面は動く部品
 const OPTIONAL_SHELL = ['/itokawa-distance.json', '/manifest.webmanifest', '/icons/icon-192.png'];
 // 病室の弱い電波で待ち続けないよう、ページの取得はこの時間で諦めて保存した版を出す
