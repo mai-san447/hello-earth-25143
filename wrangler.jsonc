@@ -8,6 +8,14 @@
   "assets": {
     "directory": "./dist/client"
   },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "morune-25143",
+      "database_id": "d6f01a21-d6b4-4807-bb08-473b2052a7b7",
+      "migrations_dir": "drizzle"
+    }
+  ],
   "vars": {
     "CHATGPT_SYNC_ENABLED": "false"
   },
