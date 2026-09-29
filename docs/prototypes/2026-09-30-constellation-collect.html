@@ -1,0 +1,402 @@
+<title>星をあつめて星座に</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700&family=Zen+Old+Mincho:wght@400;700&display=swap">
+<style>
+  /* 夜空の作品なので、あえて暗い見た目ひとつに決めている */
+  :root {
+    color-scheme: dark;
+    --sky: #0a0f1e;
+    --sky-deep: #121a33;
+    --gold: #f2d08d;
+    --gold-soft: rgba(242, 208, 141, 0.28);
+    --text: #ebe7dc;
+    --muted: #97a2b6;
+    --line: rgba(199, 213, 207, 0.16);
+    --panel: rgba(255, 255, 255, 0.045);
+    --mincho: "Zen Old Mincho", "Yu Mincho", "Hiragino Mincho ProN", serif;
+    --gothic: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  [hidden] { display: none !important; }
+  html, body { background: var(--sky); }
+  body {
+    color: var(--text);
+    font-family: var(--gothic);
+    line-height: 1.7;
+    padding-inline: 16px;
+    padding-block: 20px 40px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 22px; }
+  header { display: grid; gap: 6px; }
+  .kicker { font: 11px var(--mono); letter-spacing: .14em; color: var(--gold); }
+  h1 { margin: 0; font: 700 clamp(26px, 7vw, 40px)/1.3 var(--mincho); text-wrap: balance; }
+  .lead { margin: 0; color: var(--muted); font-size: 14px; max-width: 34em; }
+
+  .sky-card { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--line);
+    background: radial-gradient(120% 90% at 80% 0%, #1c2750 0%, var(--sky-deep) 45%, var(--sky) 100%); }
+  canvas#sky { display: block; width: 100%; aspect-ratio: 4 / 3; max-width: 100%; touch-action: manipulation; }
+  .hud { position: absolute; left: 14px; top: 12px; display: grid; gap: 2px; pointer-events: none; }
+  .hud-name { font: 700 18px var(--mincho); }
+  .hud-count { font: 12px var(--mono); color: var(--gold); font-variant-numeric: tabular-nums; }
+  .caption { min-height: 1.7em; margin: 0; padding: 10px 14px 12px; border-top: 1px solid var(--line);
+    font: 15px var(--mincho); color: var(--text); }
+  .caption small { color: var(--muted); font-family: var(--gothic); font-size: 12px; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; }
+  button { font: 700 14px var(--gothic); border-radius: 999px; padding: 12px 18px; cursor: pointer; min-height: 44px; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  .primary { background: var(--gold); color: #1b1606; border: 0; }
+  .ghost { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  button:disabled { opacity: .45; cursor: default; }
+
+  .naming { display: grid; gap: 10px; padding: 16px; border-radius: 16px; background: var(--panel); border: 1px solid var(--gold-soft); }
+  .naming h2 { margin: 0; font: 700 20px var(--mincho); }
+  .naming p { margin: 0; color: var(--muted); font-size: 13px; }
+  .naming-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  .naming input { flex: 1 1 180px; min-width: 0; font: 16px var(--mincho); padding: 10px 14px; border-radius: 12px;
+    border: 1px solid var(--line); background: rgba(0,0,0,.25); color: var(--text); }
+
+  section.shelf { display: grid; gap: 10px; }
+  .shelf h2, .rules h2 { margin: 0; font: 700 18px var(--mincho); }
+  .shelf-empty { margin: 0; color: var(--muted); font-size: 13px; }
+  .shelf-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .shelf-list li { display: grid; gap: 4px; padding: 10px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .shelf-list canvas { width: 100%; aspect-ratio: 4 / 3; max-width: 100%; }
+  .shelf-list strong { font: 700 15px var(--mincho); }
+  .shelf-list span { font: 11px var(--mono); color: var(--muted); }
+
+  .rules { display: grid; gap: 10px; padding-top: 6px; border-top: 1px solid var(--line); }
+  .rules dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 8px 16px; font-size: 14px; }
+  .rules dt { color: var(--gold); font-weight: 700; }
+  .rules dd { margin: 0; color: var(--text); }
+  .note { margin: 0; color: var(--muted); font-size: 12px; }
+  @media (max-width: 460px) { .rules dl { grid-template-columns: 1fr; gap: 2px; } .rules dd { margin-bottom: 8px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="kicker">MORUNE 25143 / PROTOTYPE #28</p>
+    <h1>帰ってきた願いは、あなたの空の星になる</h1>
+    <p class="lead">イトカワに預けた願いが1つずつ帰ってきて、夜空に星として灯ります。7つ集まると、ひとつの星座が完成します。</p>
+  </header>
+
+  <div class="sky-card">
+    <canvas id="sky" aria-label="あなたの夜空。帰ってきた願いの星と、作りかけの星座" role="img"></canvas>
+    <div class="hud" aria-live="polite">
+      <span class="hud-name" id="hud-name">帰り道座</span>
+      <span class="hud-count" id="hud-count">4 / 7</span>
+    </div>
+    <p class="caption" id="caption"><small>星に触れると、その願いが読めます。</small></p>
+  </div>
+
+  <div class="controls">
+    <button class="primary" id="return-one" type="button">願いが1つ帰ってきた</button>
+    <button class="ghost" id="reset" type="button">はじめからやり直す</button>
+  </div>
+
+  <form class="naming" id="naming" hidden>
+    <h2>星座が完成しました</h2>
+    <p>7つの願いが、ひとつの星座になりました。この星座に名前をつけてください。</p>
+    <div class="naming-row">
+      <input id="naming-input" aria-label="星座の名前" maxlength="12" autocomplete="off" placeholder="例：退院の日座">
+      <button class="primary" type="submit">名前をつける</button>
+    </div>
+  </form>
+
+  <section class="shelf" aria-labelledby="shelf-title">
+    <h2 id="shelf-title">あなたの星座</h2>
+    <p class="shelf-empty" id="shelf-empty">まだ完成した星座はありません。</p>
+    <ul class="shelf-list" id="shelf-list"></ul>
+  </section>
+
+  <section class="rules" aria-labelledby="rules-title">
+    <h2 id="rules-title">このしくみ（案）</h2>
+    <dl>
+      <dt>星になる</dt><dd>帰ってきて「想いを受け取る」か「アーカイブに保存」を選んだ願いが、夜空の星になる。軌道へ戻した願いは、まだイトカワにいる。</dd>
+      <dt>7つで星座</dt><dd>7つ集まると星座が完成し、名前をつけられる。1日1つなら1週間でひとつ。</dd>
+      <dt>形</dt><dd>帰り道座・カプセル座・灯（ともしび）座…と、MORUNE オリジナルの形が順番に現れる。本物の星座や星の名前ではない。</dd>
+      <dt>残るもの</dt><dd>完成した星座は証明書の画像になる（#26）。枝番 25143-XXXX と一緒に、キーホルダーに刻める。</dd>
+      <dt>みんなの星座</dt><dd>公開を選んだ人の完成した星座が、みんなの夜空に少しだけ並ぶ（#22）。</dd>
+    </dl>
+    <p class="note">試作です。この画面の中身は、このブラウザの中だけで動きます。</p>
+  </section>
+</div>
+
+<script>
+(() => {
+  // MORUNE オリジナルの星座の形。7つの点（0〜1）と、結ぶ線
+  const TEMPLATES = [
+    {name: '帰り道座', points: [[.10,.74],[.24,.62],[.38,.55],[.52,.52],[.66,.44],[.78,.32],[.88,.20]], edges: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,6]]},
+    {name: 'カプセル座', points: [[.36,.30],[.50,.18],[.64,.30],[.64,.60],[.50,.74],[.36,.60],[.50,.46]], edges: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,0],[1,6],[6,4]]},
+    {name: '灯座', points: [[.50,.14],[.40,.34],[.60,.34],[.36,.58],[.64,.58],[.44,.80],[.56,.80]], edges: [[0,1],[0,2],[1,2],[1,3],[2,4],[3,5],[4,6],[5,6]]},
+  ];
+  const SLOTS = 7;
+  const SAMPLE_WISHES = ['朝の海を歩きたい', '母に手紙を書く', '新しい万年筆で日記をつける', '駅前のラーメンを食べに行く', '友だちと映画を観る', '髪を短く切る', '星を見に高原へ行く', 'ギターをもう一度弾く', '植物を育てる', 'ひとりで美術館に行く', '祖母の味噌汁をつくる', '好きな本を読み返す', '自転車で川沿いを走る', '温泉に入る'];
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const canvas = document.getElementById('sky');
+  const context = canvas.getContext('2d');
+  const $ = id => document.getElementById(id);
+  let width = 0, height = 0;
+  let state;
+  let flying = null;       // {text, start, from, to}
+  let linesStart = null;   // 完成したときに線を引く演出の開始時刻
+  let wishCursor = 0;
+  let selected = null;
+
+  // 背景の星は決まった並び（毎回同じ空にするため乱数を使わない）
+  const backgroundStars = Array.from({length: 120}, (_, i) => ({x: ((i * 137.5) % 100) / 100, y: ((i * 61.8 + i * i * .7) % 100) / 100, r: i % 9 === 0 ? 1.4 : .7, t: i}));
+
+  function initialState() {
+    wishCursor = 4;
+    return {template: 0, stars: SAMPLE_WISHES.slice(0, 4).map(text => ({text})), completed: [], naming: false};
+  }
+
+  function resize() {
+    const ratio = window.devicePixelRatio || 1;
+    width = canvas.clientWidth;
+    height = canvas.clientHeight;
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+    context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  }
+
+  const template = () => TEMPLATES[state.template % TEMPLATES.length];
+  // 星座は空の中央寄りに置き、左上の表示と右上のイトカワを避ける
+  const toCanvas = ([x, y]) => [width * (.12 + x * .76), height * (.16 + y * .74)];
+  const itokawa = () => [width * .9, height * .12];
+
+  function drawStar(x, y, radius, alpha, glow) {
+    const gradient = context.createRadialGradient(x, y, 0, x, y, radius * 5);
+    gradient.addColorStop(0, `rgba(255, 240, 200, ${alpha})`);
+    gradient.addColorStop(.25, `rgba(242, 208, 141, ${alpha * .55 * glow})`);
+    gradient.addColorStop(1, 'rgba(242, 208, 141, 0)');
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.arc(x, y, radius * 5, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = `rgba(255, 250, 235, ${alpha})`;
+    context.beginPath();
+    context.arc(x, y, radius, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  function drawItokawa(time) {
+    const [x, y] = itokawa();
+    context.save();
+    context.translate(x, y);
+    context.rotate(Math.sin(time / 3000) * .15);
+    context.fillStyle = '#7d7466';
+    context.beginPath();
+    context.ellipse(0, 0, 14, 7, 0, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = '#9b917f';
+    context.beginPath();
+    context.ellipse(-5, -1, 7, 5, 0, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+    context.fillStyle = 'rgba(151, 162, 182, .8)';
+    context.font = '10px ui-monospace, monospace';
+    context.textAlign = 'right';
+    context.fillText('25143 ITOKAWA', x + 14, y + 22);
+  }
+
+  function frame(time) {
+    context.clearRect(0, 0, width, height);
+    for (const star of backgroundStars) {
+      const twinkle = reducedMotion ? .5 : .35 + .3 * Math.sin(time / 900 + star.t);
+      context.fillStyle = `rgba(220, 228, 255, ${twinkle})`;
+      context.fillRect(star.x * width, star.y * height, star.r, star.r);
+    }
+    drawItokawa(time);
+
+    const shape = template();
+    const points = shape.points.map(toCanvas);
+    const complete = state.stars.length === SLOTS && !flying;
+
+    // 線：完成したら順に引く。作りかけのときは、ついた星どうしだけ薄くつなぐ
+    const progress = complete ? (reducedMotion || linesStart == null ? 1 : Math.min(1, (time - linesStart) / 1600)) : 0;
+    shape.edges.forEach(([a, b], index) => {
+      const bothLit = a < state.stars.length && b < state.stars.length;
+      if (!bothLit && !complete) return;
+      const share = complete ? Math.max(0, Math.min(1, progress * shape.edges.length - index)) : 1;
+      if (share <= 0) return;
+      const [x1, y1] = points[a];
+      const [x2, y2] = points[b];
+      context.strokeStyle = complete ? 'rgba(242, 208, 141, .75)' : 'rgba(242, 208, 141, .22)';
+      context.lineWidth = complete ? 1.6 : 1;
+      context.beginPath();
+      context.moveTo(x1, y1);
+      context.lineTo(x1 + (x2 - x1) * share, y1 + (y2 - y1) * share);
+      context.stroke();
+    });
+
+    // まだ星がない場所は、点線の輪で「ここに来る」と見せる
+    points.forEach(([x, y], index) => {
+      if (index < state.stars.length) {
+        const pulse = reducedMotion ? 1 : 1 + .12 * Math.sin(time / 700 + index);
+        drawStar(x, y, (selected === index ? 3.6 : 2.6) * pulse, 1, complete ? 1.6 : 1);
+      } else {
+        context.strokeStyle = 'rgba(151, 162, 182, .35)';
+        context.setLineDash([2, 4]);
+        context.beginPath();
+        context.arc(x, y, 7, 0, Math.PI * 2);
+        context.stroke();
+        context.setLineDash([]);
+      }
+    });
+
+    if (flying) {
+      const t = reducedMotion ? 1 : Math.min(1, (time - flying.start) / 1500);
+      const ease = 1 - Math.pow(1 - t, 3);
+      const [fx, fy] = flying.from;
+      const [tx, ty] = flying.to;
+      // イトカワから弧を描いて帰ってくる
+      const cx = (fx + tx) / 2, cy = Math.min(fy, ty) - height * .18;
+      const x = (1 - ease) ** 2 * fx + 2 * (1 - ease) * ease * cx + ease ** 2 * tx;
+      const y = (1 - ease) ** 2 * fy + 2 * (1 - ease) * ease * cy + ease ** 2 * ty;
+      drawStar(x, y, 3, 1, 1.4);
+      if (t >= 1) land();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function updateHud() {
+    $('hud-name').textContent = template().name;
+    $('hud-count').textContent = `${state.stars.length} / ${SLOTS}`;
+    $('return-one').disabled = Boolean(flying) || state.naming;
+  }
+
+  function returnOne() {
+    if (flying || state.naming || state.stars.length >= SLOTS) return;
+    const text = SAMPLE_WISHES[wishCursor % SAMPLE_WISHES.length];
+    wishCursor += 1;
+    const slot = state.stars.length;
+    flying = {text, start: performance.now(), from: itokawa(), to: toCanvas(template().points[slot])};
+    $('caption').innerHTML = '<small>イトカワから、願いが1つ帰ってきます…</small>';
+    updateHud();
+  }
+
+  function land() {
+    state.stars.push({text: flying.text});
+    const text = flying.text;
+    flying = null;
+    selected = state.stars.length - 1;
+    showCaption(text, state.stars.length);
+    if (state.stars.length === SLOTS) {
+      linesStart = performance.now();
+      state.naming = true;
+      setTimeout(() => {
+        $('naming').hidden = false;
+        $('naming-input').value = '';
+        $('naming-input').focus({preventScroll: true});
+        $('naming').scrollIntoView({behavior: reducedMotion ? 'auto' : 'smooth', block: 'nearest'});
+      }, reducedMotion ? 0 : 1700);
+    }
+    updateHud();
+  }
+
+  function showCaption(text, number) {
+    const caption = $('caption');
+    caption.textContent = `「${text}」`;
+    const small = document.createElement('small');
+    small.textContent = `　${template().name}の ${number} つめの星`;
+    caption.append(small);
+  }
+
+  function nameConstellation(event) {
+    event.preventDefault();
+    const typed = $('naming-input').value.trim();
+    const name = typed ? (typed.endsWith('座') ? typed : `${typed}座`) : template().name;
+    state.completed.push({name, template: state.template % TEMPLATES.length, stars: state.stars.map(star => star.text)});
+    state.template += 1;
+    state.stars = [];
+    state.naming = false;
+    linesStart = null;
+    selected = null;
+    $('naming').hidden = true;
+    $('caption').innerHTML = '<small>次の星座が始まりました。星の場所が、うっすら見えています。</small>';
+    renderShelf();
+    updateHud();
+  }
+
+  function renderShelf() {
+    const list = $('shelf-list');
+    list.replaceChildren();
+    $('shelf-empty').hidden = state.completed.length > 0;
+    state.completed.forEach((item, index) => {
+      const row = document.createElement('li');
+      const thumb = document.createElement('canvas');
+      const title = document.createElement('strong');
+      const meta = document.createElement('span');
+      title.textContent = item.name;
+      meta.textContent = `25143-0312 / No.${index + 1}`;
+      row.append(thumb, title, meta);
+      list.append(row);
+      requestAnimationFrame(() => drawThumb(thumb, TEMPLATES[item.template]));
+    });
+  }
+
+  function drawThumb(target, shape) {
+    const ratio = window.devicePixelRatio || 1;
+    const w = target.clientWidth, h = target.clientHeight;
+    target.width = w * ratio;
+    target.height = h * ratio;
+    const c = target.getContext('2d');
+    c.setTransform(ratio, 0, 0, ratio, 0, 0);
+    c.fillStyle = '#0a0f1e';
+    c.fillRect(0, 0, w, h);
+    const p = shape.points.map(([x, y]) => [w * (.1 + x * .8), h * (.08 + y * .84)]);
+    c.strokeStyle = 'rgba(242, 208, 141, .7)';
+    c.lineWidth = 1.2;
+    for (const [a, b] of shape.edges) {
+      c.beginPath();
+      c.moveTo(...p[a]);
+      c.lineTo(...p[b]);
+      c.stroke();
+    }
+    c.fillStyle = '#fff6df';
+    for (const [x, y] of p) {
+      c.beginPath();
+      c.arc(x, y, 2.2, 0, Math.PI * 2);
+      c.fill();
+    }
+  }
+
+  canvas.addEventListener('click', event => {
+    const bounds = canvas.getBoundingClientRect();
+    const x = event.clientX - bounds.left, y = event.clientY - bounds.top;
+    const points = template().points.map(toCanvas);
+    let nearest = -1, best = 28;
+    points.forEach(([px, py], index) => {
+      const distance = Math.hypot(px - x, py - y);
+      if (index < state.stars.length && distance < best) { best = distance; nearest = index; }
+    });
+    if (nearest >= 0) {
+      selected = nearest;
+      showCaption(state.stars[nearest].text, nearest + 1);
+    }
+  });
+
+  $('return-one').addEventListener('click', returnOne);
+  $('naming').addEventListener('submit', nameConstellation);
+  $('reset').addEventListener('click', () => {
+    state = initialState();
+    flying = null;
+    linesStart = null;
+    selected = null;
+    $('naming').hidden = true;
+    $('caption').innerHTML = '<small>星に触れると、その願いが読めます。</small>';
+    renderShelf();
+    updateHud();
+  });
+  window.addEventListener('resize', () => { resize(); renderShelf(); });
+
+  state = initialState();
+  resize();
+  renderShelf();
+  updateHud();
+  requestAnimationFrame(frame);
+})();
+</script>
