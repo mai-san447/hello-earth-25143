@@ -12,7 +12,10 @@ function enabled() {
 
 export async function GET(request: Request) {
   if (!enabled()) return Response.json({ enabled: false });
-  const orbitId = new URL(request.url).searchParams.get("orbit");
+  const params = new URL(request.url).searchParams;
+  // 応援する人のページは「受け付けているか」だけ知ればよい。持ち主に届いた時刻は返さない
+  if (params.get("check") === "1") return Response.json({ enabled: true });
+  const orbitId = params.get("orbit");
   if (!isOrbitId(orbitId)) return Response.json({ error: "軌道を確認してください。" }, { status: 400 });
   try {
     const rows = await getDb()
@@ -30,9 +33,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   if (!enabled()) return Response.json({ enabled: false }, { status: 404 });
-  let body: Record<string, unknown>;
+  let body: unknown;
   try { body = await request.json(); } catch { return Response.json({ error: "信号の送り先を確認してください。" }, { status: 400 }); }
-  const orbitId = body.orbitId;
+  // null や数値の JSON でも 500 にならないよう、形を確かめてから読む
+  const orbitId = body && typeof body === "object" ? (body as Record<string, unknown>).orbitId : undefined;
   if (!isOrbitId(orbitId)) return Response.json({ error: "信号の送り先を確認してください。" }, { status: 400 });
   try {
     const now = Date.now();
