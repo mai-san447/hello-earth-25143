@@ -2,10 +2,11 @@
 
 import { useEffect } from "react";
 
-export function MissionRuntime() {
+// mission-runtime と同じく、画面の動きは public/signal.js に置いて読み込む
+export function SignalRuntime() {
   useEffect(() => {
     const script = document.createElement("script");
-    script.src = "/mission.js";
+    script.src = "/signal.js";
     script.async = true;
     document.body.appendChild(script);
     return () => {

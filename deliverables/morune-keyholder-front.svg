@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 630 890" role="img" aria-labelledby="title">
+  <title id="title">MORUNE 25143 keyholder front, 63 by 89 millimeters</title>
+  <defs><radialGradient id="bg" cx="70%" cy="20%" r="90%"><stop stop-color="#26385d"/><stop offset=".5" stop-color="#0d1730"/><stop offset="1" stop-color="#030610"/></radialGradient><radialGradient id="star"><stop stop-color="#fff7d0"/><stop offset=".25" stop-color="#f2cf7e"/><stop offset="1" stop-color="#d58c40" stop-opacity="0"/></radialGradient><pattern id="dots" width="42" height="42" patternUnits="userSpaceOnUse"><circle cx="8" cy="10" r="1" fill="#fff2c4" opacity=".55"/><circle cx="31" cy="28" r=".7" fill="#dce7ff" opacity=".4"/></pattern></defs>
+  <rect width="630" height="890" fill="url(#bg)"/><rect width="630" height="890" fill="url(#dots)" opacity=".6"/>
+  <ellipse cx="386" cy="270" rx="190" ry="70" fill="none" stroke="#dfc67f" stroke-opacity=".4" stroke-width="2" transform="rotate(-25 386 270)"/>
+  <circle cx="420" cy="245" r="66" fill="url(#star)"/><circle cx="420" cy="245" r="12" fill="#fff8dc"/>
+  <circle cx="315" cy="522" r="52" fill="#566071" opacity=".88"/>
+  <text x="44" y="74" fill="#f2d08d" font-family="Arial,sans-serif" font-size="16" letter-spacing="4">MORUNE</text>
+  <text x="44" y="111" fill="#fff9ed" font-family="Arial,sans-serif" font-size="28" letter-spacing="5">25143</text>
+  <text x="44" y="690" fill="#fff9ed" font-family="Georgia,serif" font-size="38">願い星</text>
+  <text x="44" y="735" fill="#f2d08d" font-family="Georgia,serif" font-size="38">帰還。</text>
+  <text x="46" y="805" fill="#aebfc6" font-family="Arial,sans-serif" font-size="12" letter-spacing="2">A WISH RETURNS TO EARTH</text>
+  <path d="M44 770h155" stroke="#e4c477" stroke-width="2"/>
+</svg>

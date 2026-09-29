@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" role="img" aria-labelledby="title desc">
+  <title id="title">MORUNE 25143 CD jacket cover</title>
+  <desc id="desc">A dark orbital field with a gold wish star returning to Earth.</desc>
+  <defs>
+    <radialGradient id="bg" cx="72%" cy="22%" r="90%"><stop offset="0" stop-color="#24375a"/><stop offset=".45" stop-color="#0e1831"/><stop offset="1" stop-color="#030610"/></radialGradient>
+    <radialGradient id="star"><stop stop-color="#fff8d7"/><stop offset=".28" stop-color="#f6d88c"/><stop offset="1" stop-color="#d38d45" stop-opacity="0"/></radialGradient>
+    <linearGradient id="gold" x1="0" x2="1"><stop stop-color="#f6e0a6"/><stop offset=".55" stop-color="#dca957"/><stop offset="1" stop-color="#fff0bf"/></linearGradient>
+    <pattern id="dots" width="74" height="74" patternUnits="userSpaceOnUse"><circle cx="8" cy="12" r="1.4" fill="#dce7ff" opacity=".5"/><circle cx="52" cy="49" r=".9" fill="#fff2c4" opacity=".45"/></pattern>
+    <filter id="glow"><feGaussianBlur stdDeviation="18"/></filter>
+  </defs>
+  <rect width="1200" height="1200" fill="url(#bg)"/>
+  <rect width="1200" height="1200" fill="url(#dots)" opacity=".55"/>
+  <ellipse cx="760" cy="370" rx="330" ry="120" fill="none" stroke="#d7c17d" stroke-opacity=".35" stroke-width="2" transform="rotate(-25 760 370)"/>
+  <ellipse cx="760" cy="370" rx="270" ry="94" fill="none" stroke="#d7c17d" stroke-opacity=".25" stroke-width="1" transform="rotate(-25 760 370)"/>
+  <circle cx="790" cy="350" r="92" fill="url(#star)" filter="url(#glow)"/>
+  <circle cx="790" cy="350" r="18" fill="#fff8d7"/>
+  <circle cx="1030" cy="690" r="85" fill="#4b5365" opacity=".85"/>
+  <path d="M968 711c37-63 82-82 129-47-18 61-63 93-129 47Z" fill="#737887" opacity=".65"/>
+  <path d="M0 905C290 830 460 940 715 879c180-43 322-19 485 51v270H0Z" fill="#071020" opacity=".86"/>
+  <path d="M80 1010c250-62 410 9 628-39 139-31 264-15 414 35" fill="none" stroke="url(#gold)" stroke-opacity=".65" stroke-width="2"/>
+  <g fill="url(#gold)" font-family="Arial, sans-serif" letter-spacing="10">
+    <text x="86" y="130" font-size="30">MORUNE / 25143</text>
+    <text x="86" y="190" font-size="16" letter-spacing="5">WISH STAR SAMPLE RETURN</text>
+  </g>
+  <text x="86" y="895" fill="#fff9ed" font-family="Georgia, serif" font-size="72">願いを星に、</text>
+  <text x="86" y="980" fill="#f4d891" font-family="Georgia, serif" font-size="72">想いを地球へ。</text>
+  <text x="88" y="1072" fill="#b9c8d0" font-family="Arial, sans-serif" font-size="18" letter-spacing="4">A WISH RETURNS TO EARTH</text>
+  <rect x="86" y="1115" width="190" height="2" fill="#e5c477"/>
+  <text x="86" y="1155" fill="#98aab3" font-family="Arial, sans-serif" font-size="14" letter-spacing="2">ITOKAWA · HAYABUSA · EARTH</text>
+</svg>
