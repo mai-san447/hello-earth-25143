@@ -129,6 +129,13 @@ export function MissionExperience({
             <button id="signal-share-button" type="button">応援リンクを送る</button>
             <p className="signal-share-status" id="signal-share-status" role="status" aria-live="polite" />
           </div>
+          <section className="my-record" aria-labelledby="my-record-title">
+            <h3 id="my-record-title">あなたの記録</h3>
+            <dl id="my-record" />
+            <p className="my-record-note">数だけを、この端末の中で数えています。願いの中身は含みません。検証に協力するときは、下のボタンで数をコピーして渡してください。</p>
+            <button id="my-record-copy" type="button">記録の数をコピー</button>
+            <p className="my-record-status" id="my-record-status" role="status" aria-live="polite" />
+          </section>
           <ul id="archive-list" />
           <div className="archive-management">
             <label className="archive-select-all"><input id="archive-select-all" type="checkbox" disabled />すべて選択</label>

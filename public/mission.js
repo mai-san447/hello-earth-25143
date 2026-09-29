@@ -38,6 +38,22 @@
     }
   }
   let signalTimes = readSignalCache();
+
+  // 検証・評価（docs/検証計画.md）：アプリを開いた日だけを端末に控える。願いの中身は含まない
+  const OPEN_DAYS_KEY = 'morune-25143-open-days';
+  function readOpenDays() {
+    try {
+      const days = JSON.parse(readStorage(OPEN_DAYS_KEY) || '[]');
+      return Array.isArray(days) ? days.filter(day => /^\d{4}-\d{2}-\d{2}$/.test(day)) : [];
+    } catch {
+      return [];
+    }
+  }
+  function recordOpenDay() {
+    const today = new Date().toLocaleDateString('sv-SE');
+    const days = readOpenDays();
+    if (!days.includes(today)) writeStorage(OPEN_DAYS_KEY, JSON.stringify([...days, today].slice(-120)));
+  }
   const $ = selector => document.querySelector(selector);
   const app = $('#mission-app');
   const canvas = $('#orbit-canvas');
@@ -292,6 +308,7 @@
     }
     $('#archive-empty').hidden = archiveItems.length > 0;
     drawConstellation();
+    renderMyRecord();
     refreshArchiveControls(archiveItems);
   }
 
@@ -1360,6 +1377,7 @@
     drawConstellation();
   });
   $('#signal-share-button').addEventListener('click', shareSignalLink);
+  $('#my-record-copy').addEventListener('click', copyMyRecord);
   $('#archive-close').addEventListener('click', () => { $('#archive-sheet').hidden = true; });
   $('#archive-select-all').addEventListener('change', event => {
     const archiveItems = recovered();
@@ -1555,6 +1573,40 @@
     }
   }
 
+  // 回収記録の「あなたの記録」。数は wish-state.js の summarize で出す（テスト済み）
+  function renderMyRecord() {
+    const list = $('#my-record');
+    if (!list) return;
+    const summary = WishState.summarize(wishes, readOpenDays(), Date.now());
+    const rows = [
+      ['預けた願い', `${summary.deposited}個（軌道に${summary.orbiting}個）`],
+      ['受け取った', `${summary.received}個`],
+      ['アーカイブに保存', `${summary.archived}個`],
+      ['軌道へ戻した', `${summary.backToOrbit}回`],
+      ['開いた日', `${summary.openDays}日`],
+    ];
+    list.replaceChildren(...rows.flatMap(([label, value]) => {
+      const term = document.createElement('dt');
+      const detail = document.createElement('dd');
+      term.textContent = label;
+      detail.textContent = value;
+      return [term, detail];
+    }));
+  }
+
+  async function copyMyRecord() {
+    const summary = WishState.summarize(wishes, readOpenDays(), Date.now());
+    const text = JSON.stringify({app: 'MORUNE 25143', format: 1, date: new Date().toLocaleDateString('sv-SE'), ...summary}, null, 2);
+    const recordStatus = $('#my-record-status');
+    try {
+      await navigator.clipboard.writeText(text);
+      recordStatus.textContent = '記録の数をコピーしました（願いの中身は含みません）';
+    } catch (error) {
+      console.error('copy record', error);
+      recordStatus.textContent = 'コピーできませんでした。画面の数を書き写して渡してください';
+    }
+  }
+
   // 受け取った願いの星座。言葉の近さでつないだ最小全域木を、回収記録の中に描く。
   function drawConstellation() {
     const canvasElement = $('#constellation-canvas');
@@ -1633,6 +1685,7 @@
     locationStatus.textContent = '3D星空を読み込めません。簡易表示で続けます。';
   });
   loadItokawaDistance();
+  recordOpenDay();
   await init();
   showConnection();
   registerOfflineSupport();

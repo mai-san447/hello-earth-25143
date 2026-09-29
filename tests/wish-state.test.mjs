@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CHOICES, LIMITS, STATUS, canDeposit, checkReturnFrom, createWish, daysWaited, decide, gentleMessage, markReturned, nextReturnFrom, orbitingWishes, parseReturnFrom, pendingReturn, returnCandidates, returnFromLabel, returnFromRange, waitedMessage} from '../public/wish-state.js';
+import {CHOICES, LIMITS, STATUS, canDeposit, checkReturnFrom, createWish, daysWaited, decide, gentleMessage, markReturned, nextReturnFrom, orbitingWishes, parseReturnFrom, pendingReturn, returnCandidates, returnFromLabel, returnFromRange, summarize, waitedMessage} from '../public/wish-state.js';
 
 const at = (y, m, d, h = 12, min = 0) => new Date(y, m - 1, d, h, min).getTime();
 const wish = (overrides = {}) => ({id: 'a', text: '朝の海を歩きたい', status: STATUS.WAITING, createdAt: at(2026, 9, 22), updatedAt: at(2026, 9, 22), ...overrides});
@@ -131,4 +131,29 @@ test('軌道へ戻した回数を数え、5回目に一度だけやさしい一�
   assert.equal(current.laterCount, 6);
   assert.deepEqual(messages.map(Boolean), [false, false, false, false, true, false]);
   assert.equal('laterCount' in decide(wish({status: STATUS.RETURNED}), 'try', 1), false);
+});
+
+
+// 検証・評価のための数
+test('検証の数は、願いの中身を使わず状態と回数だけから出す', () => {
+  const wishes = [
+    wish({id: '1'}),
+    wish({id: '2', returnFrom: at(2026, 10, 25, 0)}),
+    wish({id: '3', status: STATUS.RETURNED}),
+    wish({id: '4', status: STATUS.DOING, laterCount: 2}),
+    wish({id: '5', status: STATUS.DOING}),
+    wish({id: '6', status: STATUS.DONE, laterCount: 1}),
+  ];
+  const summary = summarize(wishes, ['2026-10-01', '2026-10-03', '2026-10-03', '2026-10-09'], at(2026, 10, 9));
+  assert.deepEqual(summary, {
+    deposited: 6, orbiting: 2, pending: 1, received: 2, archived: 1, receiveRate: 67,
+    backToOrbit: 3, withReturnFrom: 1, openDays: 3, activeDaysLast7: 2, cameBackAfter7Days: true,
+  });
+  assert.equal(JSON.stringify(summary).includes('朝の海'), false);
+});
+
+test('まだ何も決めていないときの受け取り率は null', () => {
+  const summary = summarize([wish()], [], at(2026, 10, 1));
+  assert.equal(summary.receiveRate, null);
+  assert.equal(summary.cameBackAfter7Days, false);
 });
