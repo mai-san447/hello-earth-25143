@@ -80,7 +80,7 @@ export function MissionExperience({
           <div className="return-from-field">
             <label htmlFor="return-from">帰還が始まる日（任意）</label>
             <input id="return-from" type="date" aria-describedby="return-from-hint" />
-            <p id="return-from-hint">入院中など、しばらく手放しておきたいときに。この日までは振っても帰ってきません。空欄なら、すぐ帰還の候補になります。</p>
+            <p id="return-from-hint">入院中など、しばらく手放しておきたいときに。この日までは振っても帰ってきません。空欄なら、すぐ帰還の候補になります。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないと保存が消えることがあります）。</p>
           </div>
           <button className="launch-button" id="deposit" type="button">星を軌道へ送る <span aria-hidden="true">↗</span></button>
           <p className="sheet-status" id="deposit-status" role="status" />
@@ -145,7 +145,7 @@ export function MissionExperience({
             <button className="policy-close" id="policy-close" type="button" aria-label="利用規約を閉じる">×</button>
             <p className="sheet-kicker">TERMS / PRIVACY</p>
             <h2 id="policy-title">利用規約・プライバシー</h2>
-            <p className="policy-updated">内容更新日：2026年9月27日</p>
+            <p className="policy-updated">内容更新日：2026年9月30日</p>
             <div className="policy-content" id="policy-content" tabIndex={0}>
               <section>
                 <h3>このサービスについて</h3>
@@ -155,6 +155,14 @@ export function MissionExperience({
                 <h3>入力内容と保存</h3>
                 <p>願いは60文字以内で入力できます。現在のCloudflare版では、願いと回収記録はこのブラウザーのIndexedDBに保存され、アプリのサーバーやクラウドへ送信されません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。</p>
                 <p>氏名、住所、連絡先、健康情報、パスワード、秘密情報や、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
+              </section>
+              <section>
+                <h3>端末への保存（オフライン）</h3>
+                <p>ネットのない場所でも開けるよう、画面と部品（描画ライブラリーやフォントを含む）をこのブラウザーに保存します。願いの内容はこの保存には含まれません。ブラウザーのサイトデータを消すと、保存も消えます。</p>
+              </section>
+              <section>
+                <h3>応援の信号</h3>
+                <p>応援リンク（/signal）から信号が送られると、サーバーにはこの端末で作ったランダムな識別子（軌道ID）と、信号が届いた時刻だけを保存します。送った人の名前・言葉、願いの内容は保存しません。応援リンクを知っている人は誰でも信号を送れます。この機能は、サーバー側の準備ができた環境でだけ表示されます。</p>
               </section>
               <section>
                 <h3>位置情報</h3>
