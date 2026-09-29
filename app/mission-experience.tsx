@@ -156,7 +156,7 @@ export function MissionExperience({
             <div className="policy-content" id="policy-content" tabIndex={0}>
               <section>
                 <h3>運営者</h3>
-                <p>西川 舞衣子（個人事業主）</p>
+                <p>西川 舞衣子（個人事業主）<br />〒150-0041 東京都渋谷区神南1丁目11-4 FPGリンクス神南 5階</p>
               </section>
               <section>
                 <h3>このサービスについて</h3>
@@ -187,7 +187,7 @@ export function MissionExperience({
                 <h3>利用上の注意</h3>
                 <p>画面内のイトカワ・探査機表現は創作上の演出で、公式の科学資料ではありません。イトカワまでの距離は、NASA/JPL Horizons の暦（小惑星 25143 Itokawa、地球中心から見た距離、1日ごとの値）をもとにした概算で、アプリに同梱した表から表示しています。サービスは試験公開中のため、予告なく変更・停止する場合があります。データの永続性、特定目的への適合性、常時利用可能であることは保証しません。大切な記録の保管には使わないでください。</p>
               </section>
-              <p className="policy-contact-note">個人制作の試験公開版です。所在地と問い合わせ窓口は準備中で、確定したらここに掲載します。</p>
+              <p className="policy-contact-note">個人制作の試験公開版です。問い合わせ窓口は準備中で、確定したらここに掲載します。</p>
             </div>
           </div>
         </section>
