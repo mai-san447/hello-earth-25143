@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "morune-25143",
+  "main": "./dist/server/index.js",
+  "compatibility_date": "2026-09-26",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "assets": {
+    "directory": "./dist/client"
+  },
+  "vars": {
+    "CHATGPT_SYNC_ENABLED": "false"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

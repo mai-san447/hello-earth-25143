@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b101e">
+  <title>25143 ITOKAWA | 星空を見上げる</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Yu Gothic", "Hiragino Sans", sans-serif;
+      background: #05070d;
+      color: #f3f2ed;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; min-width: 320px; min-height: 100%; margin: 0; }
+    html {
+      min-height: 100%;
+      background: radial-gradient(ellipse at 50% 45%, #111a2b 0%, #0b101e 50%, #030408 100%);
+    }
+    body {
+      min-height: 100svh;
+      overflow: hidden;
+      background: transparent;
+    }
+    #starfield {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      display: block;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .scene-wash {
+      position: fixed;
+      z-index: 0;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(ellipse at 50% 48%, transparent 22%, rgb(2 4 10 / 22%) 100%);
+    }
+    .masthead, .scene-caption {
+      position: fixed;
+      z-index: 1;
+      left: clamp(20px, 5vw, 64px);
+      right: clamp(20px, 5vw, 64px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      color: #aab5c6;
+      font: 600 10px/1.4 ui-monospace, "SFMono-Regular", Consolas, monospace;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+    .masthead { top: max(20px, env(safe-area-inset-top)); }
+    .brand { color: #f1ead9; font-size: 12px; }
+    .brand span { color: #d8bb7b; }
+    .scene-caption { bottom: max(20px, env(safe-area-inset-bottom)); justify-content: center; color: #8290a4; font-size: 9px; }
+    .itokawa-label {
+      position: fixed;
+      z-index: 1;
+      color: #f1d89c;
+      font: 600 10px/1 ui-monospace, "SFMono-Regular", Consolas, monospace;
+      letter-spacing: .16em;
+      white-space: nowrap;
+      text-shadow: 0 0 12px rgb(246 209 133 / 65%), 0 2px 12px #05070d;
+      pointer-events: none;
+      transform: translate(-50%, -100%);
+    }
+    .modal-backdrop {
+      position: fixed;
+      z-index: 3;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgb(2 4 10 / 40%);
+      backdrop-filter: blur(3px);
+      transition: opacity .35s ease, visibility .35s ease;
+    }
+    .modal-backdrop.is-hidden { visibility: hidden; opacity: 0; pointer-events: none; }
+    .location-modal {
+      position: relative;
+      width: min(100%, 440px);
+      padding: clamp(28px, 6vw, 48px);
+      border: 1px solid rgb(211 222 230 / 19%);
+      background: linear-gradient(145deg, rgb(20 29 45 / 94%), rgb(7 11 20 / 96%));
+      box-shadow: 0 30px 100px rgb(0 0 0 / 48%), inset 0 1px rgb(255 255 255 / 5%);
+      text-align: center;
+      animation: arrive .7s cubic-bezier(.2,.75,.25,1) both;
+    }
+    .modal-modal::before { content: ""; }
+    .orbit-mark {
+      position: relative;
+      width: 50px;
+      height: 50px;
+      margin: 0 auto 25px;
+      border: 1px solid rgb(216 193 145 / 50%);
+      border-radius: 50%;
+      transform: rotate(-24deg) scaleY(.48);
+    }
+    .orbit-mark::before {
+      position: absolute;
+      top: -4px;
+      right: 4px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #f1d89c;
+      box-shadow: 0 0 13px 4px rgb(241 216 156 / 45%);
+      content: "";
+    }
+    .eyebrow { margin: 0 0 14px; color: #d6bd82; font: 600 9px/1.5 ui-monospace, monospace; letter-spacing: .2em; }
+    h1 { margin: 0; font-family: "Yu Mincho", "Hiragino Mincho ProN", serif; font-size: clamp(16px, 2.6vw, 21px); font-weight: 500; line-height: 1.8; letter-spacing: .025em; }
+    h1 span { display: block; white-space: nowrap; }
+    .description { margin: 13px 0 28px; color: #aeb9c8; font-size: 12px; line-height: 1.8; }
+    .locate-button {
+      width: 100%;
+      min-height: 52px;
+      padding: 12px 16px;
+      border: 1px solid #e7ce96;
+      background: linear-gradient(110deg, #d2b16c, #f0dca9);
+      color: #17202b;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.4;
+      cursor: pointer;
+      transition: transform .18s ease, filter .18s ease;
+    }
+    .locate-button:hover { transform: translateY(-2px); filter: brightness(1.06); }
+    .locate-button:focus-visible { outline: 3px solid #fff0c9; outline-offset: 4px; }
+    .locate-button:disabled { cursor: progress; opacity: .72; }
+    .status { min-height: 18px; margin: 13px 0 0; color: #c3cbd4; font-size: 11px; line-height: 1.6; }
+    .privacy-note { margin: 16px 0 0; color: #7f8a9a; font-size: 10px; line-height: 1.6; }
+    @keyframes arrive { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 520px) {
+      .masthead { font-size: 8px; letter-spacing: .12em; }
+      .brand { font-size: 10px; }
+      .scene-caption { font-size: 8px; }
+      .modal-backdrop { padding: 18px; }
+      .location-modal { padding: 30px 24px 26px; }
+      h1 { font-size: 16px; }
+      .description { margin-bottom: 22px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+  <script type="importmap">
+    { "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    } }
+  </script>
+</head>
+<body>
+  <canvas id="starfield" aria-hidden="true"></canvas>
+  <div class="scene-wash" aria-hidden="true"></div>
+  <header class="masthead" aria-hidden="true">
+    <span class="brand">MORUNE <span>25143</span></span>
+    <span>LOOKING UP / ITOKAWA</span>
+  </header>
+  <div class="itokawa-label" id="itokawa-label" aria-hidden="true">25143 ITOKAWA</div>
+  <p class="scene-caption" aria-hidden="true">A QUIET SKY, SOMEWHERE ON EARTH</p>
+
+  <div class="modal-backdrop" id="location-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-describedby="modal-description">
+    <section class="location-modal">
+      <div class="orbit-mark" aria-hidden="true"></div>
+      <p class="eyebrow">HAYABUSA / ITOKAWA</p>
+      <h1 id="modal-title"><span>イトカワの位置を探るため、</span><span>現在地の空を見上げますか？</span></h1>
+      <p class="description" id="modal-description">場所に合わせて、星空の傾きを調整します。</p>
+      <button class="locate-button" id="locate-button" type="button">位置情報を許可して星空を見る</button>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <p class="privacy-note">位置情報はこの画面の星空調整にのみ使用し、保存・送信しません。</p>
+    </section>
+  </div>
+
+  <script type="module">
+    import * as THREE from "three";
+    import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+    import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+    import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+
+    const canvas = document.querySelector("#starfield");
+    const label = document.querySelector("#itokawa-label");
+    const modal = document.querySelector("#location-modal");
+    const locateButton = document.querySelector("#locate-button");
+    const status = document.querySelector("#status");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "low-power" });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 0.86;
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(58, window.innerWidth / window.innerHeight, 0.1, 500);
+    camera.position.set(0, 0, 0);
+    camera.rotation.order = "YXZ";
+    scene.add(camera);
+    const backgroundMaterial = new THREE.ShaderMaterial({
+      depthWrite: false,
+      depthTest: false,
+      vertexShader: `varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`,
+      fragmentShader: `
+        varying vec2 vUv;
+        void main(){
+          vec3 black=vec3(0.008,0.012,0.025);
+          vec3 navy=vec3(0.035,0.055,0.095);
+          float horizon=smoothstep(0.0,0.92,vUv.y);
+          float nebula=exp(-distance(vUv,vec2(0.63,0.52))*5.0)*0.24;
+          gl_FragColor=vec4(mix(black,navy,horizon*0.72+nebula),1.0);
+        }
+      `,
+    });
+    const backgroundPlane = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), backgroundMaterial);
+    backgroundPlane.position.z = -1;
+    backgroundPlane.renderOrder = -1000;
+    camera.add(backgroundPlane);
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.24, 0.7, 0.78);
+    composer.addPass(bloomPass);
+    const sky = new THREE.Group();
+    scene.add(sky);
+
+    const starMaterials = [];
+    function addStarLayer(count, minRadius, maxRadius, sizeScale) {
+      const positions = new Float32Array(count * 3);
+      const sizes = new Float32Array(count);
+      const phases = new Float32Array(count);
+      const rates = new Float32Array(count);
+      const colors = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        const offset = i * 3;
+        const y = Math.random() * 2 - 1;
+        const angle = Math.random() * Math.PI * 2;
+        const radius = minRadius + Math.random() * (maxRadius - minRadius);
+        const ring = Math.sqrt(1 - y * y);
+        positions[offset] = Math.cos(angle) * ring * radius;
+        positions[offset + 1] = y * radius;
+        positions[offset + 2] = Math.sin(angle) * ring * radius;
+        sizes[i] = sizeScale * (0.65 + Math.pow(Math.random(), 3) * 2.8);
+        phases[i] = Math.random() * Math.PI * 2;
+        rates[i] = 0.3 + Math.random() * 1.1;
+        const tint = Math.random();
+        colors[offset] = tint > 0.9 ? 1 : 0.72 + tint * 0.2;
+        colors[offset + 1] = tint > 0.9 ? 0.79 : 0.82 + tint * 0.12;
+        colors[offset + 2] = tint > 0.9 ? 0.59 : 0.94;
+      }
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      geometry.setAttribute("aSize", new THREE.BufferAttribute(sizes, 1));
+      geometry.setAttribute("aPhase", new THREE.BufferAttribute(phases, 1));
+      geometry.setAttribute("aRate", new THREE.BufferAttribute(rates, 1));
+      geometry.setAttribute("aColor", new THREE.BufferAttribute(colors, 3));
+      const material = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: { uTime: { value: 0 }, uPixelRatio: { value: renderer.getPixelRatio() } },
+        vertexShader: `
+          attribute float aSize;
+          attribute float aPhase;
+          attribute float aRate;
+          attribute vec3 aColor;
+          uniform float uTime;
+          uniform float uPixelRatio;
+          varying float vAlpha;
+          varying vec3 vColor;
+          void main() {
+            vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+            gl_Position = projectionMatrix * viewPosition;
+            float twinkle = 0.68 + 0.32 * sin(uTime * aRate + aPhase);
+            vAlpha = twinkle;
+            vColor = aColor;
+            gl_PointSize = min(aSize * uPixelRatio * twinkle * (300.0 / -viewPosition.z), 8.0);
+          }
+        `,
+        fragmentShader: `
+          varying float vAlpha;
+          varying vec3 vColor;
+          void main() {
+            float r = length(gl_PointCoord - vec2(0.5));
+            if (r > 0.5) discard;
+            float core = 1.0 - smoothstep(0.02, 0.5, r);
+            gl_FragColor = vec4(vColor, core * vAlpha * 0.9);
+          }
+        `,
+      });
+      const points = new THREE.Points(geometry, material);
+      sky.add(points);
+      starMaterials.push(material);
+    }
+    addStarLayer(7200, 112, 178, 1);
+    addStarLayer(2600, 180, 260, 0.68);
+
+    function createNebulaTexture(seed) {
+      const nebulaCanvas = document.createElement("canvas");
+      nebulaCanvas.width = nebulaCanvas.height = 512;
+      const ctx = nebulaCanvas.getContext("2d");
+      let state = seed;
+      const random = () => {
+        state = (state * 1664525 + 1013904223) >>> 0;
+        return state / 4294967296;
+      };
+      const colors = [[82, 126, 155], [104, 94, 143], [154, 130, 99]];
+      ctx.globalCompositeOperation = "lighter";
+      for (let i = 0; i < 30; i++) {
+        const x = 70 + random() * 372;
+        const y = 70 + random() * 372;
+        const radius = 36 + random() * 120;
+        const [r, g, b] = colors[Math.floor(random() * colors.length)];
+        const alpha = 0.075 + random() * 0.075;
+        const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+        gradient.addColorStop(0, `rgba(${r},${g},${b},${alpha})`);
+        gradient.addColorStop(0.56, `rgba(${r},${g},${b},${alpha * 0.42})`);
+        gradient.addColorStop(1, `rgba(${r},${g},${b},0)`);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+      }
+      const texture = new THREE.CanvasTexture(nebulaCanvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      return texture;
+    }
+    function addNebula(seed, position, scale, tint, opacity) {
+      const material = new THREE.SpriteMaterial({
+        map: createNebulaTexture(seed),
+        color: tint,
+        transparent: true,
+        opacity,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        depthTest: false,
+      });
+      const sprite = new THREE.Sprite(material);
+      sprite.position.set(...position);
+      sprite.scale.set(...scale, 1);
+      sky.add(sprite);
+    }
+    addNebula(25143, [-25, 20, -122], [86, 68], 0x83a9c7, 0.92);
+    addNebula(1057, [30, -18, -148], [98, 74], 0x9b83b3, 0.82);
+
+    const peanutProfile = [
+      [-12, 0.08], [-11.1, 1.7], [-9.2, 3.5], [-6.4, 4.15],
+      [-4.2, 3.45], [-2.5, 2.35], [-0.8, 2.05], [0.6, 2.2],
+      [2.5, 3.15], [5.1, 4.3], [7.6, 4.65], [9.5, 4.1],
+      [11, 2.7], [12, 0.08],
+    ].map(([axis, radius]) => new THREE.Vector2(radius, axis));
+    const peanutCurve = new THREE.SplineCurve(peanutProfile);
+    const asteroidGeometry = new THREE.LatheGeometry(peanutCurve.getPoints(128), 96);
+    asteroidGeometry.rotateZ(-Math.PI / 2);
+    const asteroidPositions = asteroidGeometry.attributes.position;
+    const rockColors = new Float32Array(asteroidPositions.count * 3);
+    for (let i = 0; i < asteroidPositions.count; i++) {
+      const x = asteroidPositions.getX(i);
+      const y = asteroidPositions.getY(i);
+      const z = asteroidPositions.getZ(i);
+      const hash = Math.sin(Math.round(x * 9000) * 127.1 + Math.round(y * 9000) * 311.7 + Math.round(z * 9000) * 74.7) * 43758.5453;
+      const grain = hash - Math.floor(hash);
+      const ridges = Math.sin(x * 1.9 + y * 1.2) * Math.cos(z * 2.2 - y * 1.4);
+      const broadNoise = Math.sin(x * 0.72 + Math.cos(y * 0.42)) * Math.cos(z * 0.58 - y * 0.36);
+      const fineNoise = Math.sin((x + z) * 1.75 + Math.sin(y * 1.3)) * 0.22;
+      const relief = broadNoise * 0.11 + fineNoise * 0.035 + (grain - 0.5) * 0.025 + ridges * 0.035;
+      const scale = 1 + relief;
+      asteroidPositions.setXYZ(i, x * scale, y * scale * 0.97, z * scale * 1.08);
+      const tone = 0.39 + broadNoise * 0.055 + fineNoise * 0.022 + (grain - 0.5) * 0.025 + ridges * 0.035;
+      rockColors[i * 3] = tone * 0.94;
+      rockColors[i * 3 + 1] = tone * 0.97;
+      rockColors[i * 3 + 2] = tone;
+    }
+    asteroidGeometry.setAttribute("color", new THREE.BufferAttribute(rockColors, 3));
+    asteroidGeometry.computeVertexNormals();
+    const asteroidMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffffff,
+      vertexColors: true,
+      roughness: 0.94,
+      metalness: 0.035,
+      emissive: 0x1b1a18,
+      emissiveIntensity: 0.07,
+      flatShading: false,
+    });
+    const itokawa = new THREE.Mesh(asteroidGeometry, asteroidMaterial);
+    itokawa.position.set(23, 9, -66);
+    sky.add(itokawa);
+
+    const boulderGeometry = new THREE.IcosahedronGeometry(0.34, 1);
+    const boulderMaterial = new THREE.MeshStandardMaterial({color: 0xaaa99f, roughness: 1, metalness: 0.01, flatShading: true});
+    const boulders = new THREE.InstancedMesh(boulderGeometry, boulderMaterial, 56);
+    const boulderTransform = new THREE.Object3D();
+    const boulderColor = new THREE.Color();
+    for (let index = 0; index < boulders.count; index++) {
+      const axis = -10.8 + Math.random() * 21.6;
+      let segment = 0;
+      while (segment < peanutProfile.length - 2 && peanutProfile[segment + 1][0] < axis) segment++;
+      const [axisA, radiusA] = peanutProfile[segment];
+      const [axisB, radiusB] = peanutProfile[segment + 1];
+      const along = THREE.MathUtils.clamp((axis - axisA) / (axisB - axisA), 0, 1);
+      const radius = THREE.MathUtils.lerp(radiusA, radiusB, along);
+      const angle = Math.random() * Math.PI * 2;
+      const inset = radius * (0.87 + Math.random() * 0.07);
+      boulderTransform.position.set(axis, -Math.cos(angle) * inset, Math.sin(angle) * inset);
+      boulderTransform.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      const size = 0.28 + Math.random() * 0.7;
+      boulderTransform.scale.set(size * (0.75 + Math.random() * 0.45), size, size * (0.72 + Math.random() * 0.4));
+      boulderTransform.updateMatrix();
+      boulders.setMatrixAt(index, boulderTransform.matrix);
+      const shade = 0.72 + Math.random() * 0.36;
+      boulderColor.setRGB(shade * 0.94, shade * 0.97, shade);
+      boulders.setColorAt(index, boulderColor);
+    }
+    boulders.instanceMatrix.needsUpdate = true;
+    if (boulders.instanceColor) boulders.instanceColor.needsUpdate = true;
+    itokawa.add(boulders);
+
+    const asteroidGlow = new THREE.PointLight(0xf1cf83, 5, 52, 2);
+    asteroidGlow.position.copy(itokawa.position).add(new THREE.Vector3(-11, 13, 12));
+    sky.add(asteroidGlow);
+    const keyLight = new THREE.DirectionalLight(0xd7e5f2, 1.8);
+    keyLight.position.set(-42, 38, 26);
+    scene.add(keyLight);
+    scene.add(new THREE.AmbientLight(0x7789a7, 0.32));
+
+    const hayabusaOrbit = new THREE.Group();
+    hayabusaOrbit.position.copy(itokawa.position);
+    sky.add(hayabusaOrbit);
+    const hayabusa = new THREE.Group();
+    hayabusaOrbit.add(hayabusa);
+    const foilMaterial = new THREE.MeshStandardMaterial({color: 0xd2b76e, metalness: 0.78, roughness: 0.38, emissive: 0x59451e, emissiveIntensity: 0.4});
+    const darkGoldMaterial = new THREE.MeshStandardMaterial({color: 0x77633d, metalness: 0.78, roughness: 0.4});
+    const panelMaterial = new THREE.MeshStandardMaterial({color: 0x356b94, metalness: 0.58, roughness: 0.36, emissive: 0x315b7a, emissiveIntensity: 0.72});
+    const cellMaterial = new THREE.MeshStandardMaterial({color: 0xa4cbe0, metalness: 0.5, roughness: 0.34, emissive: 0x6595b2, emissiveIntensity: 0.44});
+    const antennaMaterial = new THREE.MeshStandardMaterial({color: 0xb9b7aa, metalness: 0.82, roughness: 0.27, side: THREE.DoubleSide});
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.25, 0.9, 1.05), foilMaterial);
+    hayabusa.add(body);
+    const equipmentDeck = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.22, 0.72), darkGoldMaterial);
+    equipmentDeck.position.y = 0.53;
+    hayabusa.add(equipmentDeck);
+    const bodyBand = new THREE.Mesh(new THREE.BoxGeometry(1.28, 0.09, 1.08), darkGoldMaterial);
+    bodyBand.position.y = -0.18;
+    hayabusa.add(bodyBand);
+    for (const side of [-1, 1]) {
+      const panel = new THREE.Mesh(new THREE.BoxGeometry(3.55, 0.095, 1.55), panelMaterial);
+      panel.position.set(side * 2.35, 0.03, 0);
+      hayabusa.add(panel);
+      for (let column = 1; column < 5; column++) {
+        const line = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.025, 1.48), cellMaterial);
+        line.position.set(panel.position.x + side * (column - 2.5) * 0.7, 0.09, 0);
+        hayabusa.add(line);
+      }
+      for (const row of [-0.48, 0, 0.48]) {
+        const line = new THREE.Mesh(new THREE.BoxGeometry(3.48, 0.025, 0.032), cellMaterial);
+        line.position.set(panel.position.x, 0.09, row);
+        hayabusa.add(line);
+      }
+      const hinge = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.2, 12), darkGoldMaterial);
+      hinge.rotation.z = Math.PI / 2;
+      hinge.position.x = side * 0.57;
+      hayabusa.add(hinge);
+    }
+    const antennaMast = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.07, 0.58, 12), antennaMaterial);
+    antennaMast.position.set(0, 0.88, 0.14);
+    hayabusa.add(antennaMast);
+    const dish = new THREE.Mesh(new THREE.SphereGeometry(0.64, 36, 20, 0, Math.PI * 2, 0, Math.PI * 0.32), antennaMaterial);
+    dish.rotation.x = Math.PI;
+    dish.position.set(0, 1.18, 0.14);
+    hayabusa.add(dish);
+    const feed = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.09, 0.48, 10), darkGoldMaterial);
+    feed.position.set(0, 1.43, 0.14);
+    hayabusa.add(feed);
+    const strutMaterial = new THREE.MeshStandardMaterial({color: 0xb9a16d, metalness: 0.75, roughness: 0.4});
+    for (const side of [-1, 1]) {
+      const strut = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.035, 0.83, 8), strutMaterial);
+      strut.position.set(side * 0.38, 0.84, 0.14);
+      strut.rotation.z = side * -0.45;
+      hayabusa.add(strut);
+    }
+    const sampler = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.24, 0.72, 18, 1, true), darkGoldMaterial);
+    sampler.position.y = -0.83;
+    hayabusa.add(sampler);
+    const samplerTip = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.12, 0.11, 18, 1, true), antennaMaterial);
+    samplerTip.position.y = -1.22;
+    hayabusa.add(samplerTip);
+    const thruster = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 0.24, 12), darkGoldMaterial);
+    thruster.position.set(0, -0.52, -0.42);
+    hayabusa.add(thruster);
+    hayabusa.scale.setScalar(0.88);
+    const craftLight = new THREE.PointLight(0x9cc9e6, 3.2, 22, 2);
+    craftLight.position.set(-1, 2.5, 3);
+    hayabusa.add(craftLight);
+
+    const atmosphereCanvas = document.createElement("canvas");
+    atmosphereCanvas.width = atmosphereCanvas.height = 256;
+    const atmosphereContext = atmosphereCanvas.getContext("2d");
+    const atmosphereGradient = atmosphereContext.createRadialGradient(128, 128, 5, 128, 128, 128);
+    atmosphereGradient.addColorStop(0, "rgba(230,206,156,0.17)");
+    atmosphereGradient.addColorStop(0.38, "rgba(139,156,190,0.075)");
+    atmosphereGradient.addColorStop(1, "rgba(70,90,130,0)");
+    atmosphereContext.fillStyle = atmosphereGradient;
+    atmosphereContext.fillRect(0, 0, 256, 256);
+    const atmosphereSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(atmosphereCanvas),
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false,
+      opacity: 0.62,
+    }));
+    atmosphereSprite.position.copy(itokawa.position);
+    atmosphereSprite.scale.set(38, 25, 1);
+    sky.add(atmosphereSprite);
+
+    const latitudeTilt = 0;
+    const longitudeTurn = 0;
+    camera.rotation.set(latitudeTilt, longitudeTurn, 0);
+
+    const labelPosition = new THREE.Vector3();
+    const projected = new THREE.Vector3();
+    const clock = new THREE.Clock();
+    const orbitRadii = new THREE.Vector2();
+    let viewportWidth = 0;
+    let viewportHeight = 0;
+
+    function resize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      if (width === viewportWidth && height === viewportHeight) return;
+      viewportWidth = width;
+      viewportHeight = height;
+      camera.aspect = width / height;
+      camera.fov = width < 560 ? 66 : width > 1300 ? 52 : 58;
+      camera.updateProjectionMatrix();
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+      renderer.setSize(width, height, false);
+      composer.setSize(width, height);
+      bloomPass.setSize(width, height);
+      itokawa.position.set(0, 0, -68);
+      asteroidGlow.position.copy(itokawa.position);
+      atmosphereSprite.position.copy(itokawa.position);
+      orbitRadii.set(width < 560 ? 17 : 24, width < 560 ? 11 : 16);
+      hayabusaOrbit.position.copy(itokawa.position);
+      const phase = 2.45;
+      hayabusa.position.set(Math.cos(phase) * orbitRadii.x, Math.sin(phase) * orbitRadii.y, 0);
+      const tangentX = -orbitRadii.x * Math.sin(phase);
+      const tangentY = orbitRadii.y * Math.cos(phase);
+      hayabusa.rotation.set(0.16, 0, Math.atan2(tangentY, tangentX));
+    }
+
+    function updateLabel() {
+      if (window.innerWidth !== viewportWidth || window.innerHeight !== viewportHeight) resize();
+      itokawa.getWorldPosition(labelPosition);
+      labelPosition.y += 5.3;
+      camera.updateMatrixWorld(true);
+      projected.copy(labelPosition).project(camera);
+      const visible = projected.z < 1 && projected.z > -1 && Math.abs(projected.x) < 1.08 && Math.abs(projected.y) < 1.08;
+      label.hidden = !visible;
+      if (visible) {
+        const x = (projected.x * 0.5 + 0.5) * window.innerWidth;
+        const y = (-projected.y * 0.5 + 0.5) * window.innerHeight;
+        label.style.left = `${x}px`;
+        label.style.top = `${y - 12}px`;
+      }
+    }
+
+    function render() {
+      requestAnimationFrame(render);
+      const elapsed = clock.getElapsedTime();
+      for (const material of starMaterials) material.uniforms.uTime.value = reducedMotion.matches ? 0 : elapsed;
+      if (!reducedMotion.matches) {
+        sky.rotation.y += 0.000018;
+        itokawa.rotation.y += 0.00012;
+        itokawa.rotation.z += 0.000035;
+        hayabusaOrbit.rotation.z += 0.00033;
+        hayabusa.rotation.y += 0.0011;
+        hayabusa.rotation.z += 0.0002;
+        atmosphereSprite.material.opacity = 0.55 + Math.sin(elapsed * 0.32) * 0.06;
+      }
+      composer.render();
+      updateLabel();
+    }
+
+    resize();
+    window.addEventListener("resize", resize, { passive: true });
+    window.visualViewport?.addEventListener("resize", resize, { passive: true });
+    const viewportObserver = new ResizeObserver(resize);
+    viewportObserver.observe(canvas);
+    document.addEventListener("visibilitychange", resize);
+    window.setInterval(() => {
+      if (window.innerWidth !== viewportWidth || window.innerHeight !== viewportHeight) resize();
+    }, 500);
+    reducedMotion.addEventListener?.("change", () => { for (const material of starMaterials) material.uniforms.uTime.value = 0; });
+    render();
+
+    function setLocation(latitude, longitude) {
+      const lat = THREE.MathUtils.clamp(latitude, -90, 90);
+      const lon = THREE.MathUtils.euclideanModulo(longitude + 180, 360) - 180;
+      camera.rotation.x = THREE.MathUtils.degToRad(lat * 0.08);
+      camera.rotation.y = THREE.MathUtils.degToRad(-lon * (window.innerWidth < 560 ? 0.008 : 0.018));
+      updateLabel();
+      status.textContent = `現在地に合わせて星空を調整しました（緯度 ${lat.toFixed(1)}°）。`;
+      window.setTimeout(() => modal.classList.add("is-hidden"), 950);
+    }
+
+    locateButton.addEventListener("click", () => {
+      if (!navigator.geolocation) {
+        status.textContent = "位置情報に対応していません。位置情報なしで星空を表示します。";
+        window.setTimeout(() => modal.classList.add("is-hidden"), 1100);
+        return;
+      }
+      locateButton.disabled = true;
+      status.textContent = "現在地を確認しています…";
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          setLocation(coords.latitude, coords.longitude);
+          locateButton.disabled = false;
+        },
+        () => {
+          status.textContent = "位置情報を取得できませんでした。位置情報なしで星空を表示します。";
+          locateButton.disabled = false;
+          window.setTimeout(() => modal.classList.add("is-hidden"), 1700);
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 },
+      );
+    });
+  </script>
+</body>
+</html>
