@@ -46,3 +46,6 @@ next-env.d.ts
 /work/
 *.tar
 /.wrangler/
+
+# Claude Code の作業用コピー
+.claude/worktrees/
