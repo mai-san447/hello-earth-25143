@@ -68,6 +68,7 @@ export function MissionExperience({
           </div>
           <div className="mission-dock-meta">
             <p className="gesture-hint" id="gesture-hint">願いを預けると、星がイトカワの軌道に浮かびます</p>
+            <button className="others-trigger" id="others-open" type="button" hidden>みんなの星 <span id="others-count">0</span></button>
             <button className="archive-trigger" id="archive-open" type="button">地球の回収記録 <span id="archive-count">0</span></button>
           </div>
         </section>
@@ -81,6 +82,14 @@ export function MissionExperience({
             <label htmlFor="return-from">帰還が始まる日（任意）</label>
             <input id="return-from" type="date" aria-describedby="return-from-hint" />
             <p id="return-from-hint">入院中など、しばらく手放しておきたいときに。この日までは振っても帰ってきません。空欄なら、すぐ帰還の候補になります。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないと保存が消えることがあります）。</p>
+          </div>
+          {/* #22 みんなの星。サーバーの準備ができた環境でだけ出す（初期値は「流さない」） */}
+          <div className="publish-field" id="publish-field" hidden>
+            <label className="publish-option">
+              <input id="publish-wish" type="checkbox" aria-describedby="publish-hint" />
+              この願いを、名前を出さずに星空に流す
+            </label>
+            <p id="publish-hint">言葉だけが30日間、ほかの人の星空に小さく出ます。預けた願いは、これまでどおりこの端末の中にあります。</p>
           </div>
           <button className="launch-button" id="deposit" type="button">星を軌道へ送る <span aria-hidden="true">↗</span></button>
           <p className="sheet-status" id="deposit-status" role="status" />
@@ -137,6 +146,10 @@ export function MissionExperience({
             <button id="signal-share-button" type="button">応援リンクを送る</button>
             <p className="signal-share-status" id="signal-share-status" role="status" aria-live="polite" />
           </div>
+          <div className="orbit-number" id="orbit-number" hidden>
+            <p>あなたの番号 <b id="orbit-number-value" /></p>
+            <p className="orbit-number-note">この作品の中だけの番号です。本物の星や小惑星に名前が付くわけではありません（国際天文学連合・JAXA とは関係ありません）。</p>
+          </div>
           <section className="my-record" aria-labelledby="my-record-title">
             <h3 id="my-record-title">あなたの記録</h3>
             <dl id="my-record" />
@@ -172,8 +185,8 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>入力内容と保存</h3>
-                <p>願いは60文字以内で入力できます。イトカワの軌道に置ける願いは30個まで、帰還が始まる日は翌日から1年後までです。応援の信号は、同じ星へは1台の端末から1日1回まで送れます。現在のCloudflare版では、願いと回収記録はこのブラウザーのIndexedDBに保存され、アプリのサーバーやクラウドへ送信されません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。</p>
-                <p>願いはこの端末の中にだけ保存され、運営者やサーバーには送られません。ほかの人に見られたくない内容を書くときは、端末の画面ロックをお使いください。パスワードや、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
+                <p>願いは60文字以内で入力できます。イトカワの軌道に置ける願いは30個まで、帰還が始まる日は翌日から1年後までです。応援の信号は、同じ星へは1台の端末から1日1回まで送れます。現在のCloudflare版では、願いと回収記録はこのブラウザーのIndexedDBに保存され、アプリのサーバーやクラウドへ送信されません（「星空に流す」を選んだ言葉だけは例外です。下の「みんなの星」をご覧ください）。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。</p>
+                <p>願いはこの端末の中にだけ保存され、「星空に流す」を選ばない限り、運営者やサーバーには送られません。ほかの人に見られたくない内容を書くときは、端末の画面ロックをお使いください。パスワードや、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
               </section>
               <section>
                 <h3>端末への保存（オフライン）</h3>
@@ -182,6 +195,12 @@ export function MissionExperience({
               <section>
                 <h3>応援の信号</h3>
                 <p>応援リンク（/signal）から信号が送られると、サーバーにはこの端末で作ったランダムな識別子（軌道ID）と、信号が届いた時刻だけを保存します。送った人の名前・言葉、願いの内容は保存しません。応援リンクを知っている人は誰でも信号を送れます。この機能は、サーバー側の準備ができた環境でだけ表示されます。</p>
+              </section>
+              <section>
+                <h3>みんなの星（匿名の公開）</h3>
+                <p>願いを預けるときに「星空に流す」を選んだ場合と、「叶ったよ」のひとことを流した場合に限り、その言葉（願いは60文字、叶ったよは40文字まで）と軌道IDをサーバーに保存し、名前を出さずにほかの利用者の星空に表示します。初期値は「流さない」です。名前・メールアドレス・IPアドレスは保存しません。公開した言葉は、願いは30日、「叶ったよ」は24時間で表示されなくなります。</p>
+                <p>URL、メールアドレス、電話番号らしい数字、病院名らしい言葉、登録した注意語が入った言葉は、すぐには表示せず、運営者が確認してから表示するか決めます。ほかの利用者から通報が3件あった言葉は非表示になり、運営者が確認します。運営者は、公開された言葉を確認・非表示・削除できます。</p>
+                <p>はじめて公開した端末には「25143-0001」のような番号を付けます。これはこの作品の中だけの番号で、本物の星や小惑星の名前ではありません。国際天文学連合（IAU）やJAXAとは関係ありません。この機能は、サーバー側の準備ができた環境でだけ表示されます。</p>
               </section>
               <section>
                 <h3>位置情報</h3>
@@ -197,6 +216,53 @@ export function MissionExperience({
               </section>
               <p className="policy-contact-note">個人制作の試験公開版です。お問い合わせは、MORUNE のサイトの<a href="https://morune.store/contact" target="_blank" rel="noopener noreferrer">問い合わせフォーム</a>からお願いします。</p>
             </div>
+          </div>
+        </section>
+        {/* #22 みんなの星：はじめて公開する前の約束 */}
+        <section className="stars-backdrop" id="promise-sheet" role="dialog" aria-modal="true" aria-labelledby="promise-title" hidden>
+          <div className="stars-panel">
+            <p className="sheet-kicker">STARS OF EVERYONE</p>
+            <h2 id="promise-title">星空に流す前に、3つの約束</h2>
+            <ul className="promise-list">
+              <li>やさしい言葉だけを流します</li>
+              <li>名前・連絡先・病院名は書きません</li>
+              <li>他の人の願いを笑いません</li>
+            </ul>
+            <p className="stars-note">流れるのは言葉だけです。名前や端末の情報は出ません。願いは30日、「叶ったよ」は24時間で空から消えます。</p>
+            <button className="stars-primary" id="promise-agree" type="button">約束して流す</button>
+            <button className="stars-secondary" id="promise-decline" type="button">今は流さない</button>
+          </div>
+        </section>
+        {/* 他の人の星に触れたときのカード。できるのは信号と通報だけ（返信・いいねの数は作らない） */}
+        <section className="stars-backdrop" id="star-card" role="dialog" aria-modal="true" aria-labelledby="star-card-text" hidden>
+          <div className="stars-panel star-card">
+            <button className="sheet-close" id="star-card-close" type="button" aria-label="閉じる">×</button>
+            <p className="sheet-kicker" id="star-card-kicker">SOMEONE&apos;S WISH</p>
+            <h2 id="star-card-text" />
+            <p className="stars-note">名前を出さずに流された言葉です。</p>
+            <div className="star-card-actions" id="star-card-actions">
+              <button className="stars-primary" id="star-signal" type="button">応援の信号を送る</button>
+              <button className="star-report" id="star-report" type="button">通報</button>
+            </div>
+            <div className="star-report-confirm" id="star-report-confirm" hidden>
+              <p>この言葉を通報しますか。運営者が確かめます。</p>
+              <button className="stars-primary" id="star-report-send" type="button">通報する</button>
+              <button className="stars-secondary" id="star-report-cancel" type="button">やめる</button>
+            </div>
+            <p className="stars-status" id="star-card-status" role="status" aria-live="polite" />
+          </div>
+        </section>
+        {/* #22 想いを受け取ったあとの「叶ったよ」（任意・24時間の流れ星） */}
+        <section className="stars-backdrop" id="fulfilled-sheet" role="dialog" aria-modal="true" aria-labelledby="fulfilled-title" hidden>
+          <div className="stars-panel">
+            <p className="sheet-kicker">SHOOTING STAR / 24H</p>
+            <h2 id="fulfilled-title">「叶ったよ」のひとこと（任意）</h2>
+            <p className="stars-note">書くと、24時間だけ、ほかの人の星空に流れ星として出ます。名前は出ません。</p>
+            <textarea id="fulfilled-text" maxLength={40} aria-label="叶ったよ、のひとこと" placeholder="例：海を見に行けた" />
+            <div className="input-meta"><span>ONE LINE</span><span><b id="fulfilled-length">0</b> / 40</span></div>
+            <button className="stars-primary" id="fulfilled-send" type="button">流れ星にして流す</button>
+            <button className="stars-secondary" id="fulfilled-skip" type="button">今は流さない</button>
+            <p className="stars-status" id="fulfilled-status" role="status" aria-live="polite" />
           </div>
         </section>
         <div className="itokawa-label" id="itokawa-label" aria-hidden="true" hidden>25143 ITOKAWA</div>
