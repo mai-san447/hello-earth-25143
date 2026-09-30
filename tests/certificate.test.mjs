@@ -23,3 +23,9 @@ test('願いの言葉は、選んだときだけ入れる（初期値は入れ�
 test('公式の命名だと誤解させない一文を必ず入れる', () => {
   assert.match(certificateContent({wish, now: at(2026, 10, 3)}).footnote, /作品 MORUNE 25143 の中の記録/);
 });
+
+test('みんなの星の番号（枝番）は、発行されているときだけ入れる', () => {
+  assert.equal(certificateContent({wish, now: at(2026, 10, 3)}).lines.length, 3);
+  const lines = certificateContent({wish, now: at(2026, 10, 3), number: '25143-0001'}).lines;
+  assert.deepEqual(lines.at(-1), {label: 'あなたの番号', value: '25143-0001'});
+});

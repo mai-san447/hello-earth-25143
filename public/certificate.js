@@ -16,13 +16,15 @@ export function formatDateJa(time) {
 }
 
 // 願いの言葉を入れるかは本人が選ぶ（初期値は入れない）。入院中の願いは個人的な内容になりやすいため。
-export function certificateContent({wish, now, includeText = false, distanceLine = ''}) {
+// number はみんなの星で発行された枝番（25143-0001 など）。公開したことがなければ入れない
+export function certificateContent({wish, now, includeText = false, distanceLine = '', number = null}) {
   const days = Math.max(0, Math.round((startOfLocalDay(now) - startOfLocalDay(wish.createdAt)) / DAY_MS));
   const lines = [
     {label: '預けた日', value: formatDateJa(wish.createdAt)},
     {label: '帰った日', value: formatDateJa(now)},
     {label: '旅した日数', value: `${days}日`},
   ];
+  if (number) lines.push({label: 'あなたの番号', value: number});
   return {
     title: '帰還証明書',
     kicker: 'WISH STAR / RETURNED — 25143',
