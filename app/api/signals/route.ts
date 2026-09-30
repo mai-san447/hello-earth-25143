@@ -1,8 +1,9 @@
 import { env } from "cloudflare:workers";
-import { and, count, desc, eq, gte, lt } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { signals } from "../../../db/schema";
-import { BURST_WINDOW_MS, DAILY_WINDOW_MS, MAX_TIMES, RETENTION_MS, acceptSignal, isOrbitId } from "./rules.mjs";
+import { recordSignal } from "./record";
+import { MAX_TIMES, RETENTION_MS, isOrbitId } from "./rules.mjs";
 
 // 応援の信号。D1 の `DB` が用意されていない環境（今の本番）では機能ごと隠す。
 // 名前・言葉・IPアドレスは受け取らず、保存もしない。
@@ -39,24 +40,8 @@ export async function POST(request: Request) {
   const orbitId = body && typeof body === "object" ? (body as Record<string, unknown>).orbitId : undefined;
   if (!isOrbitId(orbitId)) return Response.json({ error: "信号の送り先を確認してください。" }, { status: 400 });
   try {
-    const now = Date.now();
-    const db = getDb();
-    const countSince = async (since: number) => {
-      const [row] = await db
-        .select({ value: count() })
-        .from(signals)
-        .where(and(eq(signals.orbitId, orbitId as string), gte(signals.createdAt, since)));
-      return row?.value ?? 0;
-    };
-    const verdict = acceptSignal({
-      orbitId,
-      recentCount: await countSince(now - BURST_WINDOW_MS),
-      dailyCount: await countSince(now - DAILY_WINDOW_MS),
-    });
+    const verdict = await recordSignal(orbitId as string);
     if (!verdict.ok) return Response.json({ error: verdict.error }, { status: verdict.status });
-    await db.insert(signals).values({ id: crypto.randomUUID(), orbitId: orbitId as string, createdAt: now });
-    // #17 1年を過ぎた信号は、この星に次の信号が届いたときに消す
-    await db.delete(signals).where(and(eq(signals.orbitId, orbitId as string), lt(signals.createdAt, now - RETENTION_MS)));
     return Response.json({ ok: true });
   } catch (error) {
     console.error("signals POST", error);
