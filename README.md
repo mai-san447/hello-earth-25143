@@ -59,12 +59,14 @@ GS 卒業制作（**2026-10-07 提出**）の入口。ここから全部たど�
 - 受け取った願いを、言葉の近さでつないだ星座（最小全域木・Prim 法）
 - 応援の信号：応援リンクから誰かが振ると、軌道で待つ星が明るくなる（名前も言葉も届かない）。**本番ではデータベース未作成のため停止中**（Issue #10）
 - 一度開けば、ネットのない病室でも開ける（Service Worker）。ホーム画面に追加できる
+- みんなの星：選んだ願いだけを名前を出さずに星空に流し、他の人の星に応援の信号を送れる。「叶ったよ」は24時間の流れ星。はじめて流すと枝番（25143-0001 など、この作品の中だけの番号）が付く。**本番では表が未作成のため停止中**（Issue #22・#23）
 
 ## 保存と通信
 
 - 願いはこの端末のブラウザ（IndexedDB）にだけ保存します。本番は `CHATGPT_SYNC_ENABLED=false` で、ログイン同期は使っていません
 - 画面と部品は Service Worker が端末に保存します（`public/sw.js`）
 - 応援の信号を有効にした場合、サーバーに保存するのは「軌道ID（端末で作るランダムな UUID）と、信号が届いた時刻」だけです
+- みんなの星を有効にした場合、本人が「星空に流す」を選んだ言葉と軌道IDを保存します（名前・IP は保存しません）。願い30日・叶ったよ24時間で空から消えます
 
 ## 構成
 
@@ -77,6 +79,7 @@ GS 卒業制作（**2026-10-07 提出**）の入口。ここから全部たど�
 | イトカワの距離 | `public/itokawa.js`、`public/itokawa-distance.json` |
 | 星座・信号の数え方 | `public/constellation.js` |
 | 応援の信号 | `app/api/signals/`（Cloudflare D1 の `signals` 表、`drizzle/0001_signals.sql`）、応援ページ `app/signal/`・`public/signal.js` |
+| みんなの星 | `app/api/stars/`（数とルールは `rules.mjs`）、`public/public-stars.js`、D1 の `orbits`・`public_stars`・`star_reports` 表（`drizzle/0002_public_stars.sql`） |
 | ログイン同期（本番では停止） | `app/api/wishes/route.ts`、Supabase（`docs/SUPABASE-SETUP.md`） |
 
 ## 開発
@@ -92,7 +95,7 @@ npm run build
 ```
 
 - 手元の開発サーバーは、`vite.config.ts` で互換日を手元の Miniflare に合わせて下げています（本番の設定は `wrangler.jsonc`）
-- 手元で応援の信号を試すには、開発用の D1 に表を作ります：`drizzle/0001_signals.sql` を `wrangler d1 execute ... --local` で流す
+- 手元で応援の信号・みんなの星を試すには、開発用の D1 に表を作ります：`drizzle/0001_signals.sql` と `drizzle/0002_public_stars.sql` を `wrangler d1 execute ... --local` で流す（開発サーバーの D1 は `vite.config.ts` の `site-creator-d1` なので、その設定で流す）
 - push と Pull Request のたびに、GitHub Actions（`.github/workflows/ci.yml`）がテスト・lint・ビルドを確かめます
 
 ## 公開
@@ -108,6 +111,34 @@ npx wrangler deploy --config wrangler.jsonc
 - 戻すとき：`npx wrangler deployments list --config wrangler.jsonc` で版を確かめ、`npx wrangler rollback <版ID>`
 - `.github/workflows/deploy-cloudflare.yml`（main への push で公開）は、GitHub に鍵が未登録のため動いていません。main への取り込みと公開手順の整理は Issue #9
 - 応援の信号を本番で使う手順は `docs/状態設計.md`（Issue #10）
+
+## 保留・通報された言葉の確認
+
+みんなの星で「保留（held）」になった言葉と、通報で「非表示（hidden）」になった言葉は、運営者（本人）が確かめて表示・非表示を決めます。管理画面はまだないので、手元の PC から SQL で行います。**本番のデータを触るので、落ち着いて1つずつ。**
+
+一覧を見る（新しい順）：
+
+```bash
+npx wrangler d1 execute morune-25143 --remote --command "SELECT id, kind, status, reports, text, datetime(created_at/1000, 'unixepoch', '+9 hours') AS created_jst, datetime(expires_at/1000, 'unixepoch', '+9 hours') AS expires_jst FROM public_stars WHERE status IN ('held', 'hidden') ORDER BY created_at DESC LIMIT 50"
+```
+
+表示に戻す／非表示にする（`<星のid>` を一覧の id に置き換える）：
+
+```bash
+npx wrangler d1 execute morune-25143 --remote --command "UPDATE public_stars SET status = 'visible' WHERE id = '<星のid>'"
+npx wrangler d1 execute morune-25143 --remote --command "UPDATE public_stars SET status = 'hidden' WHERE id = '<星のid>'"
+```
+
+- 通報で非表示になった言葉を表示に戻すときは、通報数も 0 に戻す：`UPDATE public_stars SET status = 'visible', reports = 0 WHERE id = '<星のid>'`（通報した端末の記録 `star_reports` は残すので、同じ端末からの二重の通報は数えない）
+- 消すとき（取り返しがつかない）：`DELETE FROM star_reports WHERE star_id = '<星のid>'` → `DELETE FROM public_stars WHERE id = '<星のid>'`
+
+書き出し（バックアップ。1つの外部サービスが止まっても、公開された言葉を手元に残す）：
+
+```bash
+npx wrangler d1 export morune-25143 --remote --output backup-$(date +%Y-%m-%d).sql
+```
+
+書き出したファイルには公開された言葉が入るので、Git にコミットしない。
 
 ## JAXA素材
 
