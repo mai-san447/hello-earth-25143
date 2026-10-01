@@ -1,0 +1,579 @@
+<title>本物の星座でウィッシュリスト</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700&family=Zen+Old+Mincho:wght@400;700&display=swap">
+<style>
+  /* 夜空の作品なので、あえて暗い見た目ひとつに決めている（本体アプリ・試作 v2 と同じ色）
+     レイアウト：上に「いまの段階」、まん中に星図（なぞる場所）、下にその段階の操作 */
+  :root {
+    color-scheme: dark;
+    --sky: #0a0f1e;
+    --sky-deep: #121a33;
+    --gold: #f2d08d;
+    --gold-ink: #1b1606;
+    --gold-soft: rgba(242, 208, 141, .26);
+    --blue: #bcd4ff;
+    --text: #ebe7dc;
+    --muted: #9aa5b8;
+    --line: rgba(199, 213, 207, .16);
+    --panel: #111830;
+    --panel-2: #172042;
+    --mincho: "Zen Old Mincho", "Yu Mincho", "Hiragino Mincho ProN", serif;
+    --gothic: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  html, body { background: var(--sky); }
+  body { color: var(--text); font-family: var(--gothic); line-height: 1.7; padding-inline: 16px; padding-block: 16px 96px; }
+  .wrap { max-width: 720px; margin: 0 auto; display: grid; gap: 18px; }
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, input:focus-visible, .theme:focus-within { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .steps li { display: grid; gap: 4px; font-size: 11px; color: var(--muted); }
+  .steps li::before { content: ""; height: 3px; border-radius: 3px; background: var(--line); }
+  .steps li[data-state="done"]::before { background: var(--gold-soft); }
+  .steps li[data-state="now"] { color: var(--gold); font-weight: 700; }
+  .steps li[data-state="now"]::before { background: var(--gold); }
+
+  .heading { display: grid; gap: 4px; }
+  .kicker { margin: 0; font: 11px var(--mono); letter-spacing: .14em; color: var(--gold); }
+  h1 { margin: 0; font: 700 clamp(22px, 6vw, 30px)/1.4 var(--mincho); text-wrap: balance; }
+  h2 { margin: 0; font: 700 18px/1.4 var(--mincho); text-wrap: balance; }
+  .lead { margin: 0; color: var(--muted); font-size: 14px; }
+
+  .sky-card { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--line);
+    background: radial-gradient(120% 90% at 85% 0%, #1d2852 0%, var(--sky-deep) 45%, var(--sky) 100%); }
+  canvas#sky { display: block; width: 100%; aspect-ratio: 16 / 11; max-width: 100%; touch-action: none; }
+  .sky-label { position: absolute; left: 14px; top: 10px; display: grid; pointer-events: none; }
+  .sky-label strong { font: 700 17px var(--mincho); }
+  .sky-label span { font: 12px var(--mono); color: var(--gold); font-variant-numeric: tabular-nums; }
+  .sky-hint { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; font-size: 13px; color: var(--gold); pointer-events: none; }
+
+  .panel { display: grid; gap: 12px; }
+  .themes { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+  .theme { position: relative; display: grid; gap: 4px; padding: 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .theme input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+  .theme .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .theme strong { font: 700 17px var(--mincho); }
+  .theme .count { font: 12px var(--mono); color: var(--muted); white-space: nowrap; }
+  .theme .desc { color: var(--muted); font-size: 12px; }
+  .badge { justify-self: start; font-size: 11px; padding: 1px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+  .badge[data-tonight="yes"] { border-color: var(--gold-soft); color: var(--gold); }
+  .theme:has(input:checked) { border-color: var(--gold); background: var(--panel-2); }
+
+  .field { display: grid; gap: 6px; }
+  .field label { font-size: 13px; color: var(--muted); }
+  .text-input { width: 100%; min-width: 0; font-size: 16px; padding: 10px 14px; border-radius: 12px;
+    border: 1px solid var(--line); background: rgba(0,0,0,.28); color: var(--text); font-family: var(--mincho); }
+
+  .wishlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .wishlist li { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; gap: 10px; }
+  .num { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1px dashed rgba(154,165,184,.5);
+    font: 12px var(--mono); color: var(--muted); }
+  .wishlist li[data-status="doing"] .num { border: 0; background: var(--gold); color: var(--gold-ink); font-weight: 700; }
+  .wishlist li[data-status="done"] .num { border: 0; background: var(--blue); color: var(--gold-ink); font-weight: 700; }
+  .wishlist li[data-status="expired"] .num { border: 1px solid var(--muted); color: var(--text); }
+  .wish-text { font-family: var(--mincho); font-size: 16px; overflow-wrap: anywhere; }
+  .wish-text small { display: block; font: 12px var(--gothic); color: var(--muted); }
+  .wish-hidden { color: var(--muted); font-size: 13px; }
+
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .btn { min-height: 44px; padding: 10px 18px; border-radius: 99px; border: 1px solid var(--gold); background: var(--gold); color: var(--gold-ink); font-weight: 700; }
+  .btn.ghost { background: transparent; color: var(--gold); }
+  .btn.quiet { background: transparent; color: var(--muted); border-color: var(--line); font-weight: 400; }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .helper { margin: 0; color: var(--muted); font-size: 12px; }
+
+  .returned { display: grid; gap: 10px; padding: 16px; border-radius: 14px; background: var(--panel); border: 1px solid var(--gold-soft); }
+  .returned blockquote { margin: 0; font: 700 20px/1.5 var(--mincho); overflow-wrap: anywhere; }
+  .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+
+  .star-card { display: grid; gap: 6px; padding: 16px; border-radius: 14px; background: var(--panel-2); border: 1px solid var(--gold-soft); }
+  .star-card .name { font: 700 22px var(--mincho); }
+  .star-card .facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 14px; font-size: 13px; margin: 0; }
+  .star-card dt { color: var(--muted); }
+  .star-card dd { margin: 0; font-variant-numeric: tabular-nums; }
+  .light { margin: 0; font-family: var(--mincho); font-size: 15px; }
+
+  .tonight { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 16px; align-items: center; padding: 16px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .tonight canvas { width: 150px; height: 150px; max-width: 100%; }
+  .tonight p { margin: 0; }
+  .tonight .big { font: 700 20px/1.5 var(--mincho); }
+  @media (max-width: 460px) { .tonight { grid-template-columns: 1fr; justify-items: center; text-align: center; } }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin: 0; padding: 0; list-style: none; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+  .note { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; margin: 0; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <ol class="steps" id="steps">
+    <li data-step="0">1 星座をえらぶ</li>
+    <li data-step="1">2 願いを預ける</li>
+    <li data-step="2">3 帰ってきたら、なぞる</li>
+    <li data-step="3">4 今夜の空で探す</li>
+  </ol>
+
+  <header class="heading">
+    <p class="kicker">WISH CONSTELLATION — 25143 / 試作 v3</p>
+    <h1 id="title">帰ってきた願いは、本物の星にとまる</h1>
+    <p class="lead" id="lead">ウィッシュリストを、ひとつの本物の星座にします。願いの数と同じ数の星でできた星座をえらんでください。</p>
+  </header>
+
+  <div class="sky-card">
+    <canvas id="sky" aria-label="星図。帰ってきた願いを、星から星へ指でなぞってつなぎます"></canvas>
+    <div class="sky-label"><strong id="sky-name">—</strong><span id="sky-count">0 / 0</span></div>
+    <p class="sky-hint" id="sky-hint"></p>
+  </div>
+  <ul class="legend" aria-label="星の色">
+    <li><i style="background:var(--gold)"></i>これやろう</li>
+    <li><i style="background:var(--blue)"></i>もう叶った・対応済み</li>
+    <li><i style="background:var(--muted)"></i>もう用済み（手放せた）</li>
+    <li><i style="border:1px dashed var(--muted)"></i>まだ軌道の上</li>
+  </ul>
+
+  <!-- 1 -->
+  <section class="panel" id="step-0">
+    <h2>どの星座にしますか</h2>
+    <div class="themes" id="themes"></div>
+    <p class="helper">「今夜見える」は、東京で今夜19〜24時に、星座の星がすべて地平線から10°以上の高さに来るかで決めています。</p>
+    <div class="row"><button class="btn" id="to-wishes" type="button">この星座で書く</button></div>
+  </section>
+
+  <!-- 2 -->
+  <section class="panel" id="step-1" hidden>
+    <h2 id="write-title">願いを書く</h2>
+    <div class="field">
+      <label for="list-name">この星座につける呼び名（自分だけのもの）</label>
+      <input class="text-input" id="list-name" value="退院したらやりたいこと">
+    </div>
+    <ol class="wishlist" id="write-list"></ol>
+    <p class="helper">例をあらかじめ入れています。書きかえて試せます。預けると文字は見えなくなり、どれが先に帰ってくるかは選べません。</p>
+    <div class="row">
+      <button class="btn" id="launch" type="button">イトカワへ預ける</button>
+      <button class="btn quiet" id="back-0" type="button">星座をえらび直す</button>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="panel" id="step-2" hidden>
+    <div class="returned" id="returned" hidden>
+      <p class="kicker">RETURNED — 1つ帰ってきました</p>
+      <blockquote id="returned-text"></blockquote>
+      <p class="helper">この願いを、いまどうしますか。「いまはいいや」以外を選ぶと、星座の星がひとつ灯ります。</p>
+      <div class="choices">
+        <button class="btn" data-choice="doing" type="button">これやろう</button>
+        <button class="btn ghost" data-choice="done" type="button">もう叶った・対応済み</button>
+        <button class="btn ghost" data-choice="expired" type="button">もう用済み</button>
+        <button class="btn quiet" data-choice="back" type="button">いまはいいや（軌道へ戻す）</button>
+      </div>
+    </div>
+
+    <div class="star-card" id="star-card" hidden>
+      <p class="kicker" id="star-kicker">NEW STAR</p>
+      <span class="name" id="star-name"></span>
+      <dl class="facts" id="star-facts"></dl>
+      <p class="light" id="star-light"></p>
+    </div>
+
+    <div class="row" id="trace-fallback" hidden>
+      <button class="btn ghost" id="connect" type="button">なぞらずに線をつなぐ</button>
+    </div>
+
+    <div class="row" id="next-row">
+      <button class="btn" id="next-return" type="button">次の願いを帰す（試作は早送り）</button>
+    </div>
+    <ol class="wishlist" id="orbit-list" aria-label="預けた願い"></ol>
+  </section>
+
+  <!-- 4 -->
+  <section class="panel" id="step-3" hidden>
+    <h2 id="done-title">星座ができました</h2>
+    <div class="tonight">
+      <canvas id="dial" width="300" height="300" aria-label="方角と高さ"></canvas>
+      <div>
+        <p class="helper" id="tonight-when">今夜</p>
+        <p class="big" id="tonight-where"></p>
+        <p class="helper" id="tonight-now"></p>
+      </div>
+    </div>
+    <p class="lead" id="done-lead"></p>
+    <div class="row">
+      <button class="btn" id="again" type="button">別の星座でやってみる</button>
+    </div>
+  </section>
+
+  <p class="note">試作です。星の位置・明るさ・距離は概数で、本番では公開の星表（Yale Bright Star Catalog）と理科年表で確かめて入れます。方角と高さは東京（北緯35.7°・東経139.7°）で計算しています。位置情報は使いません。</p>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  // ─── 星のデータ（RA は時、Dec は度、mag は等級、ly は光年）──────────────────
+  // path は灯る順番（つねに前の星と線でつながる順）。edges は星座の線。
+  const H = (h, m, s) => (h + m / 60 + s / 3600) * 15;  // 赤経を度に
+  const D = (d, m) => d < 0 || Object.is(d, -0) ? d - m / 60 : d + m / 60;
+  const CONSTELLATIONS = [
+    {
+      id: 'summer', name: '夏の大三角', kind: '星の並び', season: '8月の宵', count: 3,
+      desc: 'ベガ（織姫）とアルタイル（彦星）。七夕の、願いの星。',
+      stars: [
+        {name: 'ベガ', of: 'こと座', ra: H(18,36,56), dec: D(38,47), mag: 0.0, ly: 25, fact: '七夕の織姫星。'},
+        {name: 'アルタイル', of: 'わし座', ra: H(19,50,47), dec: D(8,52), mag: 0.8, ly: 17, fact: '七夕の彦星。'},
+        {name: 'デネブ', of: 'はくちょう座', ra: H(20,41,26), dec: D(45,17), mag: 1.3, ly: 1400, approx: true, fact: 'はくちょうのしっぽ。遠すぎて、距離は測り方で大きく変わります。'},
+      ],
+      edges: [[0,1],[1,2],[2,0]],
+    },
+    {
+      id: 'pegasus', name: '秋の四辺形', kind: '星の並び', season: '10月の宵', count: 4,
+      desc: 'ペガスス座の大きな四角。秋の空の目じるし。',
+      stars: [
+        {name: 'マルカブ', of: 'ペガスス座', ra: H(23,4,46), dec: D(15,12), mag: 2.5, ly: 133, fact: '天馬ペガススの体の角。'},
+        {name: 'シェアト', of: 'ペガスス座', ra: H(23,3,46), dec: D(28,5), mag: 2.4, ly: 196, fact: '赤い色の星。明るさが少し変わります。'},
+        {name: 'アルフェラッツ', of: 'アンドロメダ座', ra: H(0,8,23), dec: D(29,5), mag: 2.1, ly: 97, fact: '四角の1つだけ、となりのアンドロメダ座の星。'},
+        {name: 'アルゲニブ', of: 'ペガスス座', ra: H(0,13,14), dec: D(15,11), mag: 2.8, ly: 390, fact: '四角のなかでいちばん暗い星。'},
+      ],
+      edges: [[0,1],[1,2],[2,3],[3,0]],
+    },
+    {
+      id: 'cassiopeia', name: 'カシオペヤ座', kind: '星座', season: '11月の宵（北の空・一年中）', count: 5,
+      desc: 'W の形。北極星を探す目じるしにもなる。',
+      stars: [
+        {name: 'カフ', of: 'カシオペヤ座β', ra: H(0,9,11), dec: D(59,9), mag: 2.3, ly: 55, fact: 'W のはしの星。'},
+        {name: 'シェダル', of: 'カシオペヤ座α', ra: H(0,40,30), dec: D(56,32), mag: 2.2, ly: 228, fact: 'オレンジ色の星。'},
+        {name: 'ツィー', of: 'カシオペヤ座γ', ra: H(0,56,43), dec: D(60,43), mag: 2.2, ly: 550, approx: true, fact: 'W のまん中。明るさが年ごとに変わります。'},
+        {name: 'ルクバー', of: 'カシオペヤ座δ', ra: H(1,25,49), dec: D(60,14), mag: 2.7, ly: 99, fact: '「ひざ」という意味の名前。'},
+        {name: 'セギン', of: 'カシオペヤ座ε', ra: H(1,54,24), dec: D(63,40), mag: 3.4, ly: 410, fact: 'W のもう一方のはし。'},
+      ],
+      edges: [[0,1],[1,2],[2,3],[3,4]],
+    },
+    {
+      id: 'hexagon', name: '冬のダイヤモンド', kind: '星の並び', season: '1月の宵', count: 6,
+      desc: '冬の明るい1等星6つをつなぐ大きな六角形。',
+      stars: [
+        {name: 'シリウス', of: 'おおいぬ座', ra: H(6,45,9), dec: D(-16,43), mag: -1.5, ly: 8.6, fact: '夜空でいちばん明るい星。'},
+        {name: 'プロキオン', of: 'こいぬ座', ra: H(7,39,18), dec: D(5,14), mag: 0.4, ly: 11.5, fact: '「犬の前に」という意味。シリウスより先に昇ります。'},
+        {name: 'ポルックス', of: 'ふたご座', ra: H(7,45,19), dec: D(28,2), mag: 1.1, ly: 34, fact: 'ふたごの弟。'},
+        {name: 'カペラ', of: 'ぎょしゃ座', ra: H(5,16,41), dec: D(46,0), mag: 0.1, ly: 43, fact: '黄色い星。じつは星が4つ集まっています。'},
+        {name: 'アルデバラン', of: 'おうし座', ra: H(4,35,55), dec: D(16,31), mag: 0.9, ly: 65, fact: '牛の赤い目。'},
+        {name: 'リゲル', of: 'オリオン座', ra: H(5,14,32), dec: D(-8,12), mag: 0.1, ly: 860, approx: true, fact: 'オリオンの足もとの青白い星。'},
+      ],
+      edges: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,0]],
+    },
+    {
+      id: 'dipper', name: '北斗七星', kind: '星の並び（おおぐま座）', season: '5月の宵（北の空）', count: 7,
+      desc: 'ひしゃくの形の7つの星。1週間で1つずつにもちょうどいい数。',
+      stars: [
+        {name: 'ドゥーベ', of: 'おおぐま座α', ra: H(11,3,44), dec: D(61,45), mag: 1.8, ly: 123, fact: 'ひしゃくの口。北極星を指す2つの星のひとつ。'},
+        {name: 'メラク', of: 'おおぐま座β', ra: H(11,1,50), dec: D(56,23), mag: 2.4, ly: 79, fact: 'ドゥーベとの間を5倍のばすと北極星。'},
+        {name: 'フェクダ', of: 'おおぐま座γ', ra: H(11,53,50), dec: D(53,42), mag: 2.4, ly: 84, fact: 'ひしゃくの底。'},
+        {name: 'メグレズ', of: 'おおぐま座δ', ra: H(12,15,26), dec: D(57,2), mag: 3.3, ly: 81, fact: '7つのなかでいちばん暗い星。'},
+        {name: 'アリオト', of: 'おおぐま座ε', ra: H(12,54,2), dec: D(55,58), mag: 1.8, ly: 83, fact: '7つのなかでいちばん明るい星。'},
+        {name: 'ミザール', of: 'おおぐま座ζ', ra: H(13,23,56), dec: D(54,56), mag: 2.2, ly: 83, fact: 'すぐ横にアルコルという小さな星。むかしは視力だめしに使われました。'},
+        {name: 'アルカイド', of: 'おおぐま座η', ra: H(13,47,32), dec: D(49,19), mag: 1.9, ly: 104, fact: 'ひしゃくの柄の先。'},
+      ],
+      edges: [[0,1],[1,2],[2,3],[3,0],[3,4],[4,5],[5,6]],
+    },
+  ];
+  const EXAMPLES = ['家族と海を見に行く', '新しいスニーカーで散歩', '友だちとランチ', 'ギターをもう一度', '途中の本を読み終える', '髪を明るい色にする', '星を見に行く'];
+
+  // ─── 天体の計算（東京で、ある時刻の高さと方角）────────────────────────────
+  const LAT = 35.69, LON = 139.69, RAD = Math.PI / 180;
+  function altAz(ra, dec, date) {
+    const jd = date.getTime() / 86400000 + 2440587.5;
+    const gmst = (280.46061837 + 360.98564736629 * (jd - 2451545)) % 360;
+    const ha = ((gmst + LON - ra) % 360 + 360) % 360;
+    const h = ha * RAD, d = dec * RAD, p = LAT * RAD;
+    const alt = Math.asin(Math.sin(p) * Math.sin(d) + Math.cos(p) * Math.cos(d) * Math.cos(h));
+    const az = Math.atan2(Math.sin(h), Math.cos(h) * Math.sin(p) - Math.tan(d) * Math.cos(p)) / RAD + 180;
+    return {alt: alt / RAD, az: (az + 360) % 360};
+  }
+  function center(c) {
+    // 赤経は 0h をまたぐ星座があるので、ベクトルの平均で真ん中を出す
+    let x = 0, y = 0, dec = 0;
+    for (const s of c.stars) { x += Math.cos(s.ra * RAD); y += Math.sin(s.ra * RAD); dec += s.dec; }
+    return {ra: ((Math.atan2(y, x) / RAD) + 360) % 360, dec: dec / c.stars.length};
+  }
+  function tonightHour(c, base = new Date()) {
+    for (let h = 19; h <= 24; h++) {
+      const t = new Date(base); t.setHours(h, 0, 0, 0);
+      if (c.stars.every(s => altAz(s.ra, s.dec, t).alt >= 10)) return t;
+    }
+    return null;
+  }
+  const DIRS = ['北', '北東', '東', '南東', '南', '南西', '西', '北西'];
+  const dirName = az => DIRS[Math.round(az / 45) % 8];
+
+  // ─── 状態 ──────────────────────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  const state = {cIdx: 0, step: 0, wishes: [], lit: [], pending: null, card: null, trace: null};
+  // wishes: {text, status: 'orbit'|'doing'|'done'|'expired', star: index|null}
+  // lit: path 順に灯った星（star index）。灯る順＝星の並び順で、いつも前の星と線でつながる。
+  const current = () => CONSTELLATIONS[state.cIdx];
+
+  // ─── 星図 ──────────────────────────────────────────────────────────────
+  const canvas = $('sky'), ctx = canvas.getContext('2d');
+  let layout = null, t0 = performance.now();
+  // 背景の星：試作では位置を固定した乱数（本番は星表の 4.5 等までの実際の星）
+  const field = Array.from({length: 140}, (_, i) => {
+    const r = n => (Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1;
+    return {x: Math.abs(r(1)), y: Math.abs(r(2)), m: Math.abs(r(3))};
+  });
+
+  function computeLayout() {
+    const c = current(), ctr = center(c);
+    const pts = c.stars.map(s => {
+      let dRa = s.ra - ctr.ra; if (dRa > 180) dRa -= 360; if (dRa < -180) dRa += 360;
+      return {x: -dRa * Math.cos(ctr.dec * RAD), y: -(s.dec - ctr.dec)};  // 東を左に（空を見上げた向き）
+    });
+    const w = canvas.clientWidth, h = canvas.clientHeight, pad = Math.min(w, h) * 0.2;
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const scale = Math.min((w - pad * 2) / (maxX - minX || 1), (h - pad * 2) / (maxY - minY || 1));
+    const ox = (w - (maxX - minX) * scale) / 2, oy = (h - (maxY - minY) * scale) / 2 + 8;
+    layout = pts.map(p => ({x: ox + (p.x - minX) * scale, y: oy + (p.y - minY) * scale}));
+  }
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    computeLayout();
+  }
+  const COLORS = {doing: '#f2d08d', done: '#bcd4ff', expired: '#9aa5b8'};
+  function starStatus(i) { const w = state.wishes.find(x => x.star === i); return w ? w.status : null; }
+  function draw(now) {
+    const w = canvas.clientWidth, h = canvas.clientHeight, c = current();
+    ctx.clearRect(0, 0, w, h);
+    for (const f of field) {
+      ctx.fillStyle = `rgba(235,231,220,${0.12 + f.m * 0.35})`;
+      ctx.beginPath(); ctx.arc(f.x * w, f.y * h, 0.5 + f.m * 0.8, 0, Math.PI * 2); ctx.fill();
+    }
+    const litSet = new Set(state.lit);
+    // 星座の線：灯った星どうしは金の線、まだのところは薄い点線（形の手がかり）
+    for (const [a, b] of c.edges) {
+      const on = litSet.has(a) && litSet.has(b);
+      ctx.strokeStyle = on ? 'rgba(242,208,141,.75)' : 'rgba(199,213,207,.13)';
+      ctx.lineWidth = on ? 1.6 : 1;
+      ctx.setLineDash(on ? [] : [3, 5]);
+      ctx.beginPath(); ctx.moveTo(layout[a].x, layout[a].y); ctx.lineTo(layout[b].x, layout[b].y); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    // なぞっている線
+    if (state.trace && state.trace.from != null && state.trace.pointer) {
+      const f = layout[state.trace.from];
+      ctx.strokeStyle = 'rgba(242,208,141,.9)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(state.trace.pointer.x, state.trace.pointer.y); ctx.stroke();
+    }
+    const pulse = (Math.sin((now - t0) / 380) + 1) / 2;
+    c.stars.forEach((s, i) => {
+      const p = layout[i], st = starStatus(i);
+      const size = Math.max(2.2, 6 - s.mag * 1.3);
+      const isTarget = state.trace && state.trace.to === i;
+      if (st) {
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 4);
+        g.addColorStop(0, COLORS[st]); g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, size * 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = COLORS[st]; ctx.beginPath(); ctx.arc(p.x, p.y, size, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(235,231,220,.85)'; ctx.font = '12px "Zen Kaku Gothic New", sans-serif';
+        ctx.fillText(s.name, p.x + size + 6, p.y + 4);
+      } else {
+        ctx.strokeStyle = isTarget ? `rgba(242,208,141,${0.5 + pulse * 0.5})` : 'rgba(154,165,184,.55)';
+        ctx.setLineDash([2, 3]); ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(p.x, p.y, isTarget ? 9 + pulse * 5 : 5, 0, Math.PI * 2); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    });
+    requestAnimationFrame(draw);
+  }
+
+  // ─── なぞる ────────────────────────────────────────────────────────────
+  function pointerPos(e) { const r = canvas.getBoundingClientRect(); return {x: e.clientX - r.left, y: e.clientY - r.top}; }
+  const near = (p, i, r = 26) => Math.hypot(p.x - layout[i].x, p.y - layout[i].y) < r;
+  canvas.addEventListener('pointerdown', e => {
+    if (!state.trace) return;
+    const p = pointerPos(e);
+    if (state.trace.from == null) { if (near(p, state.trace.to)) completeTrace(); return; }  // 最初の星はタップ
+    if (near(p, state.trace.from) || near(p, state.trace.to)) { state.trace.dragging = true; state.trace.pointer = p; canvas.setPointerCapture(e.pointerId); }
+    if (near(p, state.trace.to) && !near(p, state.trace.from)) completeTrace();
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (!state.trace || !state.trace.dragging) return;
+    state.trace.pointer = pointerPos(e);
+    if (near(state.trace.pointer, state.trace.to, 20)) completeTrace();
+  });
+  canvas.addEventListener('pointerup', () => { if (state.trace) { state.trace.dragging = false; state.trace.pointer = null; } });
+  $('connect').addEventListener('click', () => state.trace && completeTrace());
+
+  function completeTrace() {
+    const {to, wish} = state.trace;
+    state.trace = null;
+    wish.star = to; state.lit.push(to);
+    showStarCard(to, wish);
+    $('sky-hint').textContent = ''; $('trace-fallback').hidden = true;
+    renderOrbit();
+    if (state.lit.length === current().count) setTimeout(() => go(3), 1400);
+    else $('next-row').hidden = false;
+  }
+
+  function showStarCard(i, wish) {
+    const s = current().stars[i], year = new Date().getFullYear();
+    const departed = Math.round(year - s.ly);
+    $('star-kicker').textContent = `NEW STAR — ${state.lit.length} / ${current().count}`;
+    $('star-name').textContent = s.name;
+    $('star-facts').innerHTML = '';
+    const facts = [['星座', s.of], ['明るさ', `${s.mag.toFixed(1)} 等`], ['地球まで', `${s.approx ? '約' : ''}${s.ly} 光年`], ['この星の願い', wish.text]];
+    for (const [k, v] of facts) {
+      const dt = document.createElement('dt'); dt.textContent = k;
+      const dd = document.createElement('dd'); dd.textContent = v;
+      $('star-facts').append(dt, dd);
+    }
+    $('star-light').textContent = s.ly < 30
+      ? `いま見えるこの星の光は、${departed}年ごろに星を出た光です。${s.fact}`
+      : `いま見えるこの星の光は、約${Math.round(s.ly)}年前（${departed > 0 ? departed + '年' : '紀元前'}ごろ）に星を出た光です。${s.fact}`;
+    $('star-card').hidden = false;
+  }
+
+  // ─── 画面 ──────────────────────────────────────────────────────────────
+  function renderThemes() {
+    $('themes').innerHTML = '';
+    CONSTELLATIONS.forEach((c, i) => {
+      const t = tonightHour(c);
+      const label = document.createElement('label'); label.className = 'theme';
+      label.innerHTML = `<input type="radio" name="c" id="c-${c.id}" ${i === state.cIdx ? 'checked' : ''}>
+        <span class="top"><strong></strong><span class="count">${c.count} つの願い</span></span>
+        <span class="desc"></span>
+        <span class="badge" data-tonight="${t ? 'yes' : 'no'}">${t ? `今夜 ${t.getHours()}時ごろから見える` : `今夜は見えにくい（見ごろ ${c.season}）`}</span>`;
+      label.querySelector('strong').textContent = c.name;
+      label.querySelector('.desc').textContent = c.desc;
+      label.querySelector('input').addEventListener('change', () => { state.cIdx = i; computeLayout(); renderSkyLabel(); });
+      $('themes').append(label);
+    });
+  }
+  function renderSkyLabel() {
+    const c = current();
+    $('sky-name').textContent = c.name;
+    $('sky-count').textContent = `${state.lit.length} / ${c.count}`;
+  }
+  function renderWrite() {
+    const c = current();
+    $('write-title').textContent = `${c.name}に、${c.count}つの願いを書く`;
+    $('write-list').innerHTML = '';
+    for (let i = 0; i < c.count; i++) {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="num">${i + 1}</span><input class="text-input" id="w-${i}" aria-label="願い ${i + 1}">`;
+      li.querySelector('input').value = EXAMPLES[i];
+      $('write-list').append(li);
+    }
+  }
+  function renderOrbit() {
+    renderSkyLabel();
+    $('orbit-list').innerHTML = '';
+    state.wishes.forEach((w, i) => {
+      const li = document.createElement('li'); li.dataset.status = w.status;
+      const shown = w.status !== 'orbit';
+      li.innerHTML = `<span class="num">${i + 1}</span><span class="wish-text"></span>`;
+      const text = li.querySelector('.wish-text');
+      if (shown) {
+        text.textContent = w.text;
+        const small = document.createElement('small');
+        small.textContent = w.star != null ? `→ ${current().stars[w.star].name}` : '星をつなぐのを待っています';
+        text.append(small);
+      } else {
+        text.innerHTML = '<span class="wish-hidden">軌道の上（まだ見えません）</span>';
+      }
+      $('orbit-list').append(li);
+    });
+  }
+  function returnOne() {
+    const waiting = state.wishes.filter(w => w.status === 'orbit');
+    if (!waiting.length) return;
+    // どれが帰るかは選べない（本体アプリと同じ考え方）
+    state.pending = waiting[Math.floor(Math.random() * waiting.length)];
+    $('returned-text').textContent = state.pending.text;
+    $('returned').hidden = false; $('star-card').hidden = true; $('next-row').hidden = true;
+  }
+  document.querySelectorAll('[data-choice]').forEach(b => b.addEventListener('click', () => {
+    const w = state.pending, choice = b.dataset.choice;
+    $('returned').hidden = true;
+    if (choice === 'back') { state.pending = null; $('next-row').hidden = false; return; }
+    w.status = choice;
+    const to = current().stars.findIndex((_, i) => !state.lit.includes(i));  // 星の並び順で次の星
+    const from = state.lit.length ? state.lit[state.lit.length - 1] : null;
+    state.trace = {to, from, wish: w, dragging: false, pointer: null};
+    $('sky-hint').textContent = from == null ? '光っている円をタップして、最初の星を灯してください' : `${current().stars[from].name}から、光っている円まで指でなぞってください`;
+    $('trace-fallback').hidden = false;
+    renderOrbit();
+    canvas.scrollIntoView({behavior: 'smooth', block: 'center'});
+  }));
+
+  function renderDone() {
+    const c = current(), ctr = center(c), name = $('list-name').value.trim() || 'わたしの願い';
+    $('done-title').textContent = `${c.name}「${name}」ができました`;
+    const t = tonightHour(c);
+    const when = t || (() => { const d = new Date(); d.setHours(21, 0, 0, 0); return d; })();
+    const pos = altAz(ctr.ra, ctr.dec, when);
+    const nowPos = altAz(ctr.ra, ctr.dec, new Date());
+    $('tonight-when').textContent = t ? `今夜 ${t.getHours()}時、東京から` : `今夜 21時、東京から（${c.season}が見ごろ）`;
+    $('tonight-where').textContent = pos.alt > 0 ? `${dirName(pos.az)}の空、高さ ${Math.round(pos.alt)}°` : `地平線の下（${dirName(pos.az)}の方角）`;
+    $('tonight-now').textContent = nowPos.alt > 0
+      ? `いまは${dirName(nowPos.az)}の空、高さ ${Math.round(nowPos.alt)}° にあります。昼間は見えませんが、そこにあります。`
+      : 'いまは地平線の下にあります。';
+    const kinds = state.wishes.reduce((a, w) => (a[w.status] = (a[w.status] || 0) + 1, a), {});
+    $('done-lead').textContent = `これやろう ${kinds.doing || 0}・叶った ${kinds.done || 0}・用済み ${kinds.expired || 0}。手放せた願いも、星になりました。窓の外の、この方向を見てみてください。`;
+    drawDial(pos);
+  }
+  function drawDial(pos) {
+    const d = $('dial').getContext('2d'), s = 300, r = 120, cx = s / 2, cy = s / 2;
+    d.clearRect(0, 0, s, s);
+    d.strokeStyle = 'rgba(199,213,207,.25)'; d.lineWidth = 2;
+    for (const k of [1, 2 / 3, 1 / 3]) { d.beginPath(); d.arc(cx, cy, r * k, 0, Math.PI * 2); d.stroke(); }
+    d.fillStyle = '#9aa5b8'; d.font = '22px "Zen Kaku Gothic New", sans-serif'; d.textAlign = 'center'; d.textBaseline = 'middle';
+    [['北', 0], ['東', 90], ['南', 180], ['西', 270]].forEach(([n, a]) => {
+      d.fillText(n, cx + Math.sin(a * RAD) * (r + 18), cy - Math.cos(a * RAD) * (r + 18));
+    });
+    if (pos.alt <= 0) return;
+    const rr = r * (1 - pos.alt / 90);  // 真ん中が真上、外の円が地平線
+    const x = cx + Math.sin(pos.az * RAD) * rr, y = cy - Math.cos(pos.az * RAD) * rr;
+    d.fillStyle = '#f2d08d'; d.beginPath(); d.arc(x, y, 9, 0, Math.PI * 2); d.fill();
+  }
+
+  function go(step) {
+    state.step = step;
+    [0, 1, 2, 3].forEach(i => { $('step-' + i).hidden = i !== step; });
+    document.querySelectorAll('#steps li').forEach(li => {
+      const i = +li.dataset.step; li.dataset.state = i < step ? 'done' : i === step ? 'now' : '';
+    });
+    const leads = [
+      'ウィッシュリストを、ひとつの本物の星座にします。願いの数と同じ数の星でできた星座をえらんでください。',
+      '書いた願いは、星座ごとイトカワへ預けます。',
+      '帰ってきた願いを受け取ると、星座の星がひとつ灯ります。前の星から指でなぞって、線をつないでください。',
+      '本物の星座なので、今夜の空のどこにあるかがわかります。',
+    ];
+    $('lead').textContent = leads[step];
+    if (step === 1) renderWrite();
+    if (step === 3) renderDone();
+    renderSkyLabel();
+  }
+  $('to-wishes').addEventListener('click', () => go(1));
+  $('back-0').addEventListener('click', () => go(0));
+  $('launch').addEventListener('click', () => {
+    state.wishes = [...$('write-list').querySelectorAll('input')].map((el, i) => ({text: el.value.trim() || `願い ${i + 1}`, status: 'orbit', star: null}));
+    state.lit = []; state.trace = null;
+    go(2); renderOrbit(); returnOne();
+  });
+  $('next-return').addEventListener('click', returnOne);
+  $('again').addEventListener('click', () => { state.lit = []; state.wishes = []; go(0); });
+
+  // ─── はじめの画面：選択中の星座を見せる。北斗七星を半分灯した例 ─────────────
+  window.addEventListener('resize', resize);
+  state.cIdx = 4;
+  state.wishes = EXAMPLES.map((text, i) => ({text, status: i < 3 ? ['doing', 'done', 'doing'][i] : 'orbit', star: i < 3 ? i : null}));
+  state.lit = [0, 1, 2];
+  renderThemes(); resize(); go(0);
+  // 例として灯した星は、星座をえらび直したら消す
+  $('themes').addEventListener('change', () => { state.lit = []; state.wishes = []; renderSkyLabel(); });
+  requestAnimationFrame(draw);
+})();
+</script>
