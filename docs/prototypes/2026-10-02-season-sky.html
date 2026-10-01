@@ -4,156 +4,98 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700&family=Zen+Old+Mincho:wght@400;700&display=swap">
 <style>
   /* 夜空の作品なので、あえて暗い見た目ひとつに決めている（本体アプリと同じ色）
-     レイアウト：上に季節のタブと星空、下に「預ける」「帰ってきた願い」、いちばん下に日付の早送り（試作だけ） */
+     レイアウト：星空1枚が主役。下に入力1行。帰ってきた願いは下から出るシート */
   :root {
     color-scheme: dark;
     --sky: #0a0f1e;
     --sky-deep: #121a33;
     --gold: #f2d08d;
     --gold-ink: #1b1606;
-    --gold-soft: rgba(242, 208, 141, .26);
-    --blue: #bcd4ff;
     --text: #ebe7dc;
     --muted: #9aa5b8;
     --line: rgba(199, 213, 207, .16);
-    --panel: #111830;
-    --panel-2: #172042;
+    --panel: #141c38;
     --mincho: "Zen Old Mincho", "Yu Mincho", "Hiragino Mincho ProN", serif;
     --gothic: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
-    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   }
   html, body { background: var(--sky); }
-  body { color: var(--text); font-family: var(--gothic); line-height: 1.7; padding-inline: 16px; padding-block: 16px 96px; }
-  .wrap { max-width: 720px; margin: 0 auto; display: grid; gap: 16px; }
+  body { color: var(--text); font-family: var(--gothic); line-height: 1.6; padding-inline: 16px; padding-block: 16px 32px; }
+  .wrap { max-width: 560px; margin: 0 auto; display: grid; gap: 12px; }
   button, input { font: inherit; }
   button { cursor: pointer; }
-  button:focus-visible, input:focus-visible, .season:focus-within, .tab:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
-  .heading { display: grid; gap: 4px; }
-  .kicker { margin: 0; font: 11px var(--mono); letter-spacing: .14em; color: var(--gold); }
-  h1 { margin: 0; font: 700 clamp(22px, 6vw, 30px)/1.4 var(--mincho); text-wrap: balance; }
-  h2 { margin: 0; font: 700 18px/1.4 var(--mincho); text-wrap: balance; }
-  .lead { margin: 0; color: var(--muted); font-size: 14px; }
+  .sky-card { position: relative; border-radius: 20px; overflow: hidden; border: 1px solid var(--line);
+    background: radial-gradient(120% 80% at 80% 0%, #1d2852 0%, var(--sky-deep) 50%, var(--sky) 100%); }
+  canvas#sky { display: block; width: 100%; aspect-ratio: 4 / 5; max-width: 100%; }
+  .top { position: absolute; inset: 12px 14px auto; display: flex; justify-content: space-between; align-items: start; gap: 8px; pointer-events: none; }
+  .place { display: grid; }
+  .place small { font-size: 11px; letter-spacing: .14em; color: var(--gold); }
+  .place strong { font: 700 20px var(--mincho); }
+  .place span { font-size: 12px; color: var(--muted); }
+  .nav { display: flex; gap: 4px; pointer-events: auto; }
+  .nav button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: rgba(10,15,30,.6); color: var(--text); }
 
-  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
-  .tab { min-height: 44px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); display: grid; line-height: 1.3; padding: 6px 4px; }
-  .tab b { font: 700 16px var(--mincho); color: var(--text); }
-  .tab small { font-size: 11px; }
-  .tab[aria-selected="true"] { border-color: var(--gold); background: var(--panel-2); }
-  .tab[data-now="true"] small { color: var(--gold); }
+  .bubble { position: absolute; transform: translate(-50%, calc(-100% - 14px)); padding: 8px 12px; border-radius: 12px;
+    background: var(--panel); border: 1px solid var(--line); font-size: 13px; white-space: nowrap; display: grid; gap: 4px; justify-items: center; }
+  .bubble button { border: 0; background: none; color: var(--gold); text-decoration: underline; text-underline-offset: 3px; padding: 4px; min-height: 32px; }
 
-  .sky-card { position: relative; border-radius: 18px; overflow: hidden; border: 1px solid var(--line);
-    background: radial-gradient(120% 90% at 85% 0%, #1d2852 0%, var(--sky-deep) 45%, var(--sky) 100%); }
-  canvas#sky { display: block; width: 100%; aspect-ratio: 16 / 11; max-width: 100%; }
-  .sky-label { position: absolute; left: 14px; top: 10px; display: grid; pointer-events: none; }
-  .sky-label strong { font: 700 17px var(--mincho); }
-  .sky-label span { font: 12px var(--mono); color: var(--gold); font-variant-numeric: tabular-nums; }
-  .sky-hint { position: absolute; left: 0; right: 0; bottom: 8px; text-align: center; font-size: 12px; color: var(--muted); pointer-events: none; padding-inline: 12px; }
+  .toast { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; font-size: 13px; color: var(--gold); pointer-events: none; padding-inline: 12px; }
 
-  .panel { display: grid; gap: 12px; padding: 16px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); }
-  .field { display: grid; gap: 6px; }
-  .field label { font-size: 13px; color: var(--muted); }
-  .text-input { width: 100%; min-width: 0; font-size: 16px; padding: 10px 14px; border-radius: 12px;
-    border: 1px solid var(--line); background: rgba(0,0,0,.28); color: var(--text); font-family: var(--mincho); }
-  .seasons { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
-  .season { position: relative; display: grid; gap: 2px; padding: 12px; border-radius: 12px; background: var(--sky-deep); border: 1px solid var(--line); }
-  .season input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
-  .season strong { font: 700 16px var(--mincho); }
-  .season span { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
-  .season .when { color: var(--gold); }
-  .season:has(input:checked) { border-color: var(--gold); background: var(--panel-2); }
-  .season:has(input:disabled) { opacity: .45; }
-
-  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-  .btn { min-height: 44px; padding: 10px 18px; border-radius: 99px; border: 1px solid var(--gold); background: var(--gold); color: var(--gold-ink); font-weight: 700; }
+  .compose { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .text-input { min-width: 0; font-size: 16px; padding: 12px 16px; border-radius: 99px; border: 1px solid var(--line);
+    background: rgba(0,0,0,.3); color: var(--text); font-family: var(--mincho); }
+  .btn { min-height: 48px; padding: 10px 20px; border-radius: 99px; border: 1px solid var(--gold); background: var(--gold); color: var(--gold-ink); font-weight: 700; }
   .btn.ghost { background: transparent; color: var(--gold); }
-  .btn.quiet { background: transparent; color: var(--muted); border-color: var(--line); font-weight: 400; }
-  .btn:disabled { opacity: .4; cursor: default; }
-  .helper { margin: 0; color: var(--muted); font-size: 12px; }
-  .status { margin: 0; font-size: 13px; color: var(--gold); min-height: 1.7em; }
+  .season-chip { justify-self: start; border: 0; background: none; color: var(--muted); font-size: 13px; padding: 4px 0; min-height: 36px; }
+  .season-chip b { color: var(--text); font-weight: 400; text-decoration: underline; text-underline-offset: 3px; }
 
-  .returned { border-color: var(--gold-soft); background: var(--panel-2); }
-  .returned blockquote { margin: 0; font: 700 20px/1.5 var(--mincho); overflow-wrap: anywhere; }
-  .facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 14px; font-size: 13px; margin: 0; }
-  .facts dt { color: var(--muted); }
-  .facts dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-  .choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
-  .light { margin: 0; font-family: var(--mincho); font-size: 15px; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    background: var(--panel); border-top: 1px solid var(--line); border-radius: 20px 20px 0 0; display: grid; gap: 12px;
+    max-width: 560px; margin: 0 auto; transform: translateY(0); transition: transform .25s ease; }
+  .sheet[hidden] { display: grid !important; transform: translateY(110%); visibility: hidden; }
+  .sheet small { color: var(--muted); font-size: 12px; }
+  .sheet blockquote { margin: 0; font: 700 22px/1.5 var(--mincho); overflow-wrap: anywhere; }
+  .sheet .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sheet .later { justify-self: center; border: 0; background: none; color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; min-height: 40px; }
 
-  .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-  .list li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto; gap: 10px; align-items: baseline; font-size: 14px; }
-  .list i { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
-  .list li[data-s="waiting"] i { background: transparent; border: 1px solid var(--text); }
-  .list li[data-s="ready"] i { background: var(--text); box-shadow: 0 0 8px var(--text); }
-  .list li[data-s="doing"] i { background: var(--gold); }
-  .list li[data-s="done"] i { background: var(--blue); }
-  .list .t { overflow-wrap: anywhere; font-family: var(--mincho); }
-  .list .d { font: 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
-
-  .clock { display: grid; gap: 8px; padding: 14px 16px; border-radius: 14px; border: 1px dashed var(--line); }
-  .clock input[type="range"] { width: 100%; accent-color: var(--gold); }
-  .clock .today { font: 700 15px var(--mono); font-variant-numeric: tabular-nums; }
-  .note { font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; margin: 0; }
-  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  .demo { justify-self: end; border: 1px dashed var(--line); background: none; color: var(--muted); font-size: 12px; border-radius: 99px; padding: 6px 12px; min-height: 36px; }
+  .note { font-size: 11px; color: var(--muted); margin: 0; }
+  @media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }
 </style>
 
 <div class="wrap">
-  <header class="heading">
-    <p class="kicker">MORUNE 25143 — SEASON SKY / 試作 v4</p>
-    <h1>預けた願いは、季節の星座の星になる</h1>
-    <p class="lead">また会いたい季節をえらんで、願いを預けます。願いはその季節の星座の星になり、星座が宵の空に昇ってくるころ、あなたのもとへ帰ってきます。</p>
-  </header>
-
-  <div class="tabs" role="tablist" id="tabs"></div>
-
   <div class="sky-card">
-    <canvas id="sky" aria-label="えらんだ季節の星空。願いの星は星座の中で光ります"></canvas>
-    <div class="sky-label"><strong id="sky-name"></strong><span id="sky-sub"></span></div>
-    <p class="sky-hint" id="sky-hint"></p>
+    <canvas id="sky" aria-label="星空。あなたの願いは星座の中で光ります。タップすると、いつ帰るかがわかります"></canvas>
+    <div class="top">
+      <div class="place"><small>MORUNE 25143</small><strong id="season-name"></strong><span id="season-sub"></span></div>
+      <div class="nav">
+        <button type="button" id="prev" aria-label="前の季節の空">‹</button>
+        <button type="button" id="next" aria-label="次の季節の空">›</button>
+      </div>
+    </div>
+    <div class="bubble" id="bubble" hidden></div>
+    <p class="toast" id="toast" role="status"></p>
   </div>
 
-  <section class="panel returned" id="returned" hidden>
-    <p class="kicker" id="ret-kicker">RETURNED</p>
-    <blockquote id="ret-text"></blockquote>
-    <dl class="facts" id="ret-facts"></dl>
-    <p class="light" id="ret-light"></p>
-    <div class="choices" id="choices">
-      <button class="btn" data-choice="doing" type="button">これやろう</button>
-      <button class="btn ghost" data-choice="done" type="button">もう叶った・対応済み</button>
-      <button class="btn ghost" data-choice="expired" type="button">もう用済み</button>
-      <button class="btn quiet" data-choice="later" type="button">いまはいいや（次の季節へ）</button>
-    </div>
-  </section>
+  <form class="compose" id="compose">
+    <input class="text-input" id="wish" placeholder="やりたいことを書く" maxlength="60" aria-label="やりたいこと">
+    <button class="btn" type="submit">星にする</button>
+  </form>
+  <button class="season-chip" type="button" id="chip"></button>
 
-  <section class="panel" id="deposit">
-    <h2>願いを預ける</h2>
-    <div class="field">
-      <label for="wish">やりたいこと</label>
-      <input class="text-input" id="wish" value="家族と海を見に行く" maxlength="60">
-    </div>
-    <div class="field">
-      <label>また会いたい季節</label>
-      <div class="seasons" id="seasons"></div>
-    </div>
-    <div class="row"><button class="btn" id="launch" type="button">星に預ける</button></div>
-    <p class="status" id="status" role="status"></p>
-  </section>
+  <button class="demo" type="button" id="demo">試作：次に帰る日まで進める</button>
+  <p class="note">試作です。帰ってくる日は、東京で夜9時にその季節の星座が東から昇ってくる日を計算しています。星の位置・距離は概数です。</p>
+</div>
 
-  <section class="panel">
-    <h2>預けている願い</h2>
-    <ul class="list" id="list"></ul>
-    <p class="helper">預けた願いの言葉は、帰ってくるまで見えません。</p>
-  </section>
-
-  <section class="clock" aria-label="試作用：日付を進める">
-    <div class="row" style="justify-content: space-between;">
-      <span class="helper">試作だけ：日付を進めて、季節がめぐるのを試せます</span>
-      <span class="today" id="today"></span>
-    </div>
-    <input type="range" id="days" min="0" max="365" value="0" aria-label="今日から何日進めるか">
-  </section>
-
-  <p class="note">試作です。星の位置・距離は概数で、本番では公開の星表（Yale Bright Star Catalog）と理科年表で確かめます。「帰ってくる日」は、東京で夜9時にその星座が東から昇ってきて見ごろに入る日（南の空の真上を通る約1か月半前）を計算しています。位置情報は使いません。</p>
+<div class="sheet" id="sheet" hidden role="dialog" aria-labelledby="ret-text">
+  <small id="ret-from"></small>
+  <blockquote id="ret-text"></blockquote>
+  <div class="two">
+    <button class="btn" type="button" data-choice="doing">やる</button>
+    <button class="btn ghost" type="button" data-choice="expired">手放す</button>
+  </div>
+  <button class="later" type="button" data-choice="later">もう少し預ける（次の季節へ）</button>
 </div>
 
 <script>
@@ -161,330 +103,197 @@
   'use strict';
   const H = (h, m, s) => (h + m / 60 + s / 3600) * 15;
   const D = (d, m) => d < 0 ? d - m / 60 : d + m / 60;
-  // 季節ごとの星座。願いは上から順に、星座の星を1つずつ埋めていく。
+  // 季節ごとに1つの星座。軽くするため、1画面に1星座だけ出す。
   const SEASONS = [
-    {id: 'spring', name: '春', constellations: [
-      {name: '北斗七星', stars: [
-        {name: 'ドゥーベ', ra: H(11,3,44), dec: D(61,45), mag: 1.8, ly: 123, fact: 'ひしゃくの口。北極星を指す星。'},
-        {name: 'メラク', ra: H(11,1,50), dec: D(56,23), mag: 2.4, ly: 79, fact: 'ドゥーベとの間を5倍のばすと北極星。'},
-        {name: 'フェクダ', ra: H(11,53,50), dec: D(53,42), mag: 2.4, ly: 84, fact: 'ひしゃくの底。'},
-        {name: 'メグレズ', ra: H(12,15,26), dec: D(57,2), mag: 3.3, ly: 81, fact: '7つのなかでいちばん暗い星。'},
-        {name: 'アリオト', ra: H(12,54,2), dec: D(55,58), mag: 1.8, ly: 83, fact: '7つのなかでいちばん明るい星。'},
-        {name: 'ミザール', ra: H(13,23,56), dec: D(54,56), mag: 2.2, ly: 83, fact: '横に小さなアルコル。むかしの視力だめし。'},
-        {name: 'アルカイド', ra: H(13,47,32), dec: D(49,19), mag: 1.9, ly: 104, fact: 'ひしゃくの柄の先。'},
-      ], edges: [[0,1],[1,2],[2,3],[3,0],[3,4],[4,5],[5,6]]},
-    ]},
-    {id: 'summer', name: '夏', constellations: [
-      {name: '夏の大三角', stars: [
-        {name: 'ベガ', ra: H(18,36,56), dec: D(38,47), mag: 0.0, ly: 25, fact: '七夕の織姫星。'},
-        {name: 'アルタイル', ra: H(19,50,47), dec: D(8,52), mag: 0.8, ly: 17, fact: '七夕の彦星。'},
-        {name: 'デネブ', ra: H(20,41,26), dec: D(45,17), mag: 1.3, ly: 1400, approx: true, fact: 'はくちょうのしっぽ。とても遠い星。'},
-      ], edges: [[0,1],[1,2],[2,0]]},
-      {name: 'さそり座', stars: [
-        {name: 'アンタレス', ra: H(16,29,24), dec: D(-26,26), mag: 1.0, ly: 550, approx: true, fact: 'さそりの赤い心臓。'},
-        {name: 'ジュバ', ra: H(16,0,20), dec: D(-22,37), mag: 2.3, ly: 440, approx: true, fact: 'さそりの頭。'},
-        {name: 'アクラブ', ra: H(16,5,26), dec: D(-19,48), mag: 2.6, ly: 400, approx: true, fact: 'さそりの頭の上。'},
-        {name: 'パイカウハレ', ra: H(16,35,53), dec: D(-28,13), mag: 2.8, ly: 470, approx: true, fact: 'アンタレスのすぐ下。'},
-        {name: 'ララワグ', ra: H(16,50,10), dec: D(-34,18), mag: 2.3, ly: 65, fact: 'S 字の曲がり角。'},
-        {name: 'シャウラ', ra: H(17,33,36), dec: D(-37,6), mag: 1.6, ly: 570, approx: true, fact: 'さそりの毒針。'},
-      ], edges: [[2,1],[1,0],[0,3],[3,4],[4,5]]},
-    ]},
-    {id: 'autumn', name: '秋', constellations: [
-      {name: 'カシオペヤ座', stars: [
-        {name: 'カフ', ra: H(0,9,11), dec: D(59,9), mag: 2.3, ly: 55, fact: 'W のはし。'},
-        {name: 'シェダル', ra: H(0,40,30), dec: D(56,32), mag: 2.2, ly: 228, fact: 'オレンジ色の星。'},
-        {name: 'ツィー', ra: H(0,56,43), dec: D(60,43), mag: 2.2, ly: 550, approx: true, fact: 'W のまん中。明るさが変わる星。'},
-        {name: 'ルクバー', ra: H(1,25,49), dec: D(60,14), mag: 2.7, ly: 99, fact: '「ひざ」という意味の名前。'},
-        {name: 'セギン', ra: H(1,54,24), dec: D(63,40), mag: 3.4, ly: 410, fact: 'W のもう一方のはし。'},
-      ], edges: [[0,1],[1,2],[2,3],[3,4]]},
-      {name: '秋の四辺形', stars: [
-        {name: 'マルカブ', ra: H(23,4,46), dec: D(15,12), mag: 2.5, ly: 133, fact: '天馬ペガススの体の角。'},
-        {name: 'シェアト', ra: H(23,3,46), dec: D(28,5), mag: 2.4, ly: 196, fact: '赤い色の星。'},
-        {name: 'アルフェラッツ', ra: H(0,8,23), dec: D(29,5), mag: 2.1, ly: 97, fact: 'この星だけアンドロメダ座。'},
-        {name: 'アルゲニブ', ra: H(0,13,14), dec: D(15,11), mag: 2.8, ly: 390, fact: '四角のなかでいちばん暗い星。'},
-      ], edges: [[0,1],[1,2],[2,3],[3,0]]},
-    ]},
-    {id: 'winter', name: '冬', constellations: [
-      {name: 'オリオン座', stars: [
-        {name: 'ベテルギウス', ra: H(5,55,10), dec: D(7,24), mag: 0.5, ly: 550, approx: true, fact: 'オリオンの肩の赤い星。'},
-        {name: 'ベラトリックス', ra: H(5,25,8), dec: D(6,21), mag: 1.6, ly: 250, fact: 'もう一方の肩。'},
-        {name: 'ミンタカ', ra: H(5,32,0), dec: D(-0,18), mag: 2.2, ly: 1200, approx: true, fact: '三つ星の右。'},
-        {name: 'アルニラム', ra: H(5,36,13), dec: D(-1,12), mag: 1.7, ly: 2000, approx: true, fact: '三つ星のまん中。'},
-        {name: 'アルニタク', ra: H(5,40,46), dec: D(-1,57), mag: 1.8, ly: 1200, approx: true, fact: '三つ星の左。'},
-        {name: 'サイフ', ra: H(5,47,45), dec: D(-9,40), mag: 2.1, ly: 650, approx: true, fact: 'オリオンのひざ。'},
-        {name: 'リゲル', ra: H(5,14,32), dec: D(-8,12), mag: 0.1, ly: 860, approx: true, fact: '足もとの青白い星。'},
-      ], edges: [[0,1],[1,2],[2,3],[3,4],[4,0],[4,5],[2,6]]},
-      {name: '冬のダイヤモンド', stars: [
-        {name: 'シリウス', ra: H(6,45,9), dec: D(-16,43), mag: -1.5, ly: 8.6, fact: '夜空でいちばん明るい星。'},
-        {name: 'プロキオン', ra: H(7,39,18), dec: D(5,14), mag: 0.4, ly: 11.5, fact: 'シリウスより先に昇る星。'},
-        {name: 'ポルックス', ra: H(7,45,19), dec: D(28,2), mag: 1.1, ly: 34, fact: 'ふたごの弟。'},
-        {name: 'カペラ', ra: H(5,16,41), dec: D(46,0), mag: 0.1, ly: 43, fact: 'じつは4つの星が集まった黄色い星。'},
-        {name: 'アルデバラン', ra: H(4,35,55), dec: D(16,31), mag: 0.9, ly: 65, fact: '牛の赤い目。'},
-        {name: 'リゲル', ra: H(5,14,32), dec: D(-8,12), mag: 0.1, ly: 860, approx: true, fact: 'オリオン座と同じ星。'},
-      ], edges: [[0,1],[1,2],[2,3],[3,4],[4,5],[5,0]]},
-    ]},
-  ];
-  SEASONS.forEach(s => { s.capacity = s.constellations.reduce((n, c) => n + c.stars.length, 0); });
+    {id: 'spring', name: '春', c: '北斗七星', stars: [
+      ['ドゥーベ', H(11,3,44), D(61,45), 1.8, 123], ['メラク', H(11,1,50), D(56,23), 2.4, 79], ['フェクダ', H(11,53,50), D(53,42), 2.4, 84],
+      ['メグレズ', H(12,15,26), D(57,2), 3.3, 81], ['アリオト', H(12,54,2), D(55,58), 1.8, 83], ['ミザール', H(13,23,56), D(54,56), 2.2, 83],
+      ['アルカイド', H(13,47,32), D(49,19), 1.9, 104]], edges: [[0,1],[1,2],[2,3],[3,0],[3,4],[4,5],[5,6]]},
+    {id: 'summer', name: '夏', c: 'はくちょう座と夏の大三角', stars: [
+      ['デネブ', H(20,41,26), D(45,17), 1.3, 1400], ['サドル', H(20,22,14), D(40,15), 2.2, 1800], ['アルビレオ', H(19,30,43), D(27,58), 3.1, 430],
+      ['ギェナー', H(20,46,13), D(33,58), 2.5, 72], ['ファワリス', H(19,44,58), D(45,8), 2.9, 165], ['ベガ', H(18,36,56), D(38,47), 0.0, 25],
+      ['アルタイル', H(19,50,47), D(8,52), 0.8, 17]], edges: [[0,1],[1,2],[3,1],[1,4],[0,5],[5,6],[6,0]]},
+    {id: 'autumn', name: '秋', c: 'カシオペヤ座', stars: [
+      ['カフ', H(0,9,11), D(59,9), 2.3, 55], ['シェダル', H(0,40,30), D(56,32), 2.2, 228], ['ツィー', H(0,56,43), D(60,43), 2.2, 550],
+      ['ルクバー', H(1,25,49), D(60,14), 2.7, 99], ['セギン', H(1,54,24), D(63,40), 3.4, 410]], edges: [[0,1],[1,2],[2,3],[3,4]]},
+    {id: 'winter', name: '冬', c: 'オリオン座', stars: [
+      ['ベテルギウス', H(5,55,10), D(7,24), 0.5, 550], ['ベラトリックス', H(5,25,8), D(6,21), 1.6, 250], ['ミンタカ', H(5,32,0), D(-0,18), 2.2, 1200],
+      ['アルニラム', H(5,36,13), D(-1,12), 1.7, 2000], ['アルニタク', H(5,40,46), D(-1,57), 1.8, 1200], ['サイフ', H(5,47,45), D(-9,40), 2.1, 650],
+      ['リゲル', H(5,14,32), D(-8,12), 0.1, 860]], edges: [[0,1],[1,2],[2,3],[3,4],[4,0],[4,5],[2,6]]},
+  ].map(s => ({...s, stars: s.stars.map(([name, ra, dec, mag, ly]) => ({name, ra, dec, mag, ly}))}));
 
-  // ─── 天体の計算 ────────────────────────────────────────────────────────
-  const LAT = 35.69, LON = 139.69, RAD = Math.PI / 180, DAY = 86400000;
-  function hourAngleAt(ra, date) {
-    const jd = date.getTime() / DAY + 2440587.5;
-    const gmst = (280.46061837 + 360.98564736629 * (jd - 2451545)) % 360;
-    let ha = ((gmst + LON - ra) % 360 + 360) % 360; if (ha > 180) ha -= 360;
-    return ha;  // マイナス＝東から昇ってくるところ、0＝南の空の真上
+  // ─── 帰ってくる日：夜9時に星座の真ん中が東から昇って見ごろに入る日（東京）────
+  const LON = 139.69, RAD = Math.PI / 180, DAY = 86400000;
+  const centerRa = st => { let x = 0, y = 0; for (const s of st) { x += Math.cos(s.ra * RAD); y += Math.sin(s.ra * RAD); } return (Math.atan2(y, x) / RAD + 360) % 360; };
+  SEASONS.forEach(s => { s.ra = centerRa(s.stars); });
+  function hourAngle(ra, d) {
+    const jd = d.getTime() / DAY + 2440587.5, g = (280.46061837 + 360.98564736629 * (jd - 2451545)) % 360;
+    let h = ((g + LON - ra) % 360 + 360) % 360; return h > 180 ? h - 360 : h;
   }
-  function centerRa(stars) {
-    let x = 0, y = 0;
-    for (const s of stars) { x += Math.cos(s.ra * RAD); y += Math.sin(s.ra * RAD); }
-    return ((Math.atan2(y, x) / RAD) + 360) % 360;
-  }
-  function seasonRa(season) { return centerRa(season.constellations[0].stars); }
-  const at9pm = d => { const t = new Date(d); t.setHours(21, 0, 0, 0); return t; };
-  // 見ごろ＝夜9時に、星座の真ん中が東から昇って南の真上の 45°手前〜15°過ぎにある
-  const inSeason = (ra, d) => { const ha = hourAngleAt(ra, at9pm(d)); return ha >= -45 && ha <= 15; };
-  // 帰ってくる日＝見ごろに入る最初の日。ただし預けてから30日はあける（すぐ帰ってこないように）
-  const MIN_DAYS = 30;
-  function returnDate(season, from) {
-    const ra = seasonRa(season);
-    for (let i = MIN_DAYS; i < MIN_DAYS + 400; i++) {
+  const at9 = d => { const t = new Date(d); t.setHours(21, 0, 0, 0); return t; };
+  const inSeason = (s, d) => { const h = hourAngle(s.ra, at9(d)); return h >= -45 && h <= 15; };
+  const MIN_DAYS = 14;  // 預けてすぐには帰らない
+  function returnDate(s, from) {
+    for (let i = MIN_DAYS; i < 420; i++) {
       const d = new Date(from.getTime() + i * DAY);
-      if (inSeason(ra, d) && !inSeason(ra, new Date(d.getTime() - DAY))) return at9pm(d);
-      if (i === MIN_DAYS && inSeason(ra, d)) continue;  // すでに見ごろの最中なら、次のめぐりを待つ
+      if (inSeason(s, d) && !inSeason(s, new Date(d.getTime() - DAY))) return at9(d);
     }
     return null;
   }
-  const nowSeason = d => SEASONS.find(s => inSeason(seasonRa(s), d)) || null;
-  const fmt = d => `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
-  const fmtShort = d => `${d.getMonth() + 1}月${d.getDate()}日`;
+  // えらべるのは、これから来る季節だけ。近い順に並べ、はじめは一番近い季節
+  function upcoming(from) {
+    return SEASONS.map(s => ({s, at: returnDate(s, from)})).sort((a, b) => a.at - b.at).slice(0, 3);
+  }
+  const md = d => `${d.getMonth() + 1}月${d.getDate()}日`;
 
   // ─── 状態 ──────────────────────────────────────────────────────────────
   const $ = id => document.getElementById(id);
-  const realToday = new Date(); realToday.setHours(12, 0, 0, 0);
-  const today = () => new Date(realToday.getTime() + Number($('days').value) * DAY);
-  const state = {tab: 'winter', wishes: [], ret: null, flash: null};
-  // wish: {id, text, season, c, star, createdAt, returnAt, status: waiting|doing|done|expired}
+  let today = new Date(); today.setHours(12, 0, 0, 0);
+  const state = {view: 0, pick: 0, wishes: [], open: null};
+  const slotIn = s => { const used = new Set(state.wishes.filter(w => w.s === s.id && w.status !== 'expired').map(w => w.star)); return s.stars.findIndex((_, i) => !used.has(i)); };
+  const isReady = w => w.status === 'waiting' && today >= w.at;
   const seasonOf = id => SEASONS.find(s => s.id === id);
-  function slotFor(season, wishes) {
-    const used = new Set(wishes.filter(w => w.season === season.id && w.status !== 'expired').map(w => `${w.c}-${w.star}`));
-    for (let c = 0; c < season.constellations.length; c++)
-      for (let s = 0; s < season.constellations[c].stars.length; s++)
-        if (!used.has(`${c}-${s}`)) return {c, star: s};
-    return null;
-  }
-  const isReady = w => w.status === 'waiting' && today() >= w.returnAt;
 
-  // 例：はじめから2つ預けてある（冬に1つ、春に1つ）。早送りで帰ってくるのを試せる。
-  function seed() {
-    const t = today();
-    const add = (text, sid, back) => {
-      const s = seasonOf(sid), slot = slotFor(s, state.wishes);
-      const createdAt = new Date(t.getTime() - back * DAY);
-      state.wishes.push({id: crypto.randomUUID?.() || String(Math.random()), text, season: sid, ...slot, createdAt, returnAt: returnDate(s, createdAt), status: 'waiting'});
-    };
-    add('新しいスニーカーで散歩', 'winter', 3);
-    add('途中の本を読み終える', 'spring', 1);
+  function deposit(text, s, from = today) {
+    const star = slotIn(s); if (star < 0) return null;
+    const w = {id: Math.random().toString(36).slice(2), text, s: s.id, star, from, at: returnDate(s, from), status: 'waiting'};
+    state.wishes.push(w); return w;
   }
 
-  // ─── 星空 ──────────────────────────────────────────────────────────────
+  // ─── 星空（変化があったときだけ描く）──────────────────────────────────────
   const canvas = $('sky'), ctx = canvas.getContext('2d');
-  let hit = [], t0 = performance.now();
-  const field = Array.from({length: 150}, (_, i) => {
-    const r = n => Math.abs((Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1);
-    return {x: r(1), y: r(2), m: r(3)};
-  });
+  let lay = [], field = [], anim = 0, flashId = null;
+  function layout() {
+    const s = SEASONS[state.view], w = canvas.clientWidth, h = canvas.clientHeight;
+    const decC = s.stars.reduce((a, x) => a + x.dec, 0) / s.stars.length;
+    const pts = s.stars.map(x => { let d = x.ra - s.ra; if (d > 180) d -= 360; if (d < -180) d += 360; return {x: -d * Math.cos(decC * RAD), y: -(x.dec - decC)}; });
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y), padX = w * 0.16, padTop = h * 0.2, padBottom = h * 0.12;
+    const sc = Math.min((w - padX * 2) / (Math.max(...xs) - Math.min(...xs)), (h - padTop - padBottom) / (Math.max(...ys) - Math.min(...ys)));
+    const ox = (w - (Math.max(...xs) - Math.min(...xs)) * sc) / 2, oy = padTop + (h - padTop - padBottom - (Math.max(...ys) - Math.min(...ys)) * sc) / 2;
+    lay = pts.map(p => ({x: ox + (p.x - Math.min(...xs)) * sc, y: oy + (p.y - Math.min(...ys)) * sc}));
+  }
   function resize() {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    field = Array.from({length: 110}, (_, i) => { const r = n => Math.abs((Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1); return {x: r(1) * canvas.clientWidth, y: r(2) * canvas.clientHeight, a: .08 + r(3) * .3, r: .4 + r(3) * .7}; });
+    layout(); paint();
   }
-  // 季節の星座を、空を見上げた向き（東が左）で1枚に描く
-  function project(season) {
-    const all = season.constellations.flatMap(c => c.stars);
-    const raC = centerRa(all), decC = all.reduce((a, s) => a + s.dec, 0) / all.length;
-    const pts = season.constellations.map(c => c.stars.map(s => {
-      let d = s.ra - raC; if (d > 180) d -= 360; if (d < -180) d += 360;
-      return {x: -d * Math.cos(decC * RAD), y: -(s.dec - decC)};
-    }));
-    const flat = pts.flat(), w = canvas.clientWidth, h = canvas.clientHeight, pad = Math.min(w, h) * 0.13;
-    const xs = flat.map(p => p.x), ys = flat.map(p => p.y);
-    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
-    const sc = Math.min((w - pad * 2) / (maxX - minX || 1), (h - pad * 2.4) / (maxY - minY || 1));
-    const ox = (w - (maxX - minX) * sc) / 2, oy = (h - (maxY - minY) * sc) / 2;
-    return pts.map(cs => cs.map(p => ({x: ox + (p.x - minX) * sc, y: oy + (p.y - minY) * sc})));
-  }
-  const COLORS = {doing: '#f2d08d', done: '#bcd4ff', waiting: '#ebe7dc'};
-  function draw(now) {
-    const w = canvas.clientWidth, h = canvas.clientHeight, season = seasonOf(state.tab), lay = project(season);
+  function paint(now = performance.now()) {
+    const s = SEASONS[state.view], w = canvas.clientWidth, h = canvas.clientHeight;
     ctx.clearRect(0, 0, w, h);
-    for (const f of field) {
-      ctx.fillStyle = `rgba(235,231,220,${0.1 + f.m * 0.3})`;
-      ctx.beginPath(); ctx.arc(f.x * w, f.y * h, 0.4 + f.m * 0.8, 0, Math.PI * 2); ctx.fill();
+    for (const f of field) { ctx.fillStyle = `rgba(235,231,220,${f.a})`; ctx.fillRect(f.x, f.y, f.r * 2, f.r * 2); }
+    const mine = new Map(state.wishes.filter(x => x.s === s.id && x.status !== 'expired').map(x => [x.star, x]));
+    for (const [a, b] of s.edges) {
+      const on = mine.has(a) && mine.has(b);
+      ctx.strokeStyle = on ? 'rgba(242,208,141,.7)' : 'rgba(199,213,207,.16)'; ctx.lineWidth = on ? 1.5 : 1;
+      ctx.beginPath(); ctx.moveTo(lay[a].x, lay[a].y); ctx.lineTo(lay[b].x, lay[b].y); ctx.stroke();
     }
-    const pulse = (Math.sin((now - t0) / 420) + 1) / 2;
-    hit = [];
-    season.constellations.forEach((c, ci) => {
-      const wishAt = i => state.wishes.find(x => x.season === season.id && x.c === ci && x.star === i && x.status !== 'expired');
-      // 星座の線：願いの星どうしは金、それ以外は薄い線（季節の星座の形はいつも見える）
-      for (const [a, b] of c.edges) {
-        const on = wishAt(a) && wishAt(b);
-        ctx.strokeStyle = on ? 'rgba(242,208,141,.7)' : 'rgba(199,213,207,.18)';
-        ctx.lineWidth = on ? 1.6 : 1;
-        ctx.beginPath(); ctx.moveTo(lay[ci][a].x, lay[ci][a].y); ctx.lineTo(lay[ci][b].x, lay[ci][b].y); ctx.stroke();
-      }
-      c.stars.forEach((s, i) => {
-        const p = lay[ci][i], wish = wishAt(i), size = Math.max(1.6, 4.6 - s.mag * 1.1);
-        if (!wish) {
-          ctx.fillStyle = 'rgba(154,165,184,.55)';
-          ctx.beginPath(); ctx.arc(p.x, p.y, size * 0.7, 0, Math.PI * 2); ctx.fill();
-          return;
-        }
-        const ready = isReady(wish), flash = state.flash === wish.id;
-        const color = COLORS[wish.status];
-        const r = size * (ready ? 5 + pulse * 3 : flash ? 6 : 3.4);
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-        g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(p.x, p.y, size * 1.2, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'rgba(235,231,220,.85)'; ctx.font = '12px "Zen Kaku Gothic New", sans-serif';
-        ctx.fillText(ready ? `${s.name}・帰ってきた` : s.name, p.x + size + 7, p.y + 4);
-        hit.push({x: p.x, y: p.y, wish});
-      });
-      // 星座の名前
-      const ys = lay[ci].map(p => p.y), xs = lay[ci].map(p => p.x);
-      ctx.fillStyle = 'rgba(154,165,184,.8)'; ctx.font = '13px "Zen Old Mincho", serif'; ctx.textAlign = 'center';
-      ctx.fillText(c.name, (Math.min(...xs) + Math.max(...xs)) / 2, Math.max(...ys) + 26);
-      ctx.textAlign = 'start';
+    const pulse = (Math.sin(now / 420) + 1) / 2;
+    let moving = false;
+    s.stars.forEach((st, i) => {
+      const p = lay[i], wish = mine.get(i), size = Math.max(1.5, 4.2 - st.mag);
+      if (!wish) { ctx.fillStyle = 'rgba(154,165,184,.5)'; ctx.beginPath(); ctx.arc(p.x, p.y, size * .7, 0, 7); ctx.fill(); return; }
+      const ready = isReady(wish), flash = flashId === wish.id;
+      if (ready || flash) moving = true;
+      const color = wish.status === 'doing' ? '#f2d08d' : '#ebe7dc';
+      const glow = size * (ready ? 4 + pulse * 3 : flash ? 4 + pulse * 4 : 3);
+      ctx.fillStyle = wish.status === 'doing' ? 'rgba(242,208,141,.18)' : 'rgba(235,231,220,.16)';
+      ctx.beginPath(); ctx.arc(p.x, p.y, glow, 0, 7); ctx.fill();
+      ctx.fillStyle = color; ctx.beginPath(); ctx.arc(p.x, p.y, size * 1.2, 0, 7); ctx.fill();
     });
-    requestAnimationFrame(draw);
+    // 光っている星があるときだけ動かし続ける
+    cancelAnimationFrame(anim);
+    if (moving && !matchMedia('(prefers-reduced-motion: reduce)').matches) anim = requestAnimationFrame(paint);
   }
+
+  // ─── 操作 ──────────────────────────────────────────────────────────────
+  function toast(text) { $('toast').textContent = text; clearTimeout(toast.t); toast.t = setTimeout(() => { $('toast').textContent = ''; }, 4000); }
+  function renderTop() {
+    const s = SEASONS[state.view];
+    $('season-name').textContent = `${s.name}の空`;
+    const n = state.wishes.filter(w => w.s === s.id && w.status !== 'expired').length;
+    $('season-sub').textContent = `${s.c}　${n}/${s.stars.length}`;
+  }
+  function renderChip() {
+    const list = upcoming(today), p = list[state.pick % list.length];
+    $('chip').innerHTML = `<b>${p.s.name}</b>に帰ってくる（${md(p.at)}ごろ）　変える`;
+    $('chip').dataset.season = p.s.id;
+  }
+  function show(viewIdx) { state.view = (viewIdx + 4) % 4; $('bubble').hidden = true; layout(); renderTop(); paint(); }
+  $('prev').addEventListener('click', () => show(state.view - 1));
+  $('next').addEventListener('click', () => show(state.view + 1));
+  $('chip').addEventListener('click', () => { state.pick++; renderChip(); });
+
+  $('compose').addEventListener('submit', e => {
+    e.preventDefault();
+    const text = $('wish').value.trim();
+    if (!text) { $('wish').focus(); return; }
+    const s = seasonOf($('chip').dataset.season), w = deposit(text, s);
+    if (!w) { toast(`${s.name}の星座はいっぱいです。季節を変えてください`); return; }
+    $('wish').value = ''; state.pick = 0;
+    flashId = w.id; setTimeout(() => { flashId = null; paint(); }, 1800);
+    show(SEASONS.indexOf(s)); renderChip();
+    toast(`${s.stars[w.star].name}になりました。${md(w.at)}ごろ帰ってきます`);
+  });
+
   canvas.addEventListener('click', e => {
     const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-    const found = hit.find(p => Math.hypot(p.x - x, p.y - y) < 24);
-    if (!found) return;
-    if (isReady(found.wish)) openReturned(found.wish);
-    else showStarInfo(found.wish);
+    const s = SEASONS[state.view];
+    const i = lay.findIndex(p => Math.hypot(p.x - x, p.y - y) < 26);
+    const wish = i < 0 ? null : state.wishes.find(w => w.s === s.id && w.star === i && w.status !== 'expired');
+    if (!wish) { $('bubble').hidden = true; return; }
+    if (isReady(wish)) { openSheet(wish); return; }
+    const b = $('bubble'), st = s.stars[i];
+    b.innerHTML = '';
+    const line = document.createElement('span');
+    line.textContent = wish.status === 'doing' ? `${st.name}：${wish.text}` : `${st.name}・${md(wish.at)}ごろ帰る`;
+    b.append(line);
+    if (wish.status === 'waiting') {
+      const go = document.createElement('button'); go.type = 'button'; go.textContent = 'いま会いに行く';
+      go.addEventListener('click', ev => { ev.stopPropagation(); b.hidden = true; openSheet(wish); });
+      b.append(go);
+    }
+    b.style.left = `${Math.min(Math.max(lay[i].x, 90), canvas.clientWidth - 90)}px`; b.style.top = `${lay[i].y}px`;
+    b.hidden = false;
   });
 
-  // ─── 画面 ──────────────────────────────────────────────────────────────
-  function starOf(w) { return seasonOf(w.season).constellations[w.c].stars[w.star]; }
-  function constellationOf(w) { return seasonOf(w.season).constellations[w.c]; }
-  function renderTabs() {
-    const ns = nowSeason(today());
-    $('tabs').innerHTML = '';
-    SEASONS.forEach(s => {
-      const b = document.createElement('button');
-      b.className = 'tab'; b.type = 'button'; b.setAttribute('role', 'tab');
-      b.setAttribute('aria-selected', String(s.id === state.tab));
-      b.dataset.now = String(ns && ns.id === s.id);
-      const n = state.wishes.filter(w => w.season === s.id && w.status !== 'expired').length;
-      b.innerHTML = `<b>${s.name}</b><small>${ns && ns.id === s.id ? 'いま見ごろ' : `${n} / ${s.capacity}`}</small>`;
-      b.addEventListener('click', () => { state.tab = s.id; render(); });
-      $('tabs').append(b);
-    });
-  }
-  function renderSkyLabel() {
-    const s = seasonOf(state.tab), ns = nowSeason(today());
-    $('sky-name').textContent = `${s.name}の星座`;
-    $('sky-sub').textContent = s.constellations.map(c => c.name).join('・');
-    const ready = state.wishes.filter(w => w.season === s.id && isReady(w)).length;
-    $('sky-hint').textContent = ready ? `帰ってきた願いが ${ready} つ。光っている星をタップしてください`
-      : ns && ns.id === s.id ? 'いま、夜9時ごろの空に見えている星座です' : '願いの星をタップすると、帰ってくる日がわかります';
-  }
-  function renderSeasons() {
-    const t = today(), sel = document.querySelector('input[name="season"]:checked')?.value || 'winter';
-    $('seasons').innerHTML = '';
-    SEASONS.forEach(s => {
-      const back = returnDate(s, t), full = !slotFor(s, state.wishes);
-      const label = document.createElement('label'); label.className = 'season';
-      label.innerHTML = `<input type="radio" name="season" value="${s.id}" id="season-${s.id}" ${s.id === sel ? 'checked' : ''} ${full ? 'disabled' : ''}>
-        <strong>${s.name}</strong>
-        <span>${s.constellations.map(c => c.name).join('・')}</span>
-        <span class="when">${full ? 'この季節の星座はいっぱい' : `${fmt(back)}ごろ帰ってくる`}</span>`;
-      $('seasons').append(label);
-    });
-  }
-  function renderList() {
-    $('list').innerHTML = '';
-    const sorted = [...state.wishes].sort((a, b) => a.returnAt - b.returnAt);
-    if (!sorted.length) { $('list').innerHTML = '<li class="helper" style="display:block">まだありません。上で1つ預けてみてください。</li>'; return; }
-    for (const w of sorted) {
-      const li = document.createElement('li');
-      li.dataset.s = isReady(w) ? 'ready' : w.status;
-      const shown = w.status !== 'waiting';
-      const label = isReady(w) ? '帰ってきた' : w.status === 'waiting' ? `${fmtShort(w.returnAt)}ごろ` : {doing: 'これやろう', done: '叶った', expired: '手放した'}[w.status];
-      li.innerHTML = `<i></i><span class="t"></span><span class="d">${label}</span>`;
-      li.querySelector('.t').textContent = shown ? w.text : `${seasonOf(w.season).name}・${constellationOf(w).name}の${starOf(w).name}`;
-      $('list').append(li);
-    }
-  }
-  function render() {
-    $('today').textContent = fmt(today());
-    renderTabs(); renderSkyLabel(); renderSeasons(); renderList();
-  }
-
-  function showStarInfo(w) {
-    $('status').textContent = w.status === 'waiting'
-      ? `${constellationOf(w).name}の${starOf(w).name}。${fmt(w.returnAt)}ごろ、${seasonOf(w.season).name}の星座と一緒に帰ってきます。`
-      : `${starOf(w).name}：${w.text}`;
-  }
-  function openReturned(w) {
-    state.ret = w;
-    const s = starOf(w), days = Math.round((today() - w.createdAt) / DAY), year = today().getFullYear();
-    $('ret-kicker').textContent = `RETURNED — ${seasonOf(w.season).name}の星座から`;
+  function openSheet(w) {
+    state.open = w;
+    const s = seasonOf(w.s), st = s.stars[w.star], days = Math.max(0, Math.round((today - w.from) / DAY));
+    $('ret-from').textContent = `${s.c}の${st.name}から・${days}日ぶり`;
     $('ret-text').textContent = w.text;
-    $('ret-facts').innerHTML = '';
-    for (const [k, v] of [['とまっていた星', `${constellationOf(w).name}の${s.name}`], ['地球まで', `${s.approx ? '約' : ''}${s.ly} 光年`], ['預けていた日数', `${days}日`]]) {
-      const dt = document.createElement('dt'); dt.textContent = k;
-      const dd = document.createElement('dd'); dd.textContent = v;
-      $('ret-facts').append(dt, dd);
-    }
-    const dep = Math.round(year - s.ly);
-    $('ret-light').textContent = `今夜見える${s.name}の光は、${s.ly < 100 ? `${dep}年ごろ` : `約${Math.round(s.ly)}年前`}に星を出た光です。${s.fact}`;
-    $('returned').hidden = false;
-    $('returned').scrollIntoView({behavior: 'smooth', block: 'center'});
+    $('sheet').hidden = false;
+    $('sheet').querySelector('[data-choice="doing"]').focus();
   }
   document.querySelectorAll('[data-choice]').forEach(b => b.addEventListener('click', () => {
-    const w = state.ret; if (!w) return;
-    const choice = b.dataset.choice;
-    $('returned').hidden = true; state.ret = null;
-    if (choice === 'later') {
-      // 次の季節の星座へうつす。空いていなければ、その次
-      const order = SEASONS.map(s => s.id), start = order.indexOf(w.season);
-      for (let k = 1; k <= 4; k++) {
-        const s = seasonOf(order[(start + k) % 4]), slot = slotFor(s, state.wishes.filter(x => x !== w));
-        if (!slot) continue;
-        Object.assign(w, {season: s.id, ...slot, returnAt: returnDate(s, today())});
-        $('status').textContent = `${s.name}の${constellationOf(w).name}へうつしました。${fmt(w.returnAt)}ごろ、また帰ってきます。`;
-        state.tab = s.id; break;
-      }
-    } else {
-      w.status = choice;
-      $('status').textContent = choice === 'expired'
-        ? '手放しました。星は空にかえり、星座の場所が空きました。'
-        : `${starOf(w).name}は、${choice === 'doing' ? '金' : '青白'}の星になりました。`;
+    const w = state.open; if (!w) return;
+    const st = seasonOf(w.s).stars[w.star];
+    $('sheet').hidden = true; state.open = null;
+    if (b.dataset.choice === 'doing') { w.status = 'doing'; toast(`${st.name}が金色になりました`); }
+    if (b.dataset.choice === 'expired') { w.status = 'expired'; toast('星は空にかえりました'); }
+    if (b.dataset.choice === 'later') {
+      const nextS = SEASONS[(SEASONS.indexOf(seasonOf(w.s)) + 1) % 4], star = slotIn(nextS);
+      if (star >= 0) { Object.assign(w, {s: nextS.id, star, at: returnDate(nextS, today)}); show(SEASONS.indexOf(nextS)); toast(`${nextS.name}の星座へ。${md(w.at)}ごろまた帰ってきます`); }
+      else toast(`${nextS.name}の星座はいっぱいです`);
     }
-    render();
+    renderTop(); paint();
   }));
 
-  $('launch').addEventListener('click', () => {
-    const text = $('wish').value.trim();
-    if (!text) { $('status').textContent = 'やりたいことを書いてください。'; return; }
-    const sid = document.querySelector('input[name="season"]:checked')?.value;
-    const s = seasonOf(sid), slot = s && slotFor(s, state.wishes);
-    if (!slot) { $('status').textContent = 'この季節の星座はいっぱいです。別の季節をえらんでください。'; return; }
-    const w = {id: crypto.randomUUID?.() || String(Math.random()), text, season: sid, ...slot, createdAt: today(), returnAt: returnDate(s, today()), status: 'waiting'};
-    state.wishes.push(w); state.tab = sid; state.flash = w.id;
-    setTimeout(() => { state.flash = null; }, 1600);
-    $('status').textContent = `「${text}」は、${s.name}の${constellationOf(w).name}の${starOf(w).name}になりました。${fmt(w.returnAt)}ごろ帰ってきます。`;
-    $('wish').value = '';
-    render();
-    canvas.scrollIntoView({behavior: 'smooth', block: 'center'});
+  // 試作：次に帰る日まで日付を進める
+  $('demo').addEventListener('click', () => {
+    const next = state.wishes.filter(w => w.status === 'waiting').sort((a, b) => a.at - b.at)[0];
+    if (!next) { toast('預けている願いがありません'); return; }
+    today = new Date(next.at);
+    show(SEASONS.findIndex(s => s.id === next.s)); renderChip();
+    toast(`${md(today)}になりました。光っている星をタップしてください`);
   });
-  $('days').addEventListener('input', render);
 
+  // はじめの画面：例の願いが1つある冬の空
   window.addEventListener('resize', resize);
-  seed(); resize(); render();
-  requestAnimationFrame(draw);
+  const winter = SEASONS.find(s => s.id === 'winter');
+  state.view = SEASONS.indexOf(winter);
+  deposit('新しいスニーカーで散歩', winter, new Date(today.getTime() - 3 * DAY));
+  renderTop(); renderChip(); resize();
 })();
 </script>
