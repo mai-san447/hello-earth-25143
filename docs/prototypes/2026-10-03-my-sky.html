@@ -1,0 +1,394 @@
+<title>わたしの夜空</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700&family=Zen+Old+Mincho:wght@400;700&display=swap">
+<style>
+  /* 夜空の作品なので、あえて暗い見た目ひとつに決めている（本体アプリと同じ色）
+     レイアウト：南を向いて見上げた空が1枚。下に地球の地平線。入力は1行 */
+  :root {
+    color-scheme: dark;
+    --sky: #0a0f1e;
+    --sky-deep: #121a33;
+    --gold: #f2d08d;
+    --gold-ink: #1b1606;
+    --earth: #7fb2ff;
+    --text: #ebe7dc;
+    --muted: #9aa5b8;
+    --line: rgba(199, 213, 207, .16);
+    --panel: #141c38;
+    --mincho: "Zen Old Mincho", "Yu Mincho", "Hiragino Mincho ProN", serif;
+    --gothic: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
+  }
+  html, body { background: var(--sky); }
+  body { color: var(--text); font-family: var(--gothic); line-height: 1.6; padding-inline: 16px; padding-block: 16px 32px; }
+  .wrap { max-width: 640px; margin: 0 auto; display: grid; gap: 12px; }
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  .sky-card { position: relative; border-radius: 20px; overflow: hidden; border: 1px solid var(--line);
+    background: linear-gradient(180deg, var(--sky) 0%, var(--sky-deep) 70%, #1b2a55 100%); }
+  canvas#sky { display: block; width: 100%; aspect-ratio: 5 / 6; max-width: 100%; }
+  @media (min-width: 560px) { canvas#sky { aspect-ratio: 4 / 3; } }
+  .top { position: absolute; inset: 12px 14px auto; display: flex; justify-content: space-between; gap: 8px; pointer-events: none; }
+  .brand { display: grid; }
+  .brand small { font-size: 11px; letter-spacing: .14em; color: var(--gold); }
+  .brand strong { font: 700 18px var(--mincho); }
+  .clock { text-align: right; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .toast { position: absolute; left: 0; right: 0; top: 64px; text-align: center; font-size: 13px; color: var(--gold); pointer-events: none; padding-inline: 16px; }
+
+  .compose { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .text-input { min-width: 0; font-size: 16px; padding: 12px 16px; border-radius: 99px; border: 1px solid var(--line);
+    background: rgba(0,0,0,.3); color: var(--text); font-family: var(--mincho); }
+  .btn { min-height: 48px; padding: 10px 20px; border-radius: 99px; border: 1px solid var(--gold); background: var(--gold); color: var(--gold-ink); font-weight: 700; }
+  .btn.ghost { background: transparent; color: var(--gold); }
+  .under { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 12px; align-items: center; }
+  .link { border: 0; background: none; color: var(--muted); font-size: 13px; padding: 4px 0; min-height: 36px; text-decoration: underline; text-underline-offset: 3px; }
+  .link b { color: var(--text); font-weight: 400; }
+  .link.pull { color: var(--gold); }
+  .link:disabled { opacity: .35; text-decoration: none; cursor: default; }
+
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    background: var(--panel); border-top: 1px solid var(--line); border-radius: 20px 20px 0 0; display: grid; gap: 12px;
+    max-width: 640px; margin: 0 auto; transition: transform .25s ease; }
+  .sheet[hidden] { display: grid !important; transform: translateY(110%); visibility: hidden; }
+  .sheet small { color: var(--muted); font-size: 12px; }
+  .sheet blockquote { margin: 0; font: 700 22px/1.5 var(--mincho); overflow-wrap: anywhere; }
+  .sheet .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sheet .later { justify-self: center; }
+  .rename { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+
+  .demo { justify-self: end; border: 1px dashed var(--line); background: none; color: var(--muted); font-size: 12px; border-radius: 99px; padding: 6px 12px; min-height: 36px; }
+  .note { font-size: 11px; color: var(--muted); margin: 0; }
+  @media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }
+</style>
+
+<div class="wrap">
+  <div class="sky-card">
+    <canvas id="sky" aria-label="わたしの夜空。預けた願いが星になり、似た願いどうしが星座になります。空はゆっくり東から西へ回ります"></canvas>
+    <div class="top">
+      <div class="brand"><small>MORUNE 25143</small><strong>わたしの夜空</strong></div>
+      <div class="clock" id="clock"></div>
+    </div>
+    <p class="toast" id="toast" role="status"></p>
+  </div>
+
+  <form class="compose" id="compose">
+    <input class="text-input" id="wish" placeholder="やりたいことを書く" maxlength="60" aria-label="やりたいこと" autocomplete="off">
+    <button class="btn" type="submit">星にする</button>
+  </form>
+  <div class="under">
+    <button class="link" type="button" id="period"></button>
+    <button class="link pull" type="button" id="pull" disabled>この言葉に近い星を、いま引き寄せる</button>
+  </div>
+
+  <button class="demo" type="button" id="demo">試作：次の星座が南に来るまで早送り</button>
+  <p class="note">試作です。似ている願いは、言葉の2文字ずつの組がどれだけ重なるかで決めています（本体アプリの方法に、よくある言い回しを除く工夫を足したもの・端末の中だけで計算）。</p>
+</div>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-labelledby="ret-text">
+  <small id="ret-from"></small>
+  <blockquote id="ret-text"></blockquote>
+  <div class="two">
+    <button class="btn" type="button" data-choice="doing">やる</button>
+    <button class="btn ghost" type="button" data-choice="expired">手放す</button>
+  </div>
+  <button class="link later" type="button" data-choice="later">もう一周、預ける</button>
+</div>
+
+<div class="sheet" id="namer" hidden role="dialog" aria-labelledby="namer-title">
+  <small id="namer-title">星座に名前をつける</small>
+  <form class="rename" id="rename">
+    <input class="text-input" id="cname" maxlength="16" aria-label="星座の名前">
+    <button class="btn" type="submit">決める</button>
+  </form>
+  <button class="link later" type="button" id="namer-close">あとで</button>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const DAY = 86400000;
+
+  // ─── 言葉の近さ（本体アプリ public/constellation.js と同じ：2文字の組の Jaccard）────
+  function bigrams(text) {
+    const chars = [...String(text).normalize('NFKC').toLowerCase().replace(/[\s\p{P}\p{S}]/gu, '')];
+    if (chars.length < 2) return new Set(chars);
+    const g = new Set(); for (let i = 0; i < chars.length - 1; i++) g.add(chars[i] + chars[i + 1]);
+    for (const x of STOP) g.delete(x);  // 「〜に行く」のような言い回しだけで同じ星座にしない
+    return g;
+  }
+  function similarity(a, b) {
+    const l = bigrams(a), r = bigrams(b); if (!l.size && !r.size) return 0;
+    let s = 0; for (const x of l) if (r.has(x)) s++; return s / (l.size + r.size - s);
+  }
+  const STOP = ['に行', '行く', 'する', 'した', 'たい', 'をす'];
+  const JOIN = 0.1;  // これより近ければ、同じ星座に入る
+
+  // ─── 空：360°の帯。いま南（画面のまん中）にある角度は時間で進む ─────────────
+  const PERIODS = [{label: '1週間', days: 7}, {label: '1か月', days: 30}, {label: '3か月', days: 91}];
+  const state = {now: Date.now(), period: 1, clusters: [], wishes: [], open: null, falling: null, typed: ''};
+  const P = () => PERIODS[state.period].days * DAY;
+  // 1周の速さを変えても、いま南にある角度は変えない（空が急に飛ばないように）
+  let epoch = {t: state.now, phi: 0};
+  const phiAt = t => epoch.phi + 360 * (t - epoch.t) / P();
+  const wrap = a => { a = ((a % 360) + 540) % 360 - 180; return a; };  // -180〜180
+  const relOf = (theta, t = state.now) => wrap(theta - phiAt(t));      // ＋は東（左）、0 が南
+  // その角度が次に南を通る時刻（after より後）
+  function nextCrossing(theta, after) {
+    const rel = relOf(theta, after); const ahead = rel > 0 ? rel : rel + 360;
+    return after + ahead / 360 * P();
+  }
+
+  // ─── 願いと星座 ────────────────────────────────────────────────────────
+  let seq = 0;
+  function bestCluster(text) {
+    let best = null, score = 0;
+    for (const c of state.clusters) {
+      const members = state.wishes.filter(w => w.c === c.id && w.status !== 'expired');
+      if (!members.length) continue;
+      const s = Math.max(...members.map(w => similarity(text, w.text)));
+      if (s > score) { score = s; best = c; }
+    }
+    return score >= JOIN ? best : null;
+  }
+  function freeTheta() {
+    // 新しい星座は、東の地平線の少し下（これから昇ってくる場所）に置く。ほかの星座と重ならないように
+    for (const off of [100, 130, 70, 160, 40, 190, 220, 250]) {
+      const theta = (phiAt(state.now) + off) % 360;
+      if (state.clusters.every(c => Math.abs(wrap(c.theta - theta)) > 26)) return theta;
+    }
+    return (phiAt(state.now) + 100) % 360;
+  }
+  function deposit(text, at = state.now) {
+    let c = bestCluster(text), isNova = !!c;
+    if (!c) {
+      c = {id: ++seq, theta: freeTheta(), name: '', alt: 0.32 + Math.random() * 0.22};
+      state.clusters.push(c);
+    }
+    const k = state.wishes.filter(w => w.c === c.id).length;
+    // 星座の中での位置：黄金角でまわりに散らす（同じ入力なら同じ形）
+    const ang = k * 2.39996, rad = k === 0 ? 0 : 7 + 4 * Math.sqrt(k);
+    const w = {id: ++seq, text, c: c.id, dx: Math.cos(ang) * rad, dy: Math.sin(ang) * rad * 0.012,
+      from: at, status: 'waiting'};
+    w.at = nextCrossing(c.theta + w.dx, at + P() * 0.08);  // 預けてすぐは帰らない
+    state.wishes.push(w);
+    return {w, c, isNova};
+  }
+  const clusterOf = w => state.clusters.find(c => c.id === w.c);
+  const cname = c => c.name || `${state.wishes.find(w => w.c === c.id)?.text.slice(0, 4) || ''}…座`;
+  const md = t => { const d = new Date(t); return `${d.getMonth() + 1}月${d.getDate()}日`; };
+
+  // ─── 描く ──────────────────────────────────────────────────────────────
+  const canvas = $('sky'), ctx = canvas.getContext('2d');
+  let W = 0, Hh = 0, field = [], positions = [];
+  const VIEW = 140;  // 画面に入る空の幅（度）
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    W = canvas.clientWidth; Hh = canvas.clientHeight;
+    canvas.width = W * dpr; canvas.height = Hh * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // 背景の星も空と一緒に回るよう、角度で持つ
+    field = Array.from({length: 360}, (_, i) => {
+      const r = n => Math.abs((Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1);
+      return {theta: r(1) * 360, alt: r(2), a: .08 + r(3) * .32, s: .5 + r(3) * .9};
+    });
+    paint();
+  }
+  const horizonY = () => Hh * 0.86;
+  const toXY = (theta, alt) => {
+    const rel = relOf(theta);
+    const x = W / 2 - rel / VIEW * W;
+    // 南のまん中ほど高く見える、ゆるい弧
+    const lift = Math.cos(Math.min(Math.abs(rel), 90) * Math.PI / 180);
+    const y = horizonY() - (alt * 0.9 + 0.08) * horizonY() * (0.72 + 0.28 * lift);
+    return {x, y, rel};
+  };
+  function paint() {
+    ctx.clearRect(0, 0, W, Hh);
+    for (const f of field) {
+      const p = toXY(f.theta, f.alt); if (p.x < -4 || p.x > W + 4) continue;
+      ctx.fillStyle = `rgba(235,231,220,${f.a})`; ctx.fillRect(p.x, p.y, f.s, f.s);
+    }
+    // 南の目じるし（ここを通ると帰ってくる）
+    ctx.strokeStyle = 'rgba(242,208,141,.14)'; ctx.setLineDash([2, 6]);
+    ctx.beginPath(); ctx.moveTo(W / 2, 40); ctx.lineTo(W / 2, horizonY()); ctx.stroke(); ctx.setLineDash([]);
+    positions = [];
+    const words = state.typed.trim();
+    for (const c of state.clusters) {
+      const ms = state.wishes.filter(w => w.c === c.id && w.status !== 'expired');
+      if (!ms.length) continue;
+      const pts = ms.map(w => ({w, ...toXY(c.theta + w.dx, c.alt + w.dy)}));
+      if (pts.every(p => p.x < -30 || p.x > W + 30)) continue;
+      // 星座の線：Prim 法（いちばん近い星どうしを順につなぐ）
+      const inTree = [0], edges = [];
+      while (inTree.length < pts.length) {
+        let best = null;
+        for (const i of inTree) for (let j = 0; j < pts.length; j++) {
+          if (inTree.includes(j)) continue;
+          const d = Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y);
+          if (!best || d < best.d) best = {i, j, d};
+        }
+        inTree.push(best.j); edges.push(best);
+      }
+      ctx.strokeStyle = 'rgba(242,208,141,.4)'; ctx.lineWidth = 1;
+      for (const e of edges) { ctx.beginPath(); ctx.moveTo(pts[e.i].x, pts[e.i].y); ctx.lineTo(pts[e.j].x, pts[e.j].y); ctx.stroke(); }
+      for (const p of pts) {
+        if (state.falling && state.falling.w === p.w) continue;
+        const hot = words && similarity(words, p.w.text) >= 0.08;
+        const r = p.w.status === 'doing' ? 3.2 : 2.6;
+        ctx.fillStyle = hot ? 'rgba(242,208,141,.35)' : 'rgba(235,231,220,.12)';
+        ctx.beginPath(); ctx.arc(p.x, p.y, r * (hot ? 4.5 : 3), 0, 7); ctx.fill();
+        ctx.fillStyle = p.w.status === 'doing' ? '#f2d08d' : '#ebe7dc';
+        ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, 7); ctx.fill();
+        positions.push({x: p.x, y: p.y, w: p.w});
+      }
+      const top = pts.reduce((a, p) => p.y < a.y ? p : a, pts[0]);
+      const cx = pts.reduce((a, p) => a + p.x, 0) / pts.length;
+      ctx.fillStyle = 'rgba(154,165,184,.85)'; ctx.font = '13px "Zen Old Mincho", serif'; ctx.textAlign = 'center';
+      ctx.fillText(`${cname(c)}（${ms.length}）`, cx, top.y - 18);
+      positions.push({x: cx, y: top.y - 22, c, label: true});
+      ctx.textAlign = 'start';
+    }
+    // 地球：地平線の青い光
+    const hy = horizonY();
+    const g = ctx.createLinearGradient(0, hy - 30, 0, Hh);
+    g.addColorStop(0, 'rgba(127,178,255,0)'); g.addColorStop(.45, 'rgba(127,178,255,.28)'); g.addColorStop(1, 'rgba(20,40,80,.95)');
+    ctx.fillStyle = g; ctx.fillRect(0, hy - 30, W, Hh - hy + 30);
+    ctx.fillStyle = '#0d1630';
+    ctx.beginPath(); ctx.moveTo(0, Hh); ctx.quadraticCurveTo(W / 2, hy - 14, W, Hh); ctx.fill();
+    ctx.fillStyle = 'rgba(154,165,184,.8)'; ctx.font = '11px "Zen Kaku Gothic New", sans-serif';
+    ctx.fillText('東', 10, hy - 8); ctx.textAlign = 'right'; ctx.fillText('西', W - 10, hy - 8);
+    ctx.textAlign = 'center'; ctx.fillText('南', W / 2, hy - 8); ctx.textAlign = 'start';
+    // 流れ星：帰ってくる願いが、地球へ落ちてくる
+    if (state.falling) {
+      const f = state.falling, k = Math.min(1, (performance.now() - f.start) / 1300);
+      const e = k * k;
+      const x = f.x0 + (f.x1 - f.x0) * e, y = f.y0 + (f.y1 - f.y0) * e;
+      const tail = ctx.createLinearGradient(f.x0 + (x - f.x0) * 0.4, f.y0 + (y - f.y0) * 0.4, x, y);
+      tail.addColorStop(0, 'rgba(242,208,141,0)'); tail.addColorStop(1, 'rgba(255,240,210,.95)');
+      ctx.strokeStyle = tail; ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(f.x0 + (x - f.x0) * 0.4, f.y0 + (y - f.y0) * 0.4); ctx.lineTo(x, y); ctx.stroke();
+      ctx.fillStyle = '#fff6e0'; ctx.beginPath(); ctx.arc(x, y, 3 + k * 2, 0, 7); ctx.fill();
+    }
+    const d = new Date(state.now);
+    $('clock').textContent = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+  }
+
+  // ─── 時間を進める（ふだんは本当の時間。早送りは試作だけ）─────────────────────
+  let raf = 0, ff = null;
+  function loop() {
+    if (ff) {
+      state.now = Math.min(ff.until, state.now + P() / 360 * 1.6);  // 1フレームで空を約1.6°
+      if (state.now >= ff.until) ff = null;
+    }
+    // 試作の時計は止めてある。進むのは早送りのときだけ
+    checkReturns();
+    paint();
+    if (ff || state.falling) raf = requestAnimationFrame(loop); else raf = 0;
+  }
+  const kick = () => { if (!raf) raf = requestAnimationFrame(loop); };
+  function checkReturns() {
+    if (state.falling || state.open || ff) return;
+    const due = state.wishes.filter(w => w.status === 'waiting' && w.at <= state.now).sort((a, b) => a.at - b.at)[0];
+    if (due) fall(due);
+  }
+  function fall(w) {
+    const p = positions.find(x => x.w === w) || {x: W / 2, y: Hh * 0.3};
+    state.falling = {w, start: performance.now(), x0: p.x, y0: p.y, x1: p.x + (W / 2 - p.x) * 0.3 + 30, y1: horizonY() + 6};
+    setTimeout(() => { state.falling = null; openSheet(w); paint(); }, 1350);
+    kick();
+  }
+
+  // ─── 操作 ──────────────────────────────────────────────────────────────
+  function toast(text) { $('toast').textContent = text; clearTimeout(toast.t); toast.t = setTimeout(() => { $('toast').textContent = ''; }, 4200); }
+  function renderPeriod() { $('period').innerHTML = `空が1周する速さ：<b>${PERIODS[state.period].label}</b>`; }
+  $('period').addEventListener('click', () => {
+    epoch = {t: state.now, phi: phiAt(state.now)};
+    state.period = (state.period + 1) % PERIODS.length;
+    for (const w of state.wishes) if (w.status === 'waiting') w.at = nextCrossing(clusterOf(w).theta + w.dx, Math.max(state.now, w.from + P() * 0.08));
+    renderPeriod(); paint();
+    toast(`空は${PERIODS[state.period].label}で1周します`);
+  });
+
+  $('wish').addEventListener('input', e => {
+    state.typed = e.target.value;
+    const near = state.typed.trim() && state.wishes.some(w => w.status === 'waiting' && similarity(state.typed, w.text) >= 0.08);
+    $('pull').disabled = !near;
+    paint();
+  });
+  $('compose').addEventListener('submit', e => {
+    e.preventDefault();
+    const text = $('wish').value.trim(); if (!text) { $('wish').focus(); return; }
+    const {w, c, isNova} = deposit(text);
+    $('wish').value = ''; state.typed = ''; $('pull').disabled = true;
+    paint();
+    toast(isNova ? `${cname(c)}に、新しい星が加わりました。${md(w.at)}ごろ、南の空で帰ってきます`
+      : `新しい星座が生まれました。東の空から昇り、${md(w.at)}ごろ帰ってきます`);
+    if (!isNova) setTimeout(() => openNamer(c), 900);
+  });
+  $('pull').addEventListener('click', () => {
+    const words = $('wish').value.trim();
+    const best = state.wishes.filter(w => w.status === 'waiting')
+      .map(w => ({w, s: similarity(words, w.text)})).sort((a, b) => b.s - a.s)[0];
+    if (!best || best.s < 0.08) return;
+    $('wish').value = ''; state.typed = ''; $('pull').disabled = true;
+    // 引き寄せた星は、いまの空の位置から流れ星になって落ちてくる
+    const c = clusterOf(best.w);
+    if (Math.abs(relOf(c.theta)) > VIEW / 2) toast(`${cname(c)}は地平線の下。地球のむこうから引き寄せます`);
+    fall(best.w);
+  });
+
+  canvas.addEventListener('click', e => {
+    const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    const hit = positions.filter(p => Math.hypot(p.x - x, p.y - y) < 24).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+    if (!hit) return;
+    if (hit.label) { openNamer(hit.c); return; }
+    const w = hit.w;
+    toast(w.status === 'doing' ? `やること：${w.text}` : `${cname(clusterOf(w))}の星。${md(w.at)}ごろ南の空で帰ってきます`);
+  });
+
+  function openSheet(w) {
+    state.open = w;
+    const days = Math.max(0, Math.round((state.now - w.from) / DAY));
+    $('ret-from').textContent = `${cname(clusterOf(w))}から、流れ星になって帰ってきました・${days}日ぶり`;
+    $('ret-text').textContent = w.text;
+    $('sheet').hidden = false;
+    $('sheet').querySelector('[data-choice="doing"]').focus();
+  }
+  document.querySelectorAll('#sheet [data-choice]').forEach(b => b.addEventListener('click', () => {
+    const w = state.open; if (!w) return;
+    $('sheet').hidden = true; state.open = null;
+    const ch = b.dataset.choice;
+    if (ch === 'doing') { w.status = 'doing'; toast('金色の星になって、空に残ります'); }
+    if (ch === 'expired') { w.status = 'expired'; toast('星は空にかえりました'); }
+    if (ch === 'later') { w.at = nextCrossing(clusterOf(w).theta + w.dx, state.now + P() * 0.5); toast(`もう一周。${md(w.at)}ごろまた帰ってきます`); }
+    paint(); setTimeout(() => { checkReturns(); }, 600);
+  }));
+
+  let naming = null;
+  function openNamer(c) { naming = c; $('cname').value = c.name; $('cname').placeholder = cname(c); $('namer').hidden = false; $('cname').focus(); }
+  $('rename').addEventListener('submit', e => { e.preventDefault(); if (naming) naming.name = $('cname').value.trim(); $('namer').hidden = true; naming = null; paint(); });
+  $('namer-close').addEventListener('click', () => { $('namer').hidden = true; naming = null; });
+
+  $('demo').addEventListener('click', () => {
+    const next = state.wishes.filter(w => w.status === 'waiting').sort((a, b) => a.at - b.at)[0];
+    if (!next) { toast('預けている星がありません'); return; }
+    ff = {until: next.at}; kick();
+  });
+
+  // ─── はじめの空：例の願いがいくつか（試作の例。あなたの願いではありません）──────
+  window.addEventListener('resize', resize);
+  const t0 = state.now;
+  [['家族と海を見に行く', 7], ['家族で温泉に行く', 5], ['家族と花火を見る', 2],
+   ['ラーメンを食べに行く', 6], ['焼肉を食べに行く', 4], ['ケーキを食べる', 1],
+   ['ギターを弾く', 3], ['ピアノを弾く', 2]].forEach(([text, ago]) => {
+    // 過去に預けたことにする（空も過去の位置で置く）
+    const at = t0 - ago * DAY, saved = state.now; state.now = at;
+    const {c} = deposit(text, at);
+    state.now = saved;
+  });
+  state.clusters[0].name = '家族座'; state.clusters[1].name = 'ごはん座';
+  renderPeriod(); resize();
+})();
+</script>
