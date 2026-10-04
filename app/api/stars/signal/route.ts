@@ -3,12 +3,12 @@ import { eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { publicStars } from "../../../../db/schema";
 import { recordSignal } from "../../signals/record";
-import { isShowable, parseStarSignal } from "../rules.mjs";
+import { isShowable, parseStarSignal, publicStarsEnabled } from "../rules.mjs";
 
 // 他の人の星へ、応援の信号を送る。星の持ち主の軌道ID は画面に渡さず、ここで星から引く
 // （軌道ID が分かると、届いた信号の時刻まで読めてしまうため）。
 export async function POST(request: Request) {
-  if (!env.DB) return Response.json({ enabled: false }, { status: 404 });
+  if (!publicStarsEnabled(env)) return Response.json({ enabled: false }, { status: 404 });
   let body: unknown;
   try { body = await request.json(); } catch { return Response.json({ error: "信号の送り先を確認してください。" }, { status: 400 }); }
   const parsed = parseStarSignal(body);

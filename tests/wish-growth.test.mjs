@@ -63,3 +63,15 @@ test('育ち方の文言', () => {
   assert.equal(growthMessage(recordStep(received(), day(5))), '1歩ふみ出して、5等星になりました。');
   assert.equal(growthMessage({...received()}), growthMessage(received()));
 });
+
+test('日付が変わったら、次の一歩を記録できる（23:59 と 0:00）', () => {
+  const wish = recordStep(received(), new Date(2026, 9, 5, 23, 59).getTime());
+  assert.equal(canStep(wish, new Date(2026, 9, 5, 23, 59, 59).getTime()), false);
+  assert.equal(canStep(wish, new Date(2026, 9, 6, 0, 0).getTime()), true);
+});
+
+test('最初の一歩の文字数は、絵文字も1字として数える', () => {
+  const emoji = '🌊'.repeat(GROWTH.firstStepMax);
+  assert.equal(setFirstStep(received(), emoji).firstStep, emoji);
+  assert.throws(() => setFirstStep(received(), emoji + '🌊'));
+});

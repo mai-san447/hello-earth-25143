@@ -2,12 +2,12 @@ import { env } from "cloudflare:workers";
 import { and, count, eq, gt, gte, inArray, lt, ne, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { orbits, publicStars, starReports } from "../../../db/schema";
-import { DAILY_WINDOW_MS, SKY_LIMIT, STATUS, acceptPublish, expiresAt, formatNumber, isOrbitId, parsePublish, publicStar, screenText } from "./rules.mjs";
+import { DAILY_WINDOW_MS, SKY_LIMIT, STATUS, acceptPublish, publicStarsEnabled, expiresAt, formatNumber, isOrbitId, parsePublish, publicStar, screenText } from "./rules.mjs";
 
 // みんなの星（#22）。公開を選んだ言葉（60字まで）と軌道IDだけを受け取る。名前・IPアドレスは保存しない。
-// D1 の `DB` が用意されていない環境では、応援の信号と同じく機能ごと隠す。
+// D1 の `DB` が無い環境、または PUBLIC_STARS_ENABLED が "true" でない環境では、機能ごと隠す（rules.mjs）。
 function enabled() {
-  return Boolean(env.DB);
+  return publicStarsEnabled(env);
 }
 
 async function orbitNumber(orbitId: string) {

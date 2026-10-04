@@ -17,7 +17,8 @@
     }
   ],
   "vars": {
-    "CHATGPT_SYNC_ENABLED": "false"
+    "CHATGPT_SYNC_ENABLED": "false",
+    "PUBLIC_STARS_ENABLED": "false"
   },
   "observability": {
     "enabled": true

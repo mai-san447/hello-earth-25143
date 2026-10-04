@@ -2,12 +2,12 @@ import { env } from "cloudflare:workers";
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
 import { publicStars, starReports } from "../../../../db/schema";
-import { parseReport, statusAfterReport } from "../rules.mjs";
+import { parseReport, statusAfterReport, publicStarsEnabled } from "../rules.mjs";
 
 // 他の人の星の通報（#23）。同じ端末から同じ星へは1回だけ数え、3件で非表示にする。
 // 通報した端末の軌道ID は、2回目を数えないためだけに使う（名前・IPアドレスは保存しない）。
 export async function POST(request: Request) {
-  if (!env.DB) return Response.json({ enabled: false }, { status: 404 });
+  if (!publicStarsEnabled(env)) return Response.json({ enabled: false }, { status: 404 });
   let body: unknown;
   try { body = await request.json(); } catch { return Response.json({ error: "通報する星を確認してください。" }, { status: 400 }); }
   const parsed = parseReport(body);
