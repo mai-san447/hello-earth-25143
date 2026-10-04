@@ -81,7 +81,7 @@ export function MissionExperience({
           <div className="return-from-field">
             <label htmlFor="return-from">帰還が始まる日（任意）</label>
             <input id="return-from" type="date" aria-describedby="return-from-hint" />
-            <p id="return-from-hint">入院中など、しばらく手放しておきたいときに。この日までは振っても帰ってきません。空欄なら、すぐ帰還の候補になります。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないと保存が消えることがあります）。</p>
+            <p id="return-from-hint">療養や休職など、しばらく手放しておきたいときに。この日までは振っても帰ってきません。空欄なら、すぐ帰還の候補になります。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないと保存が消えることがあります）。</p>
           </div>
           {/* #22 みんなの星。サーバーの準備ができた環境でだけ出す（初期値は「流さない」） */}
           <div className="publish-field" id="publish-field" hidden>
