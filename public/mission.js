@@ -292,7 +292,7 @@
   }
 
   function dispositionLabel(status) {
-    return ({returned: '帰還・未整理', doing: 'やってみる', later: '保留', expired: '手放した', done: '完了'})[status] || '地球に保管';
+    return ({returned: '帰還・未整理', doing: 'やってみる', later: '保留', expired: '手放した', done: 'アーカイブ'})[status] || '地球に保管';
   }
 
   function refreshArchiveControls(archiveItems) {
@@ -321,6 +321,16 @@
         : orbiting().length ? `星はイトカワの軌道で待っています。${waitingForStartMessage()}`
           : '願いを預けると、星がイトカワの軌道に浮かびます';
     const list = $('#archive-list');
+    // 「最初の一歩」を書いている途中に、1分ごとの更新で入力が消えないようにする
+    const editing = list.contains(document.activeElement) && document.activeElement.matches('input[type="text"]');
+    if (!editing) renderArchiveList(list, archiveItems);
+    $('#archive-empty').hidden = archiveItems.length > 0;
+    drawConstellation();
+    renderMyRecord();
+    refreshArchiveControls(archiveItems);
+  }
+
+  function renderArchiveList(list, archiveItems) {
     list.replaceChildren();
     for (const wish of archiveItems) {
       const row = document.createElement('li');
@@ -341,16 +351,91 @@
       });
       text.textContent = wish.text;
       disposition.className = 'archive-state';
-      disposition.textContent = dispositionLabel(wish.status);
+      disposition.textContent = wish.status === WishState.STATUS.DOING ? WishState.growthLabel(wish) : dispositionLabel(wish.status);
       date.textContent = new Intl.DateTimeFormat('ja-JP', {month: 'short', day: 'numeric'}).format(wish.updatedAt);
       label.append(checkbox, text);
       row.append(label, disposition, date);
+      if (wish.status === WishState.STATUS.DOING) row.append(growthControls(wish));
       list.append(row);
     }
-    $('#archive-empty').hidden = archiveItems.length > 0;
-    drawConstellation();
-    renderMyRecord();
-    refreshArchiveControls(archiveItems);
+  }
+
+  // 育つ願い。受け取った願いに「最初の一歩」「一歩ふみ出した」「叶った」を添える（ルールは wish-state.js）
+  function growthControls(wish) {
+    const box = document.createElement('div');
+    box.className = 'archive-growth';
+    const message = document.createElement('p');
+    message.textContent = WishState.growthMessage(wish);
+    box.append(message);
+    if (Number.isFinite(wish.fulfilledAt)) {
+      if (wish.firstStep) {
+        const first = document.createElement('p');
+        first.className = 'archive-growth-first';
+        first.textContent = `最初の一歩：${wish.firstStep}`;
+        box.append(first);
+      }
+      return box;
+    }
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.maxLength = WishState.GROWTH.firstStepMax;
+    input.value = wish.firstStep ?? '';
+    input.placeholder = '最初の小さな一歩は？';
+    input.setAttribute('aria-label', `${wish.text}の、最初の小さな一歩`);
+    input.addEventListener('change', () => {
+      let next;
+      try {
+        next = WishState.setFirstStep(currentWish(wish.id), input.value);
+      } catch (error) {
+        $('#archive-status').textContent = error.message;
+        return;
+      }
+      saveGrowth(next, next.firstStep ? '最初の一歩を書きとめました。' : '最初の一歩を消しました。');
+    });
+    const actions = document.createElement('div');
+    actions.className = 'archive-growth-actions';
+    const step = document.createElement('button');
+    step.type = 'button';
+    const stepAllowed = WishState.canStep(wish, Date.now());
+    step.textContent = stepAllowed ? '一歩ふみ出した' : '今日の一歩は記録しました';
+    step.disabled = !stepAllowed;
+    step.addEventListener('click', () => {
+      let next;
+      try {
+        next = WishState.recordStep(currentWish(wish.id), Date.now());
+      } catch (error) {
+        $('#archive-status').textContent = error.message;
+        return;
+      }
+      saveGrowth(next, `星が明るくなりました（${WishState.growthLabel(next)}）。`);
+    });
+    const fulfilled = document.createElement('button');
+    fulfilled.type = 'button';
+    fulfilled.textContent = '叶った';
+    fulfilled.addEventListener('click', () => {
+      if (!window.confirm(`「${wish.text}」は叶いましたか？ 叶った星として、いちばん明るく光ります。`)) return;
+      saveGrowth(WishState.markFulfilled(currentWish(wish.id), Date.now()), 'おめでとうございます。叶った星になりました。');
+    });
+    actions.append(step, fulfilled);
+    box.append(input, actions);
+    return box;
+  }
+
+  function currentWish(id) {
+    return wishes.find(wish => wish.id === id);
+  }
+
+  async function saveGrowth(next, message) {
+    try {
+      await store('readwrite', object => object.put(next));
+      wishes = wishes.map(wish => wish.id === next.id ? next : wish);
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+      refreshInterface();
+      $('#archive-status').textContent = message;
+    } catch (error) {
+      console.error('save growth', error);
+      $('#archive-status').textContent = '保存できませんでした。もう一度お試しください';
+    }
   }
 
   function geometry() {
@@ -1238,7 +1323,7 @@
       if (updated.status === WishState.STATUS.DOING && starsEnabled) openFulfilledSheet();
       if (!backToOrbit) {
         // 受け取った願いは星座に加わる。回収記録のボタンを一度だけ光らせて知らせる
-        $('#mission-status').textContent = 'あなたの星座に、星がひとつ加わりました';
+        $('#mission-status').textContent = 'あなたの星座に、星がひとつ加わりました。回収記録で、小さな一歩を書きとめると育ちます';
         const archiveTrigger = $('#archive-open');
         archiveTrigger.classList.remove('constellation-grew');
         void archiveTrigger.offsetWidth;
@@ -1317,7 +1402,9 @@
     context.fillText('願いを星に、想いを地球へ。', center, canvas.height - 200);
     context.fillStyle = '#829090';
     context.font = '24px "Zen Kaku Gothic New", sans-serif';
-    context.fillText(content.footnote, center, canvas.height - 110);
+    context.fillText(content.footnote, center, canvas.height - 116);
+    context.font = '20px "Zen Kaku Gothic New", sans-serif';
+    context.fillText(content.credit, center, canvas.height - 80);
     return canvas;
   }
 
@@ -2214,14 +2301,25 @@
     }
     for (const star of stars) {
       const {x, y} = positions.get(star.id);
+      // 明るさ＝誰かの応援（信号）×自分の一歩（等級）。6等星が1、1等星で約2倍の大きさになる
       const glow = Constellation.brightness(Constellation.signalsWhileWaiting(star, signalTimes));
+      const grown = 1 + (WishState.GROWTH.faintest - (WishState.magnitude(star) ?? WishState.GROWTH.faintest)) * 0.22;
       draw.save();
       draw.shadowColor = '#ffe4a6';
-      draw.shadowBlur = 12 * glow;
+      draw.shadowBlur = 12 * glow * grown;
       draw.fillStyle = star.status === 'doing' ? '#fff1ce' : '#cfd8d6';
       draw.beginPath();
-      draw.arc(x, y, 3 * glow, 0, Math.PI * 2);
+      draw.arc(x, y, 3 * glow * grown, 0, Math.PI * 2);
       draw.fill();
+      if (Number.isFinite(star.fulfilledAt)) {
+        // 叶った星には、光の輪を添える
+        draw.shadowBlur = 0;
+        draw.strokeStyle = 'rgba(255, 228, 166, 0.7)';
+        draw.lineWidth = 1;
+        draw.beginPath();
+        draw.arc(x, y, 3 * glow * grown + 5, 0, Math.PI * 2);
+        draw.stroke();
+      }
       draw.restore();
     }
   }

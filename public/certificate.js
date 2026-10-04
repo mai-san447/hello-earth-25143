@@ -15,7 +15,7 @@ export function formatDateJa(time) {
   return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
 }
 
-// 願いの言葉を入れるかは本人が選ぶ（初期値は入れない）。入院中の願いは個人的な内容になりやすいため。
+// 願いの言葉を入れるかは本人が選ぶ（初期値は入れない）。しばらく離れている人の願いは個人的な内容になりやすいため。
 // number はみんなの星で発行された枝番（25143-0001 など）。公開したことがなければ入れない
 export function certificateContent({wish, now, includeText = false, distanceLine = '', number = null}) {
   const days = Math.max(0, Math.round((startOfLocalDay(now) - startOfLocalDay(wish.createdAt)) / DAY_MS));
@@ -33,6 +33,10 @@ export function certificateContent({wish, now, includeText = false, distanceLine
     distanceLine,
     // 「星に公式の名前が付く」と誤解させないための一文（星の命名の販売の失敗から）
     footnote: 'この証明書は作品 MORUNE 25143 の中の記録です。',
+    // 権利の確認（docs/権利の確認.md）：枝番が本物の天体名と誤解されないこと、距離の出典を書くこと
+    credit: distanceLine
+      ? '本物の星や小惑星の名前ではありません。距離：NASA/JPL Horizons'
+      : '本物の星や小惑星の名前ではありません。',
     fileName: `morune-25143-${new Date(now).toLocaleDateString('sv-SE')}.png`,
   };
 }
