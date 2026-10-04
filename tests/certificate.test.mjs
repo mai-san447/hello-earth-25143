@@ -22,6 +22,8 @@ test('願いの言葉は、選んだときだけ入れる（初期値は入れ�
 
 test('公式の命名だと誤解させない一文を必ず入れる', () => {
   assert.match(certificateContent({wish, now: at(2026, 10, 3)}).footnote, /作品 MORUNE 25143 の中の記録/);
+  assert.match(certificateContent({wish, now: at(2026, 10, 3)}).credit, /本物の星や小惑星の名前ではありません/);
+  assert.match(certificateContent({wish, now: at(2026, 10, 3), distanceLine: '今日のイトカワまで 2.6億km。'}).credit, /NASA\/JPL Horizons/);
 });
 
 test('みんなの星の番号（枝番）は、発行されているときだけ入れる', () => {

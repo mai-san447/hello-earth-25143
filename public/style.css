@@ -371,6 +371,14 @@ body:has(.mission-app){background:transparent}
 .mission-title .mission-kicker{font-family:"Noto Sans JP","Zen Kaku Gothic New",sans-serif;font-size:8px;font-weight:500;letter-spacing:.18em}
 .archive-management{display:grid;gap:10px;margin-top:16px;padding-top:13px;border-top:1px solid rgba(190,207,204,.16)}
 .archive-sheet li{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px}
+.archive-growth{grid-column:1 / -1;display:grid;gap:7px;margin:-2px 0 6px 27px;padding:9px 11px;border-left:2px solid rgba(230,200,120,.38);background:rgba(255,241,206,.04);border-radius:0 8px 8px 0}
+.archive-growth p{margin:0;color:rgba(232,226,208,.82);font:400 10px/1.6 "Noto Sans JP","Zen Kaku Gothic New",sans-serif}
+.archive-growth .archive-growth-first{color:#e8d4a8}
+.archive-growth input{width:100%;min-height:38px;padding:7px 10px;border:1px solid rgba(227,214,182,.28);border-radius:8px;background:rgba(255,255,255,.05);color:#eef1f2;font:400 16px/1.5 "Noto Sans JP","Zen Kaku Gothic New",sans-serif}
+.archive-growth-actions{display:grid;grid-template-columns:1fr auto;gap:8px}
+.archive-growth-actions button{min-height:38px;padding:6px 12px;border:1px solid rgba(245,222,175,.4);border-radius:999px;background:rgba(229,212,172,.12);color:#f1e3c2;font:500 10px/1.4 "Noto Sans JP","Zen Kaku Gothic New",sans-serif;cursor:pointer}
+.archive-growth-actions button:disabled{opacity:.5;cursor:default}
+.archive-growth input:focus-visible,.archive-growth-actions button:focus-visible{outline:2px solid #e6ca91;outline-offset:2px}
 .archive-item-label{display:flex;align-items:flex-start;gap:9px;min-width:0;cursor:pointer}
 .archive-item-label>span{min-width:0;overflow-wrap:anywhere}
 .archive-select-all{display:flex;align-items:center;gap:9px;width:max-content;color:rgba(225,233,238,.76);font:500 11px/1.5 "Noto Sans JP","Zen Kaku Gothic New",sans-serif;cursor:pointer}
@@ -385,6 +393,7 @@ body:has(.mission-app){background:transparent}
 .archive-next{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:46px;padding:0 15px;border:1px solid rgba(245,222,175,.45);border-radius:999px;background:linear-gradient(110deg,#e5d4ac,#cbaa6e);color:#1c252b;font:600 11px/1.4 "Noto Sans JP","Zen Kaku Gothic New",sans-serif;cursor:pointer}
 .archive-next span{font-size:16px}
 .archive-management button:focus-visible,.archive-select-all input:focus-visible,.archive-item-checkbox:focus-visible{outline:2px solid #e6ca91;outline-offset:3px}
+@media(max-width:420px){.archive-growth{margin-left:0}}
 @media(max-width:420px){.archive-sheet li{grid-template-columns:minmax(0,1fr) auto}.archive-sheet li time{grid-column:2;grid-row:2}.archive-sheet li .archive-state{grid-column:2;grid-row:1}.archive-item-label{grid-column:1;grid-row:1 / span 2}}
 .policy-open{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;margin-top:14px;padding:9px 2px 0;border:0;border-top:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(239,243,247,.78);font:500 11px/1.5 "Noto Sans JP","Zen Kaku Gothic New",sans-serif;text-align:left;cursor:pointer}
 .policy-open span{color:#e7cf9c;font-size:18px;line-height:1}

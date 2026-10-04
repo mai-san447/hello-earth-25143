@@ -182,3 +182,71 @@ export function daysWaited(wish, now) {
 export function waitedMessage(days) {
   return days === 0 ? '今日、預けた願いです。' : `${days}日間、イトカワの軌道であなたを待っていました。`;
 }
+
+// 育つ願い。受け取った（doing）願いは、小さな一歩をふみ出すたびに明るくなる。
+// 明るさは本物の星の等級で表す（6等星＝やっと見える、1等星＝夜空で目立つ）。
+// 願うだけで終わらせないための仕組みだが、ToDo にはしない：期限・連続日数・比べる数は持たず、
+// 何もしなくても暗くはならない（「今でなくてもいい」が作品の考え方）。
+export const GROWTH = Object.freeze({
+  faintest: 6,     // 受け取ったばかりの願い
+  brightest: 1,    // 一歩ごとに1等級ずつ明るくなり、ここで止まる
+  firstStepMax: 60, // 「最初の小さな一歩」の文字数（願いと同じ）
+});
+
+const DAY_KEY = time => new Date(time).toLocaleDateString('sv-SE');
+
+// 一歩は1日1回まで数える。続けて押して一気に明るくすると、育つ意味がなくなるため
+export function canStep(wish, now) {
+  if (wish.status !== STATUS.DOING || Number.isFinite(wish.fulfilledAt)) return false;
+  const steps = wish.steps ?? [];
+  return !steps.length || DAY_KEY(steps[steps.length - 1]) !== DAY_KEY(now);
+}
+
+// updatedAt は変えない（応援の信号を「判断した時点まで」で数えるのに使っているため）
+export function recordStep(wish, now) {
+  if (wish.status !== STATUS.DOING) throw new Error(`受け取った願いだけが育ちます: ${wish.status}`);
+  if (!canStep(wish, now)) throw new Error('今日の一歩は、もう記録しています');
+  return {...wish, steps: [...(wish.steps ?? []), now]};
+}
+
+// 最初の小さな一歩。書かなくてもいい。空にすれば消える
+export function setFirstStep(wish, text) {
+  if (wish.status !== STATUS.DOING) throw new Error(`受け取った願いだけが育ちます: ${wish.status}`);
+  const value = String(text ?? '').trim();
+  if ([...value].length > GROWTH.firstStepMax) throw new Error(`最初の一歩は${GROWTH.firstStepMax}字までです`);
+  const next = {...wish};
+  if (value) next.firstStep = value;
+  else delete next.firstStep;
+  return next;
+}
+
+// 叶った。状態（status）は doing のまま、叶った日だけを持たせる（状態遷移を増やさない）
+export function markFulfilled(wish, now) {
+  if (wish.status !== STATUS.DOING) throw new Error(`受け取った願いだけが叶います: ${wish.status}`);
+  if (Number.isFinite(wish.fulfilledAt)) return wish;
+  return {...wish, fulfilledAt: now};
+}
+
+// 今の等級。受け取っていない願いは null。叶った願いは1等星
+export function magnitude(wish) {
+  if (wish.status !== STATUS.DOING) return null;
+  if (Number.isFinite(wish.fulfilledAt)) return GROWTH.brightest;
+  return Math.max(GROWTH.brightest, GROWTH.faintest - (wish.steps?.length ?? 0));
+}
+
+export function growthLabel(wish) {
+  const value = magnitude(wish);
+  if (value == null) return '';
+  if (Number.isFinite(wish.fulfilledAt)) return '叶った星';
+  return `${value}等星`;
+}
+
+export function growthMessage(wish) {
+  const value = magnitude(wish);
+  if (value == null) return '';
+  if (Number.isFinite(wish.fulfilledAt)) return '叶いました。この星は、あなたの空でいちばん明るく光ります。';
+  const steps = wish.steps?.length ?? 0;
+  if (!steps) return '受け取ったばかりの、かすかな星です。小さな一歩をふみ出すと、明るくなります（書かなくても大丈夫）。';
+  if (value === GROWTH.brightest) return `${steps}歩ふみ出して、1等星になりました。`;
+  return `${steps}歩ふみ出して、${value}等星になりました。`;
+}
