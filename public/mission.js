@@ -7,13 +7,15 @@
   let Constellation;
   let Certificate;
   let PublicStars;
+  let KeyedQueue;
   try {
-    [WishState, Itokawa, Constellation, Certificate, PublicStars] = await Promise.all([
+    [WishState, Itokawa, Constellation, Certificate, PublicStars, KeyedQueue] = await Promise.all([
       import('/wish-state.js'),
       import('/itokawa.js'),
       import('/constellation.js'),
       import('/certificate.js'),
       import('/public-stars.js'),
+      import('/keyed-queue.js'),
     ]);
   } catch (error) {
     console.error('mission modules', error);
@@ -142,6 +144,12 @@
   let database;
   let wishes = [];
   const selectedArchiveIds = new Set();
+  // 育つ願い：同じ願いへの保存を押した順に1つずつ行う／書きかけ・保存できなかった「最初の一歩」を、描き直しで捨てない
+  const growthQueue = KeyedQueue.createKeyedQueue();
+  const growthDrafts = new Map();
+  let archiveListStale = false;
+  // 押したボタンは押せなくなるとブラウザがフォーカスを外すので、押した操作を覚えておいて描き直しのあとに戻す
+  let growthFocusKey = null;
   let width = 0;
   let height = 0;
   let pixelRatio = 1;
@@ -321,9 +329,10 @@
         : orbiting().length ? `星はイトカワの軌道で待っています。${waitingForStartMessage()}`
           : '願いを預けると、星がイトカワの軌道に浮かびます';
     const list = $('#archive-list');
-    // 「最初の一歩」を書いている途中に、1分ごとの更新で入力が消えないようにする
+    // 「最初の一歩」を書いている途中（日本語の変換中を含む）は描き直さない。入力欄から出たときに描き直す
     const editing = list.contains(document.activeElement) && document.activeElement.matches('input[type="text"]');
-    if (!editing) renderArchiveList(list, archiveItems);
+    if (editing) archiveListStale = true;
+    else renderArchiveList(list, archiveItems);
     $('#archive-empty').hidden = archiveItems.length > 0;
     drawConstellation();
     renderMyRecord();
@@ -331,6 +340,10 @@
   }
 
   function renderArchiveList(list, archiveItems) {
+    archiveListStale = false;
+    // 描き直しても、押したボタンからフォーカスが消えないようにする
+    const focusKey = (list.contains(document.activeElement) ? document.activeElement.dataset.growthKey : null) ?? growthFocusKey;
+    growthFocusKey = null;
     list.replaceChildren();
     for (const wish of archiveItems) {
       const row = document.createElement('li');
@@ -358,6 +371,12 @@
       if (wish.status === WishState.STATUS.DOING) row.append(growthControls(wish));
       list.append(row);
     }
+    if (focusKey) {
+      // 押したボタンが押せなくなったとき（今日の一歩を記録した等）は、同じ願いの次の操作へ移す
+      const target = list.querySelector(`[data-growth-key="${CSS.escape(focusKey)}"]`);
+      const focusable = target && !target.disabled ? target : target?.closest('.archive-growth')?.querySelector('button:not(:disabled), input');
+      focusable?.focus({preventScroll: true});
+    }
   }
 
   // 育つ願い。受け取った願いに「最初の一歩」「一歩ふみ出した」「叶った」を添える（ルールは wish-state.js）
@@ -376,45 +395,55 @@
       }
       return box;
     }
+    const busy = growthQueue.busy(wish.id);
     const input = document.createElement('input');
     input.type = 'text';
-    input.maxLength = WishState.GROWTH.firstStepMax;
-    input.value = wish.firstStep ?? '';
+    input.dataset.growthKey = `${wish.id}:first`;
+    input.value = growthDrafts.get(wish.id) ?? wish.firstStep ?? '';
     input.placeholder = '最初の小さな一歩は？';
-    input.setAttribute('aria-label', `${wish.text}の、最初の小さな一歩`);
+    input.setAttribute('aria-label', `${wish.text}の、最初の小さな一歩（書かなくても大丈夫）`);
+    // 文字数はルール（wish-state.js）と同じく、絵文字も1字として数える。maxLength は UTF-16 で数えるため使わない
+    const keepDraft = () => {
+      const chars = [...input.value];
+      if (chars.length > WishState.GROWTH.firstStepMax) input.value = chars.slice(0, WishState.GROWTH.firstStepMax).join('');
+      growthDrafts.set(wish.id, input.value);
+    };
+    input.addEventListener('input', event => { if (!event.isComposing) keepDraft(); });
+    input.addEventListener('compositionend', keepDraft);
     input.addEventListener('change', () => {
-      let next;
-      try {
-        next = WishState.setFirstStep(currentWish(wish.id), input.value);
-      } catch (error) {
-        $('#archive-status').textContent = error.message;
-        return;
-      }
-      saveGrowth(next, next.firstStep ? '最初の一歩を書きとめました。' : '最初の一歩を消しました。');
+      const value = input.value;
+      updateGrowth(wish.id, current => WishState.setFirstStep(current, value), next => {
+        if (growthDrafts.get(wish.id) === value) growthDrafts.delete(wish.id);
+        return next.firstStep ? '最初の一歩を書きとめました。' : '最初の一歩を消しました。';
+      });
+    });
+    input.addEventListener('focusout', event => {
+      // 書いている間に止めていた描き直しを、入力欄から出たときに行う（同じ一覧の中のボタンへ移るときは、そのボタンの処理に任せる）
+      if (archiveListStale && !$('#archive-list').contains(event.relatedTarget)) queueMicrotask(refreshInterface);
     });
     const actions = document.createElement('div');
     actions.className = 'archive-growth-actions';
     const step = document.createElement('button');
     step.type = 'button';
+    step.dataset.growthKey = `${wish.id}:step`;
     const stepAllowed = WishState.canStep(wish, Date.now());
     step.textContent = stepAllowed ? '一歩ふみ出した' : '今日の一歩は記録しました';
-    step.disabled = !stepAllowed;
+    step.disabled = !stepAllowed || busy;
     step.addEventListener('click', () => {
-      let next;
-      try {
-        next = WishState.recordStep(currentWish(wish.id), Date.now());
-      } catch (error) {
-        $('#archive-status').textContent = error.message;
-        return;
-      }
-      saveGrowth(next, `星が明るくなりました（${WishState.growthLabel(next)}）。`);
+      growthFocusKey = step.dataset.growthKey;
+      step.disabled = true;
+      updateGrowth(wish.id, current => WishState.recordStep(current, Date.now()), next => `星が明るくなりました（${WishState.growthLabel(next)}）。`);
     });
     const fulfilled = document.createElement('button');
     fulfilled.type = 'button';
+    fulfilled.dataset.growthKey = `${wish.id}:fulfilled`;
     fulfilled.textContent = '叶った';
+    fulfilled.disabled = busy;
     fulfilled.addEventListener('click', () => {
       if (!window.confirm(`「${wish.text}」は叶いましたか？ 叶った星として、いちばん明るく光ります。`)) return;
-      saveGrowth(WishState.markFulfilled(currentWish(wish.id), Date.now()), 'おめでとうございます。叶った星になりました。');
+      growthFocusKey = fulfilled.dataset.growthKey;
+      fulfilled.disabled = true;
+      updateGrowth(wish.id, current => WishState.markFulfilled(current, Date.now()), 'おめでとうございます。叶った星になりました。');
     });
     actions.append(step, fulfilled);
     box.append(input, actions);
@@ -425,17 +454,36 @@
     return wishes.find(wish => wish.id === id);
   }
 
-  async function saveGrowth(next, message) {
+  // 同じ願いへの保存は growthQueue で1つずつ行い、順番が来た時点の最新の願いから次の形を作る
+  async function updateGrowth(id, change, message) {
+    let outcome;
     try {
-      await store('readwrite', object => object.put(next));
-      wishes = wishes.map(wish => wish.id === next.id ? next : wish);
-      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
-      refreshInterface();
-      $('#archive-status').textContent = message;
+      outcome = await growthQueue.run(id, async () => {
+        const current = currentWish(id);
+        if (!current) return {skipped: true};
+        let next;
+        try {
+          next = change(current);
+        } catch (error) {
+          // 1日1回・文字数などのルールで受け付けなかった（保存の失敗とは分けて伝える）
+          return {rule: error.message};
+        }
+        if (next === current) return {skipped: true};
+        await store('readwrite', object => object.put(next));
+        wishes = wishes.map(wish => wish.id === id ? next : wish);
+        return {next};
+      });
     } catch (error) {
       console.error('save growth', error);
-      $('#archive-status').textContent = '保存できませんでした。もう一度お試しください';
+      outcome = {failed: true};
     }
+    refreshInterface();
+    const status = $('#archive-status');
+    if (outcome.next) status.textContent = typeof message === 'function' ? message(outcome.next) : message;
+    else if (outcome.rule) status.textContent = outcome.rule;
+    else if (outcome.failed) status.textContent = growthDrafts.has(id)
+      ? '保存できませんでした。書いた一歩は残してあります。もう一度お試しください'
+      : '保存できませんでした。もう一度お試しください';
   }
 
   function geometry() {
@@ -1323,7 +1371,7 @@
       if (updated.status === WishState.STATUS.DOING && starsEnabled) openFulfilledSheet();
       if (!backToOrbit) {
         // 受け取った願いは星座に加わる。回収記録のボタンを一度だけ光らせて知らせる
-        $('#mission-status').textContent = 'あなたの星座に、星がひとつ加わりました。回収記録で、小さな一歩を書きとめると育ちます';
+        $('#mission-status').textContent = 'あなたの星座に、星がひとつ加わりました。回収記録で「一歩ふみ出した」を押すと、星が育ちます';
         const archiveTrigger = $('#archive-open');
         archiveTrigger.classList.remove('constellation-grew');
         void archiveTrigger.offsetWidth;

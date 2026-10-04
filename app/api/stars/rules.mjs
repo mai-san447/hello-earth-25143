@@ -48,6 +48,13 @@ const EMAIL_LIKE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
 // 電話番号らしい並び：数字が10個以上。間のハイフン・空白・点・かっこ・長音は許す（090-1234-5678 など）
 const PHONE_LIKE = /\d(?:[\s\-‐―−ー().]*\d){9,}/;
 
+// みんなの星を本番で開くかどうか。D1 があるだけでは開かない（応援の信号も同じ D1 を使うため）。
+// 表が無くて止まっているのか、本当の障害なのかを分けるため、開かないときは {enabled:false} をはっきり返す。
+// 投稿を見守る人がいない期間は "false" のままにする（2026-10-04 Claude×Codex 協議）。
+export function publicStarsEnabled(env) {
+  return Boolean(env?.DB) && env?.PUBLIC_STARS_ENABLED === 'true';
+}
+
 export function isStarId(value) {
   return typeof value === 'string' && STAR_ID.test(value);
 }

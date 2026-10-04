@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {
+  publicStarsEnabled,
   CAUTION_WORDS, DAILY_LIMIT, MAX_LENGTH, REPORT_HIDE_THRESHOLD, SKY_LIMIT, TTL_MS,
   acceptPublish, expiresAt, formatNumber, isShowable, isStarId, normalizeText, parsePublish,
   parseReport, parseStarSignal, publicStar, screenText, statusAfterReport,
@@ -147,4 +148,12 @@ test('枝番は 25143-0001 の形。この作品の中だけの番号', () => {
 test('返す星には、軌道ID・状態・通報数を含めない', () => {
   const row = {id: starId, orbitId, kind: 'wish', text: '海', status: 'visible', reports: 2, createdAt: 1, expiresAt: 2};
   assert.deepEqual(publicStar(row), {id: starId, kind: 'wish', text: '海', expiresAt: 2});
+});
+
+test('みんなの星は、D1 があってもスイッチが "true" のときだけ開く', () => {
+  assert.equal(publicStarsEnabled({}), false);
+  assert.equal(publicStarsEnabled({DB: {}}), false);
+  assert.equal(publicStarsEnabled({DB: {}, PUBLIC_STARS_ENABLED: 'false'}), false);
+  assert.equal(publicStarsEnabled({PUBLIC_STARS_ENABLED: 'true'}), false);
+  assert.equal(publicStarsEnabled({DB: {}, PUBLIC_STARS_ENABLED: 'true'}), true);
 });
