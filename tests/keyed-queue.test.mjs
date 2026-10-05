@@ -29,6 +29,14 @@ test('前の保存が失敗しても、次の保存は行い、失敗は呼ん�
   assert.deepEqual(order, [1, 2]);
 });
 
+test('結果を受け取った時点で、もう保存中ではない', async () => {
+  const queue = createKeyedQueue();
+  await queue.run('a', async () => { await wait(5); });
+  assert.equal(queue.busy('a'), false);
+  await assert.rejects(queue.run('a', async () => { throw new Error('失敗'); }));
+  assert.equal(queue.busy('a'), false);
+});
+
 test('違う願いの保存は待ち合わせない。終われば busy でなくなる', async () => {
   const queue = createKeyedQueue();
   const order = [];

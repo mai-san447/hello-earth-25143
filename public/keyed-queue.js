@@ -9,10 +9,10 @@ export function createKeyedQueue() {
       const previous = tails.get(key) ?? Promise.resolve();
       // 前の保存が失敗しても、次の保存は止めない（失敗は呼び出し側が受け取る）
       const result = previous.then(() => task());
-      const tail = result.catch(() => {});
+      const tail = result.then(() => {}, () => {});
       tails.set(key, tail);
-      tail.then(() => { if (tails.get(key) === tail) tails.delete(key); });
-      return result;
+      // 呼んだ側が結果を受け取る前に「保存中」を外す（受け取ってすぐ描き直すとき、ボタンが止まったままにならないように）
+      return result.finally(() => { if (tails.get(key) === tail) tails.delete(key); });
     },
     busy(key) {
       return tails.has(key);
