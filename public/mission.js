@@ -150,6 +150,9 @@
   let archiveListStale = false;
   // 押したボタンは押せなくなるとブラウザがフォーカスを外すので、押した操作を覚えておいて描き直しのあとに戻す
   let growthFocusKey = null;
+  // 一覧の中を押している最中（指やマウスが下りてから click まで）。この間に描き直すと、
+  // iPhone の Safari のようにボタンへフォーカスを移さないブラウザーでは click が届かなくなる
+  let growthPointerActive = false;
   let width = 0;
   let height = 0;
   let pixelRatio = 1;
@@ -240,6 +243,8 @@
     const removed = new Set(removedIds);
     wishes = all ? [] : wishes.filter(wish => !removed.has(wish.id));
     removedIds.forEach(id => selectedArchiveIds.delete(id));
+    if (all) growthDrafts.clear();
+    else removedIds.forEach(id => growthDrafts.delete(id));
     if (all || removed.has(returningWish?.id) || removed.has(returnFlight?.wish.id)) {
       returningWish = null;
       returnFlight = null;
@@ -342,7 +347,9 @@
   function renderArchiveList(list, archiveItems) {
     archiveListStale = false;
     // 描き直しても、押したボタンからフォーカスが消えないようにする
-    const focusKey = (list.contains(document.activeElement) ? document.activeElement.dataset.growthKey : null) ?? growthFocusKey;
+    const active = document.activeElement;
+    const untouched = !active || active === document.body;
+    const focusKey = (list.contains(active) ? active.dataset.growthKey : null) ?? (untouched && !$('#archive-sheet').hidden ? growthFocusKey : null);
     growthFocusKey = null;
     list.replaceChildren();
     for (const wish of archiveItems) {
@@ -355,6 +362,7 @@
       label.className = 'archive-item-label';
       checkbox.type = 'checkbox';
       checkbox.className = 'archive-item-checkbox';
+      checkbox.dataset.growthKey = `${wish.id}:select`;
       checkbox.checked = selectedArchiveIds.has(wish.id);
       checkbox.setAttribute('aria-label', `${wish.text}を選択`);
       checkbox.addEventListener('change', () => {
@@ -374,7 +382,9 @@
     if (focusKey) {
       // 押したボタンが押せなくなったとき（今日の一歩を記録した等）は、同じ願いの次の操作へ移す
       const target = list.querySelector(`[data-growth-key="${CSS.escape(focusKey)}"]`);
-      const focusable = target && !target.disabled ? target : target?.closest('.archive-growth')?.querySelector('button:not(:disabled), input');
+      // 入力欄には戻さない（戻すと「書いている途中」とみなされ、描き直しが止まってしまう）
+      const row = target?.closest('li');
+      const focusable = target && !target.disabled ? target : row?.querySelector('.archive-growth button:not(:disabled)') ?? row?.querySelector('.archive-item-checkbox');
       focusable?.focus({preventScroll: true});
     }
   }
@@ -410,16 +420,13 @@
     };
     input.addEventListener('input', event => { if (!event.isComposing) keepDraft(); });
     input.addEventListener('compositionend', keepDraft);
-    input.addEventListener('change', () => {
-      const value = input.value;
-      updateGrowth(wish.id, current => WishState.setFirstStep(current, value), next => {
-        if (growthDrafts.get(wish.id) === value) growthDrafts.delete(wish.id);
-        return next.firstStep ? '最初の一歩を書きとめました。' : '最初の一歩を消しました。';
-      });
-    });
+    input.addEventListener('change', () => saveFirstStepDraft(wish.id));
     input.addEventListener('focusout', event => {
-      // 書いている間に止めていた描き直しを、入力欄から出たときに行う（同じ一覧の中のボタンへ移るときは、そのボタンの処理に任せる）
-      if (archiveListStale && !$('#archive-list').contains(event.relatedTarget)) queueMicrotask(refreshInterface);
+      // 保存できなかった下書きは、変えずに出入りしただけでも（change が起きなくても）もう一度保存する
+      saveFirstStepDraft(wish.id);
+      // 書いている間に止めていた描き直しを、入力欄から出たときに行う。
+      // 一覧の中を押している最中や、一覧の中へ移るときは、押した操作の処理（保存のあとの描き直し）に任せる
+      if (archiveListStale && !growthPointerActive && !$('#archive-list').contains(event.relatedTarget)) queueMicrotask(refreshInterface);
     });
     const actions = document.createElement('div');
     actions.className = 'archive-growth-actions';
@@ -432,6 +439,7 @@
     step.addEventListener('click', () => {
       growthFocusKey = step.dataset.growthKey;
       step.disabled = true;
+      saveFirstStepDraft(wish.id);
       updateGrowth(wish.id, current => WishState.recordStep(current, Date.now()), next => `星が明るくなりました（${WishState.growthLabel(next)}）。`);
     });
     const fulfilled = document.createElement('button');
@@ -443,6 +451,7 @@
       if (!window.confirm(`「${wish.text}」は叶いましたか？ 叶った星として、いちばん明るく光ります。`)) return;
       growthFocusKey = fulfilled.dataset.growthKey;
       fulfilled.disabled = true;
+      saveFirstStepDraft(wish.id);
       updateGrowth(wish.id, current => WishState.markFulfilled(current, Date.now()), 'おめでとうございます。叶った星になりました。');
     });
     actions.append(step, fulfilled);
@@ -454,8 +463,20 @@
     return wishes.find(wish => wish.id === id);
   }
 
+  // 書きかけの「最初の一歩」を保存する。同じ内容なら wish-state.js が同じ願いを返すので、重ねて呼んでも保存は1回
+  function saveFirstStepDraft(id) {
+    if (!growthDrafts.has(id)) return;
+    const value = growthDrafts.get(id);
+    updateGrowth(id, current => WishState.setFirstStep(current, value), next => {
+      if (growthDrafts.get(id) === value) growthDrafts.delete(id);
+      return next.firstStep ? '最初の一歩を書きとめました。' : '最初の一歩を消しました。';
+    }, () => {
+      if (growthDrafts.get(id) === value) growthDrafts.delete(id);
+    });
+  }
+
   // 同じ願いへの保存は growthQueue で1つずつ行い、順番が来た時点の最新の願いから次の形を作る
-  async function updateGrowth(id, change, message) {
+  async function updateGrowth(id, change, message, onUnchanged) {
     let outcome;
     try {
       outcome = await growthQueue.run(id, async () => {
@@ -477,6 +498,7 @@
       console.error('save growth', error);
       outcome = {failed: true};
     }
+    if (outcome.skipped) onUnchanged?.();
     refreshInterface();
     const status = $('#archive-status');
     if (outcome.next) status.textContent = typeof message === 'function' ? message(outcome.next) : message;
@@ -1779,6 +1801,18 @@
   $('#fulfilled-skip').addEventListener('click', closeFulfilledSheet);
   $('#my-record-copy').addEventListener('click', copyMyRecord);
   $('#archive-close').addEventListener('click', () => { $('#archive-sheet').hidden = true; });
+  $('#archive-list').addEventListener('pointerdown', () => { growthPointerActive = true; });
+  const releaseGrowthPointer = () => {
+    // click の処理より後に解除する
+    setTimeout(() => {
+      growthPointerActive = false;
+      const list = $('#archive-list');
+      const editing = list.contains(document.activeElement) && document.activeElement.matches('input[type="text"]');
+      if (archiveListStale && !editing) refreshInterface();
+    }, 0);
+  };
+  document.addEventListener('pointerup', releaseGrowthPointer);
+  document.addEventListener('pointercancel', releaseGrowthPointer);
   $('#archive-select-all').addEventListener('change', event => {
     const archiveItems = recovered();
     if (event.currentTarget.checked) archiveItems.forEach(wish => selectedArchiveIds.add(wish.id));

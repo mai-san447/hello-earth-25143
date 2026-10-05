@@ -214,6 +214,8 @@ export function setFirstStep(wish, text) {
   if (wish.status !== STATUS.DOING) throw new Error(`受け取った願いだけが育ちます: ${wish.status}`);
   const value = String(text ?? '').trim();
   if ([...value].length > GROWTH.firstStepMax) throw new Error(`最初の一歩は${GROWTH.firstStepMax}字までです`);
+  // 変わらないときは同じ願いを返す（入力欄から出たときと Enter のときに重ねて呼ばれても、保存は1回で済む）
+  if (value === (wish.firstStep ?? '')) return wish;
   const next = {...wish};
   if (value) next.firstStep = value;
   else delete next.firstStep;

@@ -51,6 +51,13 @@ test('叶った願いは1等星になり、それ以上は一歩を数えない'
   assert.equal(markFulfilled(wish, day(11)).fulfilledAt, day(9));
 });
 
+test('最初の一歩が変わらないときは、同じ願いを返す（保存を重ねない）', () => {
+  const written = setFirstStep(received(), '地図で町を3つ選ぶ');
+  assert.equal(setFirstStep(written, ' 地図で町を3つ選ぶ '), written);
+  const empty = received();
+  assert.equal(setFirstStep(empty, ''), empty);
+});
+
 test('最初の一歩は書かなくてもよく、空にすれば消える', () => {
   const written = setFirstStep(received(), '  地図で町を3つ選ぶ  ');
   assert.equal(written.firstStep, '地図で町を3つ選ぶ');
