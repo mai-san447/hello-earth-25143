@@ -336,7 +336,8 @@
     const list = $('#archive-list');
     // 「最初の一歩」を書いている途中（日本語の変換中を含む）は描き直さない。入力欄から出たときに描き直す
     const editing = list.contains(document.activeElement) && document.activeElement.matches('input[type="text"]');
-    if (editing) archiveListStale = true;
+    // 一覧の中を押している最中も描き直さない（押し終わったあとに行う。描き直すと、離したときの click が元のボタンに届かない）
+    if (editing || growthPointerActive) archiveListStale = true;
     else renderArchiveList(list, archiveItems);
     $('#archive-empty').hidden = archiveItems.length > 0;
     drawConstellation();
