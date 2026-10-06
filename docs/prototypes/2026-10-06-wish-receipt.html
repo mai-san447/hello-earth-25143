@@ -1,0 +1,473 @@
+<title>MORUNE 願いの受取票</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Klee+One:wght@400;600&family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: 夜の作業台の上に、80mm 感熱紙のレシートを3枚並べる。ページは夜（単一の見た目）、紙だけが白い */
+:root {
+  color-scheme: dark;
+  --night: #12171d;        /* 作業台 */
+  --night-raised: #1b222b;
+  --line: #2c3540;
+  --text: #dfe5ea;
+  --muted: #95a1ac;
+  --gold: #e6c878;         /* アプリの金色 */
+  --paper: #f6f6f2;        /* 感熱紙 */
+  --ink: #1c1c1e;          /* 感熱の黒 */
+  --ink-soft: #55565a;
+  --display: "DotGothic16", "Zen Kaku Gothic New", system-ui, sans-serif;
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --hand: "Klee One", "Zen Kaku Gothic New", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--night);
+  color: var(--text);
+  font-family: var(--body);
+  line-height: 1.7;
+}
+.page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-inline: 20px;
+  padding-block: 40px 64px;
+  display: grid;
+  gap: 28px;
+}
+header { display: grid; gap: 10px; }
+header .lead { max-width: 62ch; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; color: var(--gold); text-transform: uppercase; }
+h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 44px); line-height: 1.25; letter-spacing: .04em; text-wrap: balance; }
+.lead { margin: 0; color: var(--muted); font-size: 15px; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--night-raised); }
+.tabs button {
+  border: 0; background: transparent; color: var(--muted); font: 500 14px var(--body);
+  padding: 7px 16px; border-radius: 999px; cursor: pointer;
+}
+.tabs button[aria-pressed="true"] { background: var(--gold); color: #1a1a14; }
+.tabs button:focus-visible, .check input:focus-visible, select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.check { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; color: var(--text); cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--gold); }
+
+.rail { display: flex; flex-wrap: wrap; gap: 32px 28px; justify-content: center; align-items: flex-start; }
+.slot { display: grid; gap: 12px; justify-items: center; }
+.slot label { font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+select {
+  background: var(--night-raised); color: var(--text); border: 1px solid var(--line);
+  border-radius: 8px; padding: 5px 8px; font: 14px var(--body);
+}
+
+/* 80mm 感熱紙（印字幅 72mm）。画面では 302px を 80mm とみなす */
+.receipt {
+  position: relative;
+  width: 302px;
+  max-width: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  padding: 22px 20px 26px;
+  font-family: var(--body);
+  font-size: 12.5px;
+  line-height: 1.6;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .45);
+  transform: rotate(var(--tilt, 0deg));
+  display: grid;
+  gap: 10px;
+}
+/* ちぎった跡（下だけギザギザ） */
+.receipt::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -9px; height: 10px;
+  background:
+    linear-gradient(135deg, var(--paper) 5px, transparent 0) 0 0 / 10px 10px repeat-x,
+    linear-gradient(225deg, var(--paper) 5px, transparent 0) 0 0 / 10px 10px repeat-x;
+}
+.r-brand { text-align: center; display: grid; gap: 2px; }
+.r-brand .mark { font-family: var(--mono); font-size: 11px; letter-spacing: .3em; }
+.r-brand .name { font-family: var(--display); font-size: 22px; letter-spacing: .08em; line-height: 1.3; }
+.r-brand .en { font-family: var(--mono); font-size: 10px; letter-spacing: .25em; color: var(--ink-soft); }
+.rule { border: 0; border-top: 1px dashed var(--ink); margin: 2px 0; opacity: .8; }
+.rows { display: grid; gap: 1px; font-variant-numeric: tabular-nums; }
+.row { display: flex; justify-content: space-between; gap: 12px; }
+.row span:last-child { font-family: var(--mono); text-align: right; }
+.row.jp span:last-child { font-family: var(--body); }
+.art { display: block; width: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
+.art-caption { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-align: center; color: var(--ink-soft); margin-top: -4px; }
+.wish { font-family: var(--display); font-size: 16px; text-align: center; line-height: 1.5; padding: 2px 4px; }
+.wish.hidden-text { font-family: var(--body); font-size: 12px; color: var(--ink-soft); }
+.status { font-family: var(--mono); font-size: 12px; text-align: center; letter-spacing: .1em; border: 1.5px solid var(--ink); padding: 3px 0; }
+.message { text-align: center; font-size: 12px; }
+.write-line { display: grid; gap: 4px; font-size: 11.5px; }
+.write-line i { display: block; height: 22px; border-bottom: 1px solid var(--ink); }
+.fine { font-size: 9.5px; color: var(--ink-soft); text-align: center; line-height: 1.5; }
+.bars { display: block; width: 100%; height: 34px; }
+.serial { font-family: var(--mono); font-size: 10px; text-align: center; letter-spacing: .2em; margin-top: -6px; }
+
+.variant { display: grid; gap: 18px; }
+.variant-head { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+.variant-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 22px; letter-spacing: .05em; }
+.variant-head p { margin: 0; color: var(--muted); font-size: 14px; }
+
+/* 案B：絵が主役。下の半券をちぎって渡す */
+.receipt.photo { padding: 16px 16px 22px; gap: 8px; }
+.photo .top { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; }
+.photo .art { border: 1.5px solid var(--ink); }
+.photo .hand { font-family: var(--hand); font-weight: 600; font-size: 21px; line-height: 1.45; text-align: center; padding: 4px 2px 0; text-wrap: balance; }
+.photo .hand.hidden-text { font-family: var(--hand); font-weight: 400; font-size: 14px; color: var(--ink-soft); }
+.photo .meta { display: flex; justify-content: center; gap: 10px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.photo .big { text-align: center; font-family: var(--hand); font-size: 15px; }
+.photo .big b { font-family: var(--mono); font-weight: 500; font-size: 30px; letter-spacing: -.01em; margin-inline: 2px; }
+.perf { position: relative; border-top: 1.5px dashed var(--ink); margin: 8px -16px 0; }
+.perf span { position: absolute; left: 12px; top: -10px; background: var(--paper); padding: 0 4px; font-size: 12px; line-height: 18px; }
+.stub { display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: center; padding-top: 8px; }
+.stub svg { width: 76px; height: 76px; display: block; }
+.stub-text { display: grid; gap: 2px; min-width: 0; }
+.stub-text strong { font-family: var(--hand); font-weight: 600; font-size: 15px; }
+.stub-text span { font-size: 10.5px; line-height: 1.5; color: var(--ink-soft); }
+.stub .write-line { grid-column: 1 / -1; }
+
+.notes {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;
+  border-top: 1px solid var(--line); padding-top: 24px;
+}
+.note { display: grid; gap: 4px; min-width: 0; }
+.note h2 { margin: 0; font-size: 14px; font-weight: 700; color: var(--gold); letter-spacing: .04em; }
+.note p { margin: 0; font-size: 13.5px; color: var(--muted); }
+.note b { color: var(--text); font-weight: 500; }
+.sample-tag { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .1em; }
+
+@media (max-width: 420px) {
+  .page { padding-inline: 16px; }
+  .receipt { --tilt: 0deg !important; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .receipt { transition: transform .3s ease; }
+  .receipt:hover { transform: rotate(0deg) translateY(-4px); }
+}
+</style>
+
+<main class="page">
+  <header>
+    <div class="eyebrow">MORUNE 25143 · 物として持ち帰る</div>
+    <h1>願いの預かり票と<wbr>帰還票</h1>
+    <p class="lead">預けたときと、帰ってきたときに、感熱紙のレシートで1枚ずつ出てくる見本です。イベントでは、その場で印刷してちぎって渡します。絵は願いの文章からではなく、本人が選んだキーワードから出します。</p>
+  </header>
+
+  <div class="controls" role="group" aria-label="見本の切り替え">
+    <div class="tabs" role="group" aria-label="票の種類">
+      <button type="button" id="tab-deposit" aria-pressed="true">預かり票（預けたとき）</button>
+      <button type="button" id="tab-return" aria-pressed="false">帰還票（帰ってきたとき）</button>
+    </div>
+    <label class="check" for="print-text"><input type="checkbox" id="print-text" checked> 願いの言葉を印字する</label>
+    <span class="sample-tag">見本のデータです</span>
+  </div>
+
+  <section class="variant" aria-labelledby="variant-a">
+    <div class="variant-head"><h2 id="variant-a">案A 観測記録</h2><p>番号・日付・状態がきちんと並ぶ。記録として信頼できる、手元に残す票。</p></div>
+    <div class="rail" id="rail-a"></div>
+  </section>
+  <section class="variant" aria-labelledby="variant-b">
+    <div class="variant-head"><h2 id="variant-b">案B 絵が主役</h2><p>絵と言葉を大きく。下の半券をちぎって、応援してくれる人に渡せる。</p></div>
+    <div class="rail" id="rail-b"></div>
+  </section>
+
+  <section class="notes" aria-label="この見本で決めたこと">
+    <div class="note">
+      <h2>紙の大きさ</h2>
+      <p>店舗用の感熱プリンターで使う <b>80mm ロール</b>。印字できる幅は72mm、203dpi で <b>576ドット</b>。黒1色なので、絵の濃淡は網点（ディザー）で出します。</p>
+    </div>
+    <div class="note">
+      <h2>絵の出し方</h2>
+      <p>画風は1つに固定し、<b>キーワードごとの絵を前もって用意</b>してアプリに入れておく。願いの文章は外に送らず、ネットがなくても印刷できます。</p>
+    </div>
+    <div class="note">
+      <h2>手で書く欄</h2>
+      <p>帰還票には「最初の小さな一歩」を<b>ペンで書く線</b>を残しました。紙で持ち帰るからこそできる使い方です。</p>
+    </div>
+    <div class="note">
+      <h2>書いておくこと</h2>
+      <p>番号は作品の中だけの番号。「本物の星や小惑星の名前ではありません」と距離の出典（NASA/JPL Horizons）を小さく入れます。</p>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  // 見本の願い（本人のものではない例）
+  const samples = [
+    {id: 'a7f3', number: '25143-0007', text: 'いつかサイパンへ行く', keyword: 'travel', deposited: '2026.08.21 21:14', returnFrom: '星まかせ', returned: '2026.10.06', days: 46, signals: 12, km: '約2.6億km', light: '約14分', tilt: '-1.6deg'},
+    {id: '2c91', number: '25143-0012', text: 'ピアノをもう一度弾く', keyword: 'music', deposited: '2026.09.02 07:40', returnFrom: '2026.11.01 から', returned: '2026.11.03', days: 62, signals: 4, km: '約2.9億km', light: '約16分', tilt: '1.1deg'},
+    {id: 'e508', number: '25143-0031', text: '友だちと星を見に行く', keyword: 'sky', deposited: '2026.09.18 23:02', returnFrom: '星まかせ', returned: '2026.10.06', days: 18, signals: 27, km: '約2.6億km', light: '約14分', tilt: '-0.6deg'},
+  ];
+  const keywords = {
+    travel: '旅', music: '音楽', sky: '夜空', learn: '学ぶ', food: '食べる', mountain: '山',
+  };
+
+  // ---- 絵：グレーで描いてから 4x4 の網点で黒1色にする（感熱紙の見え方） ----
+  const W = 262, H = 150;
+  const bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  function dither(ctx) {
+    const image = ctx.getImageData(0, 0, W, H);
+    const d = image.data;
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      const lum = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) / 255;
+      const threshold = (bayer[(y % 4) * 4 + (x % 4)] + 0.5) / 16;
+      const on = lum < threshold;
+      d[i] = on ? 28 : 246; d[i + 1] = on ? 28 : 246; d[i + 2] = on ? 30 : 242; d[i + 3] = 255;
+    }
+    ctx.putImageData(image, 0, 0);
+  }
+  const g = v => `rgb(${v},${v},${v})`;
+  function vertical(ctx, top, bottom, y0 = 0, y1 = H) {
+    const grad = ctx.createLinearGradient(0, y0, 0, y1);
+    grad.addColorStop(0, g(top)); grad.addColorStop(1, g(bottom));
+    return grad;
+  }
+  function stars(ctx, seed, count, maxY) {
+    let s = seed;
+    const rand = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+    ctx.fillStyle = g(255);
+    for (let i = 0; i < count; i++) {
+      const r = rand() < 0.15 ? 1.6 : 0.9;
+      ctx.beginPath(); ctx.arc(rand() * W, rand() * maxY, r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  const drawings = {
+    travel(ctx) {
+      ctx.fillStyle = vertical(ctx, 235, 170, 0, 92); ctx.fillRect(0, 0, W, 92);
+      ctx.fillStyle = g(255); ctx.beginPath(); ctx.arc(176, 52, 22, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = g(200); ctx.lineWidth = 1;
+      for (let a = 0; a < 12; a++) { const t = a * Math.PI / 6; ctx.beginPath(); ctx.moveTo(176 + Math.cos(t) * 27, 52 + Math.sin(t) * 27); ctx.lineTo(176 + Math.cos(t) * 34, 52 + Math.sin(t) * 34); ctx.stroke(); }
+      ctx.fillStyle = vertical(ctx, 120, 60, 92, H); ctx.fillRect(0, 92, W, H - 92);
+      ctx.strokeStyle = g(200); ctx.lineWidth = 1.2;
+      for (let y = 100; y < H; y += 9) { ctx.beginPath(); for (let x = 0; x <= W; x += 6) ctx.lineTo(x, y + Math.sin(x / 11 + y) * 1.6); ctx.stroke(); }
+      ctx.fillStyle = g(215); ctx.beginPath(); ctx.ellipse(56, 128, 70, 18, 0, Math.PI, 0); ctx.fill();
+      ctx.strokeStyle = g(40); ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(48, 118); ctx.quadraticCurveTo(40, 70, 60, 34); ctx.stroke();
+      ctx.fillStyle = g(40);
+      [[-1.1, 46], [-0.4, 42], [0.4, 44], [1.1, 40], [2.6, 36]].forEach(([angle, len]) => {
+        ctx.save(); ctx.translate(60, 34); ctx.rotate(angle); ctx.beginPath(); ctx.ellipse(len / 2, 0, len / 2, 6, 0.25, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      });
+    },
+    music(ctx) {
+      ctx.fillStyle = vertical(ctx, 225, 190); ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = g(250); ctx.fillRect(0, 86, W, 64);
+      ctx.strokeStyle = g(60); ctx.lineWidth = 1;
+      for (let x = 0; x <= W; x += 18.7) { ctx.beginPath(); ctx.moveTo(x, 86); ctx.lineTo(x, H); ctx.stroke(); }
+      ctx.fillStyle = g(30);
+      [1, 2, 4, 5, 6, 8, 9, 11, 12, 13].forEach(k => ctx.fillRect(k * 18.7 - 6, 86, 12, 38));
+      ctx.fillStyle = g(45); ctx.fillRect(0, 80, W, 6);
+      ctx.fillStyle = g(35); ctx.strokeStyle = g(35); ctx.lineWidth = 2;
+      [[64, 52], [96, 38], [150, 46], [196, 30]].forEach(([x, y], i) => {
+        ctx.beginPath(); ctx.ellipse(x, y, 6.5, 4.6, -0.4, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x + 6, y); ctx.lineTo(x + 6, y - 24); ctx.stroke();
+        if (i % 2 === 0) { ctx.beginPath(); ctx.moveTo(x + 6, y - 24); ctx.quadraticCurveTo(x + 16, y - 18, x + 13, y - 8); ctx.stroke(); }
+      });
+    },
+    sky(ctx) {
+      ctx.fillStyle = vertical(ctx, 30, 95); ctx.fillRect(0, 0, W, H);
+      stars(ctx, 7, 70, 100);
+      ctx.strokeStyle = g(210); ctx.lineWidth = 0.8;
+      const c = [[150, 24], [172, 40], [196, 34], [214, 52], [190, 64]];
+      ctx.beginPath(); c.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke();
+      ctx.fillStyle = g(255); c.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.fill(); });
+      ctx.fillStyle = g(15); ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, 118); ctx.quadraticCurveTo(110, 92, W, 124); ctx.lineTo(W, H); ctx.fill();
+      [[96, 104], [112, 102]].forEach(([x, y]) => {
+        ctx.beginPath(); ctx.arc(x, y - 16, 4.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(x - 6, y); ctx.quadraticCurveTo(x, y - 18, x + 6, y); ctx.fill();
+      });
+      ctx.strokeStyle = g(15); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(108, 92); ctx.lineTo(140, 66); ctx.stroke();
+    },
+    learn(ctx) {
+      ctx.fillStyle = vertical(ctx, 230, 200); ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = g(250); ctx.strokeStyle = g(40); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(131, 40); ctx.quadraticCurveTo(90, 26, 40, 36); ctx.lineTo(40, 124); ctx.quadraticCurveTo(90, 114, 131, 128); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(131, 40); ctx.quadraticCurveTo(172, 26, 222, 36); ctx.lineTo(222, 124); ctx.quadraticCurveTo(172, 114, 131, 128); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = g(120); ctx.lineWidth = 1;
+      for (let y = 50; y < 112; y += 10) { ctx.beginPath(); ctx.moveTo(52, y); ctx.lineTo(120, y + 2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(142, y + 2); ctx.lineTo(210, y); ctx.stroke(); }
+    },
+    food(ctx) {
+      ctx.fillStyle = vertical(ctx, 235, 205); ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = g(60); ctx.beginPath(); ctx.ellipse(131, 92, 70, 14, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = vertical(ctx, 90, 30, 92, 140); ctx.beginPath(); ctx.moveTo(61, 92); ctx.quadraticCurveTo(70, 140, 131, 140); ctx.quadraticCurveTo(192, 140, 201, 92); ctx.fill();
+      ctx.strokeStyle = g(140); ctx.lineWidth = 2;
+      [100, 131, 162].forEach(x => { ctx.beginPath(); ctx.moveTo(x, 70); ctx.bezierCurveTo(x - 10, 56, x + 10, 44, x, 26); ctx.stroke(); });
+    },
+    mountain(ctx) {
+      ctx.fillStyle = vertical(ctx, 240, 200); ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = vertical(ctx, 120, 70, 30, H); ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(90, 42); ctx.lineTo(130, 80); ctx.lineTo(176, 30); ctx.lineTo(W, H); ctx.fill();
+      ctx.fillStyle = g(245); ctx.beginPath(); ctx.moveTo(176, 30); ctx.lineTo(160, 48); ctx.lineTo(176, 44); ctx.lineTo(192, 50); ctx.fill();
+      ctx.strokeStyle = g(230); ctx.setLineDash([3, 4]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(60, H); ctx.quadraticCurveTo(120, 120, 150, 96); ctx.quadraticCurveTo(170, 70, 176, 34); ctx.stroke(); ctx.setLineDash([]);
+    },
+  };
+  const artCache = new Map();
+  function art(keyword) {
+    if (artCache.has(keyword)) return artCache.get(keyword);
+    const canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d', {willReadFrequently: true});
+    drawings[keyword](ctx);
+    dither(ctx);
+    const url = canvas.toDataURL('image/png');
+    artCache.set(keyword, url);
+    return url;
+  }
+
+  // ---- バーコード風（番号から決まる。読み取りはできない飾り） ----
+  function bars(serial) {
+    let s = [...serial].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 100000, 7);
+    const rand = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+    let x = 4, out = '';
+    while (x < 258) { const w = 1 + Math.floor(rand() * 3); out += `<rect x="${x}" y="0" width="${w}" height="34" fill="#1c1c1e"/>`; x += w + 1 + Math.floor(rand() * 3); }
+    return `<svg class="bars" viewBox="0 0 262 34" preserveAspectRatio="none" aria-hidden="true">${out}</svg>`;
+  }
+
+  // ---- 票 ----
+  let mode = 'deposit';
+  const state = samples.map(sample => ({...sample}));
+  const escape = value => String(value).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'})[c]);
+
+  function wishLine(sample, printText) {
+    return printText
+      ? `<div class="wish">「${escape(sample.text)}」</div>`
+      : `<div class="wish hidden-text">願いの言葉は印字していません<br>（あなたの端末の中にだけあります）</div>`;
+  }
+  function depositReceipt(sample, printText) {
+    return `
+      <div class="r-brand"><div class="mark">25143 · ORBIT</div><div class="name">願いの預かり票</div><div class="en">WISH RECEIPT</div></div>
+      <hr class="rule">
+      <div class="rows">
+        <div class="row"><span>番号</span><span>${sample.number}</span></div>
+        <div class="row"><span>預けた日</span><span>${sample.deposited}</span></div>
+        <div class="row jp"><span>帰還</span><span>${escape(sample.returnFrom)}</span></div>
+      </div>
+      <hr class="rule">
+      <img class="art" src="${art(sample.keyword)}" alt="キーワード「${keywords[sample.keyword]}」の絵">
+      <div class="art-caption">KEYWORD · ${keywords[sample.keyword]}</div>
+      ${wishLine(sample, printText)}
+      <div class="status">STATUS · ORBITING / 周回中</div>
+      <p class="message">願いを1件、たしかに預かりました。<br>帰ってくる日まで、星が持っています。</p>
+      <hr class="rule">
+      ${bars(sample.number)}
+      <div class="serial">${sample.number.replace('-', ' ')}</div>
+      <p class="fine">番号は作品 MORUNE 25143 の中だけの番号です。<br>本物の星や小惑星の名前ではありません。</p>`;
+  }
+  function returnReceipt(sample, printText) {
+    return `
+      <div class="r-brand"><div class="mark">25143 · EARTH</div><div class="name">願いの帰還票</div><div class="en">RETURN RECEIPT</div></div>
+      <hr class="rule">
+      <div class="rows">
+        <div class="row"><span>番号</span><span>${sample.number}</span></div>
+        <div class="row"><span>預けた日</span><span>${sample.deposited.slice(0, 10)}</span></div>
+        <div class="row"><span>帰った日</span><span>${sample.returned}</span></div>
+        <div class="row"><span>旅した日数</span><span>${sample.days}日</span></div>
+        <div class="row"><span>応援の信号</span><span>${sample.signals}回</span></div>
+      </div>
+      <hr class="rule">
+      <img class="art" src="${art(sample.keyword)}" alt="キーワード「${keywords[sample.keyword]}」の絵">
+      <div class="art-caption">KEYWORD · ${keywords[sample.keyword]}</div>
+      ${wishLine(sample, printText)}
+      <div class="status">STATUS · RETURNED / 6等星</div>
+      <p class="message">いま、イトカワは地球から${sample.km}。<br>光でも${sample.light}かかる距離を帰ってきました。</p>
+      <div class="write-line"><span>最初の小さな一歩（ペンでどうぞ）</span><i></i><i></i></div>
+      <hr class="rule">
+      <p class="fine">一歩ふみ出すたびに、アプリの中の星が明るくなります。<br>距離：NASA/JPL Horizons ／ 本物の星や小惑星の名前ではありません。</p>`;
+  }
+
+  // 案B：応援の半券に載せる、読み取れない飾りの2次元コード（見本）
+  function codeMark(serial) {
+    let s = [...serial].reduce((a, c) => (a * 17 + c.charCodeAt(0)) % 100000, 3);
+    const rand = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+    const n = 21, cell = 76 / n;
+    let out = '';
+    const finder = (cx, cy) => `<rect x="${cx * cell}" y="${cy * cell}" width="${7 * cell}" height="${7 * cell}" fill="#1c1c1e"/><rect x="${(cx + 1) * cell}" y="${(cy + 1) * cell}" width="${5 * cell}" height="${5 * cell}" fill="#f6f6f2"/><rect x="${(cx + 2) * cell}" y="${(cy + 2) * cell}" width="${3 * cell}" height="${3 * cell}" fill="#1c1c1e"/>`;
+    const inFinder = (x, y) => (x < 8 && y < 8) || (x > n - 9 && y < 8) || (x < 8 && y > n - 9);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      if (!inFinder(x, y) && rand() < 0.48) out += `<rect x="${x * cell}" y="${y * cell}" width="${cell + 0.2}" height="${cell + 0.2}" fill="#1c1c1e"/>`;
+    }
+    return `<svg viewBox="0 0 76 76" aria-hidden="true"><rect width="76" height="76" fill="#f6f6f2"/>${out}${finder(0, 0)}${finder(n - 7, 0)}${finder(0, n - 7)}</svg>`;
+  }
+  function handLine(sample, printText) {
+    return printText
+      ? `<div class="hand">${escape(sample.text)}</div>`
+      : `<div class="hand hidden-text">言葉は、あなたの端末の中に。</div>`;
+  }
+  function photoDeposit(sample, printText) {
+    return `
+      <div class="top"><span>MORUNE 25143</span><span>預かり票</span></div>
+      <img class="art" src="${art(sample.keyword)}" alt="キーワード「${keywords[sample.keyword]}」の絵">
+      ${handLine(sample, printText)}
+      <div class="meta"><span>${sample.deposited.slice(0, 10)}</span><span>·</span><span>${sample.number}</span><span>·</span><span>周回中</span></div>
+      <div class="perf"><span aria-hidden="true">✂</span></div>
+      <div class="stub">
+        ${codeMark(sample.number)}
+        <div class="stub-text"><strong>応援券</strong><span>ここから切って、応援してくれる人に渡してください。読み取ると、この星に信号を送れます。</span></div>
+      </div>
+      <p class="fine">番号は作品の中だけの番号です。本物の星や小惑星の名前ではありません。</p>`;
+  }
+  function photoReturn(sample, printText) {
+    return `
+      <div class="top"><span>MORUNE 25143</span><span>帰還票</span></div>
+      <img class="art" src="${art(sample.keyword)}" alt="キーワード「${keywords[sample.keyword]}」の絵">
+      ${handLine(sample, printText)}
+      <div class="big">おかえりなさい。<b>${sample.days}</b>日の旅でした</div>
+      <div class="meta"><span>${sample.returned}</span><span>·</span><span>信号 ${sample.signals}回</span><span>·</span><span>${sample.km}</span></div>
+      <div class="perf"><span aria-hidden="true">✂</span></div>
+      <div class="stub" style="grid-template-columns:1fr">
+        <div class="stub-text"><strong>最初の小さな一歩</strong><span>ペンで書いて、見えるところに貼っておけます。</span></div>
+        <div class="write-line"><i></i><i></i></div>
+      </div>
+      <p class="fine">距離：NASA/JPL Horizons ／ 本物の星や小惑星の名前ではありません。</p>`;
+  }
+
+  const rails = {a: document.getElementById('rail-a'), b: document.getElementById('rail-b')};
+  const printText = document.getElementById('print-text');
+  function render() {
+    renderRail('a');
+    renderRail('b');
+  }
+  function renderRail(variant) {
+    const rail = rails[variant];
+    rail.replaceChildren();
+    state.forEach((sample, index) => {
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      const receipt = document.createElement('article');
+      receipt.className = variant === 'b' ? 'receipt photo' : 'receipt';
+      receipt.style.setProperty('--tilt', sample.tilt);
+      receipt.setAttribute('aria-label', `案${variant.toUpperCase()} ${mode === 'deposit' ? '預かり票' : '帰還票'}の見本 ${index + 1}`);
+      const builders = variant === 'b' ? [photoDeposit, photoReturn] : [depositReceipt, returnReceipt];
+      receipt.innerHTML = (mode === 'deposit' ? builders[0] : builders[1])(sample, printText.checked);
+      const label = document.createElement('label');
+      const id = `keyword-${variant}-${index}`;
+      label.setAttribute('for', id);
+      label.textContent = 'キーワード';
+      const select = document.createElement('select');
+      select.id = id;
+      Object.entries(keywords).forEach(([value, name]) => {
+        const option = document.createElement('option');
+        option.value = value; option.textContent = name; option.selected = value === sample.keyword;
+        select.append(option);
+      });
+      select.addEventListener('change', () => { sample.keyword = select.value; render(); document.getElementById(id)?.focus(); });
+      label.append(select);
+      slot.append(receipt, label);
+      rail.append(slot);
+    });
+  }
+  const tabDeposit = document.getElementById('tab-deposit');
+  const tabReturn = document.getElementById('tab-return');
+  function setMode(next) {
+    mode = next;
+    tabDeposit.setAttribute('aria-pressed', String(next === 'deposit'));
+    tabReturn.setAttribute('aria-pressed', String(next === 'return'));
+    render();
+  }
+  tabDeposit.addEventListener('click', () => setMode('deposit'));
+  tabReturn.addEventListener('click', () => setMode('return'));
+  printText.addEventListener('change', render);
+  render();
+})();
+</script>
