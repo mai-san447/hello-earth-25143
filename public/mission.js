@@ -153,7 +153,6 @@
   let refreshThreeSky = () => {};
   let projectThreeStar;
   const northSky = new Map();
-  let skyPlace = '東京';
   function refreshSky() {
     const {lat, lon} = pendingLocation;
     const now = Date.now();
@@ -163,7 +162,7 @@
     }
     const position = radecTable ? Sky.itokawaPosition(radecTable, now) : null;
     realItokawa = position ? Sky.equatorialToHorizontal(position.raDeg, position.decDeg, now, lat, lon) : null;
-    if (catalog) observerReading.textContent = Sky.skySummary(skyPlace, realItokawa, lat, lon);
+    if (catalog) observerReading.textContent = Sky.skyCaption(lat, lon, now);
     refreshThreeSky();
   }
   async function loadSkyData() {
@@ -611,11 +610,10 @@
     return point && {...point, x: point.x + slot.offsetX, y: point.y + slot.offsetY};
   }
 
-  function applyLocation(latitude, longitude, place = '現在地') {
+  function applyLocation(latitude, longitude) {
     const lat = Math.max(-90, Math.min(90, latitude));
     const lon = ((longitude + 180) % 360 + 360) % 360 - 180;
     pendingLocation = {lat, lon};
-    skyPlace = place;
     refreshSky();
     locationStatus.textContent = `星空を現在地に合わせました（緯度 ${lat.toFixed(1)}°）。`;
     setTimeout(() => locationModal.classList.add('is-hidden'), 650);
@@ -920,7 +918,7 @@
       {enableHighAccuracy: false, timeout: 10000, maximumAge: 300000},
     );
   });
-  locationSkip.addEventListener('click', () => { applyLocation(35.68, 139.76, '東京'); locationModal.classList.add('is-hidden'); });
+  locationSkip.addEventListener('click', () => { applyLocation(35.68, 139.76); locationModal.classList.add('is-hidden'); });
 
   function drawSpace() {
     const sky = context.createLinearGradient(0, 0, width * 0.65, height);
@@ -2854,7 +2852,7 @@
   refreshSky();
   loadSkyData();
   setInterval(refreshSky, 60000);
-  observerReading.textContent = '東京 35.7°N 139.8°E の、今の空';
+  observerReading.textContent = Sky.skyCaption(35.68, 139.76, Date.now());
   loadItokawaDistance();
   recordOpenDay();
   await init();
