@@ -3,17 +3,17 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Klee+One:wght@400;600&family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
 <style>
-/* Layout: 夜の作業台の上に、80mm 感熱紙のレシートを3枚並べる。ページは夜（単一の見た目）、紙だけが白い */
+/* Layout: 左に操作（願い・キーワード・預ける）、右に感熱プリンターの口と出てくる紙。下にガチャの中身の一覧 */
 :root {
   color-scheme: dark;
-  --night: #12171d;        /* 作業台 */
+  --night: #12171d;
   --night-raised: #1b222b;
   --line: #2c3540;
   --text: #dfe5ea;
   --muted: #95a1ac;
-  --gold: #e6c878;         /* アプリの金色 */
-  --paper: #f6f6f2;        /* 感熱紙 */
-  --ink: #1c1c1e;          /* 感熱の黒 */
+  --gold: #e6c878;
+  --paper: #f6f6f2;
+  --ink: #1c1c1e;
   --ink-soft: #55565a;
   --display: "DotGothic16", "Zen Kaku Gothic New", system-ui, sans-serif;
   --body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
@@ -21,453 +21,374 @@
   --hand: "Klee One", "Zen Kaku Gothic New", system-ui, sans-serif;
 }
 * { box-sizing: border-box; }
-body {
-  background: var(--night);
-  color: var(--text);
-  font-family: var(--body);
-  line-height: 1.7;
-}
-.page {
-  max-width: 1080px;
-  margin: 0 auto;
-  padding-inline: 20px;
-  padding-block: 40px 64px;
-  display: grid;
-  gap: 28px;
-}
+body { background: var(--night); color: var(--text); font-family: var(--body); line-height: 1.7; }
+.page { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 64px; display: grid; gap: 36px; }
 header { display: grid; gap: 10px; }
-header .lead { max-width: 62ch; }
 .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; color: var(--gold); text-transform: uppercase; }
-h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(30px, 5vw, 44px); line-height: 1.25; letter-spacing: .04em; text-wrap: balance; }
-.lead { margin: 0; color: var(--muted); font-size: 15px; }
+h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(28px, 4.6vw, 42px); line-height: 1.3; letter-spacing: .04em; text-wrap: balance; }
+.lead { margin: 0; color: var(--muted); font-size: 15px; max-width: 62ch; }
 
-.controls { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
-.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--night-raised); }
-.tabs button {
-  border: 0; background: transparent; color: var(--muted); font: 500 14px var(--body);
-  padding: 7px 16px; border-radius: 999px; cursor: pointer;
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 340px); gap: 36px; align-items: start; }
+@media (max-width: 760px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+
+.panel { display: grid; gap: 18px; background: var(--night-raised); border: 1px solid var(--line); border-radius: 14px; padding: 22px; min-width: 0; }
+.field { display: grid; gap: 6px; }
+.field > label, .field > span { font-size: 13px; color: var(--muted); }
+textarea {
+  width: 100%; min-height: 76px; resize: vertical; background: var(--night); color: var(--text);
+  border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font: 16px/1.6 var(--hand);
 }
-.tabs button[aria-pressed="true"] { background: var(--gold); color: #1a1a14; }
-.tabs button:focus-visible, .check input:focus-visible, select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
-.check { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; color: var(--text); cursor: pointer; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips button {
+  border: 1px solid var(--line); background: var(--night); color: var(--text); border-radius: 999px;
+  padding: 6px 14px; font: 500 14px var(--body); cursor: pointer;
+}
+.chips button[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
+.check { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; cursor: pointer; }
 .check input { width: 18px; height: 18px; accent-color: var(--gold); }
-
-.rail { display: flex; flex-wrap: wrap; gap: 32px 28px; justify-content: center; align-items: flex-start; }
-.slot { display: grid; gap: 12px; justify-items: center; }
-.slot label { font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; }
-select {
-  background: var(--night-raised); color: var(--text); border: 1px solid var(--line);
-  border-radius: 8px; padding: 5px 8px; font: 14px var(--body);
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.primary {
+  border: 0; background: var(--gold); color: #1a1a14; border-radius: 999px; padding: 11px 22px;
+  font: 700 15px var(--body); cursor: pointer;
 }
+.secondary { border: 1px solid var(--line); background: transparent; color: var(--text); border-radius: 999px; padding: 10px 18px; font: 500 14px var(--body); cursor: pointer; }
+.primary:disabled { opacity: .5; cursor: default; }
+button:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.result { min-height: 22px; margin: 0; font-size: 14px; color: var(--gold); }
+.hint { margin: 0; font-size: 12.5px; color: var(--muted); }
 
-/* 80mm 感熱紙（印字幅 72mm）。画面では 302px を 80mm とみなす */
+/* プリンターの口と、出てくる紙 */
+.printer { display: grid; justify-items: center; min-width: 0; }
+.slot-mouth {
+  width: 330px; max-width: 100%; height: 22px; border-radius: 10px 10px 4px 4px;
+  background: linear-gradient(#2a323d, #0c1014); border: 1px solid var(--line); position: relative; z-index: 2;
+}
+.slot-mouth::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 5px; height: 3px; border-radius: 2px; background: #05070a; }
+.feed { width: 302px; max-width: 100%; overflow: hidden; margin-top: -6px; padding-bottom: 14px; }
+.feed.printing .receipt { animation: feed 1.6s steps(24, end) both; }
+@keyframes feed { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .feed.printing .receipt { animation: none; } }
+
 .receipt {
-  position: relative;
-  width: 302px;
-  max-width: 100%;
-  background: var(--paper);
-  color: var(--ink);
-  padding: 22px 20px 26px;
-  font-family: var(--body);
-  font-size: 12.5px;
-  line-height: 1.6;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, .45);
-  transform: rotate(var(--tilt, 0deg));
-  display: grid;
-  gap: 10px;
+  position: relative; width: 302px; max-width: 100%; background: var(--paper); color: var(--ink);
+  padding: 16px 16px 22px; font-family: var(--body); font-size: 12.5px; line-height: 1.6;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, .45); display: grid; gap: 8px;
 }
-/* ちぎった跡（下だけギザギザ） */
 .receipt::after {
-  content: "";
-  position: absolute; left: 0; right: 0; bottom: -9px; height: 10px;
+  content: ""; position: absolute; left: 0; right: 0; bottom: -9px; height: 10px;
   background:
     linear-gradient(135deg, var(--paper) 5px, transparent 0) 0 0 / 10px 10px repeat-x,
     linear-gradient(225deg, var(--paper) 5px, transparent 0) 0 0 / 10px 10px repeat-x;
 }
-.r-brand { text-align: center; display: grid; gap: 2px; }
-.r-brand .mark { font-family: var(--mono); font-size: 11px; letter-spacing: .3em; }
-.r-brand .name { font-family: var(--display); font-size: 22px; letter-spacing: .08em; line-height: 1.3; }
-.r-brand .en { font-family: var(--mono); font-size: 10px; letter-spacing: .25em; color: var(--ink-soft); }
-.rule { border: 0; border-top: 1px dashed var(--ink); margin: 2px 0; opacity: .8; }
-.rows { display: grid; gap: 1px; font-variant-numeric: tabular-nums; }
-.row { display: flex; justify-content: space-between; gap: 12px; }
-.row span:last-child { font-family: var(--mono); text-align: right; }
-.row.jp span:last-child { font-family: var(--body); }
-.art { display: block; width: 100%; image-rendering: pixelated; image-rendering: crisp-edges; }
-.art-caption { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-align: center; color: var(--ink-soft); margin-top: -4px; }
-.wish { font-family: var(--display); font-size: 16px; text-align: center; line-height: 1.5; padding: 2px 4px; }
-.wish.hidden-text { font-family: var(--body); font-size: 12px; color: var(--ink-soft); }
-.status { font-family: var(--mono); font-size: 12px; text-align: center; letter-spacing: .1em; border: 1.5px solid var(--ink); padding: 3px 0; }
-.message { text-align: center; font-size: 12px; }
-.write-line { display: grid; gap: 4px; font-size: 11.5px; }
-.write-line i { display: block; height: 22px; border-bottom: 1px solid var(--ink); }
-.fine { font-size: 9.5px; color: var(--ink-soft); text-align: center; line-height: 1.5; }
-.bars { display: block; width: 100%; height: 34px; }
-.serial { font-family: var(--mono); font-size: 10px; text-align: center; letter-spacing: .2em; margin-top: -6px; }
-
-.variant { display: grid; gap: 18px; }
-.variant-head { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
-.variant-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 22px; letter-spacing: .05em; }
-.variant-head p { margin: 0; color: var(--muted); font-size: 14px; }
-
-/* 案B：絵が主役。下の半券をちぎって渡す */
-.receipt.photo { padding: 16px 16px 22px; gap: 8px; }
-.photo .top { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; }
-.photo .art { border: 1.5px solid var(--ink); }
-.photo .hand { font-family: var(--hand); font-weight: 600; font-size: 21px; line-height: 1.45; text-align: center; padding: 4px 2px 0; text-wrap: balance; }
-.photo .hand.hidden-text { font-family: var(--hand); font-weight: 400; font-size: 14px; color: var(--ink-soft); }
-.photo .meta { display: flex; justify-content: center; gap: 10px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-.photo .big { text-align: center; font-family: var(--hand); font-size: 15px; }
-.photo .big b { font-family: var(--mono); font-weight: 500; font-size: 30px; letter-spacing: -.01em; margin-inline: 2px; }
+.top { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; letter-spacing: .14em; }
+.art { display: block; width: 100%; border: 1.5px solid var(--ink); image-rendering: pixelated; image-rendering: crisp-edges; }
+.draw { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; letter-spacing: .08em; margin-top: -4px; }
+.rare { font-weight: 500; border: 1px solid var(--ink); padding: 0 5px; }
+.hand { font-family: var(--hand); font-weight: 600; font-size: 21px; line-height: 1.45; text-align: center; padding: 4px 2px 0; text-wrap: balance; overflow-wrap: anywhere; }
+.hand.hidden-text { font-weight: 400; font-size: 14px; color: var(--ink-soft); }
+.welcome { font-family: var(--hand); font-size: 15px; text-align: center; }
+.welcome b { font-family: var(--mono); font-weight: 500; font-size: 28px; margin-inline: 2px; }
+.meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 10px; font-family: var(--mono); font-size: 10.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .perf { position: relative; border-top: 1.5px dashed var(--ink); margin: 8px -16px 0; }
 .perf span { position: absolute; left: 12px; top: -10px; background: var(--paper); padding: 0 4px; font-size: 12px; line-height: 18px; }
 .stub { display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: center; padding-top: 8px; }
+.stub.single { grid-template-columns: 1fr; }
 .stub svg { width: 76px; height: 76px; display: block; }
 .stub-text { display: grid; gap: 2px; min-width: 0; }
 .stub-text strong { font-family: var(--hand); font-weight: 600; font-size: 15px; }
 .stub-text span { font-size: 10.5px; line-height: 1.5; color: var(--ink-soft); }
-.stub .write-line { grid-column: 1 / -1; }
+.lines { display: grid; gap: 4px; }
+.lines i { display: block; height: 22px; border-bottom: 1px solid var(--ink); }
+.fine { margin: 0; font-size: 9.5px; color: var(--ink-soft); text-align: center; line-height: 1.5; }
 
-.notes {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;
-  border-top: 1px solid var(--line); padding-top: 24px;
-}
-.note { display: grid; gap: 4px; min-width: 0; }
-.note h2 { margin: 0; font-size: 14px; font-weight: 700; color: var(--gold); letter-spacing: .04em; }
-.note p { margin: 0; font-size: 13.5px; color: var(--muted); }
-.note b { color: var(--text); font-weight: 500; }
+/* ガチャの中身 */
+.pool { display: grid; gap: 14px; border-top: 1px solid var(--line); padding-top: 26px; }
+.pool h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 22px; letter-spacing: .05em; }
+.pool p { margin: 0; color: var(--muted); font-size: 14px; max-width: 64ch; }
+.pool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+.pool-item { display: grid; gap: 6px; margin: 0; background: var(--paper); color: var(--ink); padding: 10px; min-width: 0; }
+.pool-item img { width: 100%; display: block; border: 1px solid var(--ink); image-rendering: pixelated; }
+.pool-item figcaption { font-family: var(--mono); font-size: 11px; display: flex; justify-content: space-between; }
+.pool-item.is-rare { outline: 2px solid var(--gold); outline-offset: 3px; }
 .sample-tag { font-family: var(--mono); font-size: 11px; color: var(--muted); letter-spacing: .1em; }
-
-@media (max-width: 420px) {
-  .page { padding-inline: 16px; }
-  .receipt { --tilt: 0deg !important; }
-}
-@media (prefers-reduced-motion: no-preference) {
-  .receipt { transition: transform .3s ease; }
-  .receipt:hover { transform: rotate(0deg) translateY(-4px); }
-}
 </style>
 
 <main class="page">
   <header>
-    <div class="eyebrow">MORUNE 25143 · 物として持ち帰る</div>
-    <h1>願いの預かり票と<wbr>帰還票</h1>
-    <p class="lead">預けたときと、帰ってきたときに、感熱紙のレシートで1枚ずつ出てくる見本です。イベントでは、その場で印刷してちぎって渡します。絵は願いの文章からではなく、本人が選んだキーワードから出します。</p>
+    <div class="eyebrow">MORUNE 25143 · 案B 絵が主役 · ガチャ</div>
+    <h1>星に預けると、<wbr>1枚出てくる</h1>
+    <p class="lead">願いを書いて、キーワードを選んで「星に預ける」。絵はそのキーワードの中からガチャで選ばれ、紙が出てくるまで分かりません。たまにレアの流れ星が出ます。下の半券は、ちぎって応援してくれる人に渡せます。</p>
   </header>
 
-  <div class="controls" role="group" aria-label="見本の切り替え">
-    <div class="tabs" role="group" aria-label="票の種類">
-      <button type="button" id="tab-deposit" aria-pressed="true">預かり票（預けたとき）</button>
-      <button type="button" id="tab-return" aria-pressed="false">帰還票（帰ってきたとき）</button>
-    </div>
-    <label class="check" for="print-text"><input type="checkbox" id="print-text" checked> 願いの言葉を印字する</label>
-    <span class="sample-tag">見本のデータです</span>
-  </div>
+  <section class="stage">
+    <form class="panel" id="wish-form" aria-label="願いを預ける">
+      <div class="field">
+        <label for="wish-text">願い（60字まで）</label>
+        <textarea id="wish-text" maxlength="60">いつかサイパンへ行く</textarea>
+      </div>
+      <div class="field">
+        <span id="keyword-label">キーワード（絵はこの中から出ます）</span>
+        <div class="chips" id="keywords" role="group" aria-labelledby="keyword-label"></div>
+      </div>
+      <label class="check" for="print-text"><input type="checkbox" id="print-text" checked> 願いの言葉を紙に印字する</label>
+      <div class="actions">
+        <button class="primary" type="submit" id="deposit">星に預ける</button>
+        <button class="secondary" type="button" id="return-mode" aria-pressed="false">帰還票にする</button>
+      </div>
+      <p class="result" id="result" role="status" aria-live="polite"></p>
+      <p class="hint">願いの文章は、絵を選ぶのに使いません。絵はキーワードだけで決まり、アプリの中に入っているので、ネットがなくても印刷できます。<span class="sample-tag">（絵は仮のものです）</span></p>
+    </form>
 
-  <section class="variant" aria-labelledby="variant-a">
-    <div class="variant-head"><h2 id="variant-a">案A 観測記録</h2><p>番号・日付・状態がきちんと並ぶ。記録として信頼できる、手元に残す票。</p></div>
-    <div class="rail" id="rail-a"></div>
-  </section>
-  <section class="variant" aria-labelledby="variant-b">
-    <div class="variant-head"><h2 id="variant-b">案B 絵が主役</h2><p>絵と言葉を大きく。下の半券をちぎって、応援してくれる人に渡せる。</p></div>
-    <div class="rail" id="rail-b"></div>
+    <div class="printer" aria-label="プリンター">
+      <div class="slot-mouth" aria-hidden="true"></div>
+      <div class="feed" id="feed"></div>
+    </div>
   </section>
 
-  <section class="notes" aria-label="この見本で決めたこと">
-    <div class="note">
-      <h2>紙の大きさ</h2>
-      <p>店舗用の感熱プリンターで使う <b>80mm ロール</b>。印字できる幅は72mm、203dpi で <b>576ドット</b>。黒1色なので、絵の濃淡は網点（ディザー）で出します。</p>
-    </div>
-    <div class="note">
-      <h2>絵の出し方</h2>
-      <p>画風は1つに固定し、<b>キーワードごとの絵を前もって用意</b>してアプリに入れておく。願いの文章は外に送らず、ネットがなくても印刷できます。</p>
-    </div>
-    <div class="note">
-      <h2>手で書く欄</h2>
-      <p>帰還票には「最初の小さな一歩」を<b>ペンで書く線</b>を残しました。紙で持ち帰るからこそできる使い方です。</p>
-    </div>
-    <div class="note">
-      <h2>書いておくこと</h2>
-      <p>番号は作品の中だけの番号。「本物の星や小惑星の名前ではありません」と距離の出典（NASA/JPL Horizons）を小さく入れます。</p>
-    </div>
+  <section class="pool" aria-labelledby="pool-title">
+    <h2 id="pool-title">ガチャの中身</h2>
+    <p id="pool-lead"></p>
+    <div class="pool-grid" id="pool-grid"></div>
   </section>
 </main>
 
 <script>
 (() => {
-  // 見本の願い（本人のものではない例）
-  const samples = [
-    {id: 'a7f3', number: '25143-0007', text: 'いつかサイパンへ行く', keyword: 'travel', deposited: '2026.08.21 21:14', returnFrom: '星まかせ', returned: '2026.10.06', days: 46, signals: 12, km: '約2.6億km', light: '約14分', tilt: '-1.6deg'},
-    {id: '2c91', number: '25143-0012', text: 'ピアノをもう一度弾く', keyword: 'music', deposited: '2026.09.02 07:40', returnFrom: '2026.11.01 から', returned: '2026.11.03', days: 62, signals: 4, km: '約2.9億km', light: '約16分', tilt: '1.1deg'},
-    {id: 'e508', number: '25143-0031', text: '友だちと星を見に行く', keyword: 'sky', deposited: '2026.09.18 23:02', returnFrom: '星まかせ', returned: '2026.10.06', days: 18, signals: 27, km: '約2.6億km', light: '約14分', tilt: '-0.6deg'},
+  const keywords = {travel: '旅', music: '音楽', sky: '夜空', learn: '学ぶ', food: '食べる', mountain: '山'};
+  // ふつうの絵3枚（昼・夕方・夜）＋レア1枚（流れ星）。レアはおよそ10回に1回
+  const variants = [
+    {id: 1, name: '昼', rare: false},
+    {id: 2, name: '夕方', rare: false},
+    {id: 3, name: '夜', rare: false},
+    {id: 4, name: '流れ星', rare: true},
   ];
-  const keywords = {
-    travel: '旅', music: '音楽', sky: '夜空', learn: '学ぶ', food: '食べる', mountain: '山',
-  };
+  const RARE_CHANCE = 0.1;
 
-  // ---- 絵：グレーで描いてから 4x4 の網点で黒1色にする（感熱紙の見え方） ----
+  // ---- 仮の絵：グレーで描いて 4x4 の網点で黒1色に ----
   const W = 262, H = 150;
   const bayer = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  const g = v => `rgb(${v},${v},${v})`;
   function dither(ctx) {
-    const image = ctx.getImageData(0, 0, W, H);
-    const d = image.data;
+    const image = ctx.getImageData(0, 0, W, H); const d = image.data;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const i = (y * W + x) * 4;
       const lum = (d[i] * 0.299 + d[i + 1] * 0.587 + d[i + 2] * 0.114) / 255;
-      const threshold = (bayer[(y % 4) * 4 + (x % 4)] + 0.5) / 16;
-      const on = lum < threshold;
+      const on = lum < (bayer[(y % 4) * 4 + (x % 4)] + 0.5) / 16;
       d[i] = on ? 28 : 246; d[i + 1] = on ? 28 : 246; d[i + 2] = on ? 30 : 242; d[i + 3] = 255;
     }
     ctx.putImageData(image, 0, 0);
   }
-  const g = v => `rgb(${v},${v},${v})`;
   function vertical(ctx, top, bottom, y0 = 0, y1 = H) {
-    const grad = ctx.createLinearGradient(0, y0, 0, y1);
-    grad.addColorStop(0, g(top)); grad.addColorStop(1, g(bottom));
-    return grad;
+    const grad = ctx.createLinearGradient(0, y0, 0, y1); grad.addColorStop(0, g(top)); grad.addColorStop(1, g(bottom)); return grad;
   }
+  function seeded(seed) { let s = seed; return () => (s = (s * 9301 + 49297) % 233280) / 233280; }
   function stars(ctx, seed, count, maxY) {
-    let s = seed;
-    const rand = () => (s = (s * 9301 + 49297) % 233280) / 233280;
-    ctx.fillStyle = g(255);
-    for (let i = 0; i < count; i++) {
-      const r = rand() < 0.15 ? 1.6 : 0.9;
-      ctx.beginPath(); ctx.arc(rand() * W, rand() * maxY, r, 0, Math.PI * 2); ctx.fill();
+    const rand = seeded(seed); ctx.fillStyle = g(255);
+    for (let i = 0; i < count; i++) { const r = rand() < 0.15 ? 1.6 : 0.9; ctx.beginPath(); ctx.arc(rand() * W, rand() * maxY, r, 0, Math.PI * 2); ctx.fill(); }
+  }
+  // 時間帯ごとの空：昼は明るく、夕方は低い大きな太陽、夜は暗い空に星と月
+  function sky(ctx, time, bottom = H) {
+    if (time === 1) { ctx.fillStyle = vertical(ctx, 238, 185, 0, bottom); ctx.fillRect(0, 0, W, bottom); }
+    if (time === 2) { ctx.fillStyle = vertical(ctx, 150, 225, 0, bottom); ctx.fillRect(0, 0, W, bottom); ctx.fillStyle = g(252); ctx.beginPath(); ctx.arc(196, bottom - 6, 30, Math.PI, 0); ctx.fill(); }
+    if (time >= 3) {
+      ctx.fillStyle = vertical(ctx, 25, 80, 0, bottom); ctx.fillRect(0, 0, W, bottom); stars(ctx, 11, 60, bottom - 8);
+      ctx.fillStyle = g(250); ctx.beginPath(); ctx.arc(206, 30, 11, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = g(30); ctx.beginPath(); ctx.arc(211, 26, 10, 0, Math.PI * 2); ctx.fill();
     }
   }
-  const drawings = {
-    travel(ctx) {
-      ctx.fillStyle = vertical(ctx, 235, 170, 0, 92); ctx.fillRect(0, 0, W, 92);
-      ctx.fillStyle = g(255); ctx.beginPath(); ctx.arc(176, 52, 22, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = g(200); ctx.lineWidth = 1;
-      for (let a = 0; a < 12; a++) { const t = a * Math.PI / 6; ctx.beginPath(); ctx.moveTo(176 + Math.cos(t) * 27, 52 + Math.sin(t) * 27); ctx.lineTo(176 + Math.cos(t) * 34, 52 + Math.sin(t) * 34); ctx.stroke(); }
-      ctx.fillStyle = vertical(ctx, 120, 60, 92, H); ctx.fillRect(0, 92, W, H - 92);
-      ctx.strokeStyle = g(200); ctx.lineWidth = 1.2;
+  function shootingStar(ctx) {
+    ctx.strokeStyle = g(255); ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(40, 18); ctx.lineTo(118, 50); ctx.stroke();
+    ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(28, 14); ctx.lineTo(118, 50); ctx.stroke();
+    ctx.fillStyle = g(255); ctx.beginPath(); ctx.arc(120, 51, 3.4, 0, Math.PI * 2); ctx.fill();
+  }
+  const subjects = {
+    travel(ctx, time) {
+      sky(ctx, time, 92);
+      if (time === 1) { ctx.fillStyle = g(255); ctx.beginPath(); ctx.arc(176, 46, 20, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = vertical(ctx, time >= 3 ? 70 : 120, time >= 3 ? 20 : 60, 92, H); ctx.fillRect(0, 92, W, H - 92);
+      ctx.strokeStyle = g(time >= 3 ? 120 : 200); ctx.lineWidth = 1.2;
       for (let y = 100; y < H; y += 9) { ctx.beginPath(); for (let x = 0; x <= W; x += 6) ctx.lineTo(x, y + Math.sin(x / 11 + y) * 1.6); ctx.stroke(); }
-      ctx.fillStyle = g(215); ctx.beginPath(); ctx.ellipse(56, 128, 70, 18, 0, Math.PI, 0); ctx.fill();
-      ctx.strokeStyle = g(40); ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(48, 118); ctx.quadraticCurveTo(40, 70, 60, 34); ctx.stroke();
-      ctx.fillStyle = g(40);
-      [[-1.1, 46], [-0.4, 42], [0.4, 44], [1.1, 40], [2.6, 36]].forEach(([angle, len]) => {
-        ctx.save(); ctx.translate(60, 34); ctx.rotate(angle); ctx.beginPath(); ctx.ellipse(len / 2, 0, len / 2, 6, 0.25, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-      });
+      ctx.fillStyle = g(time >= 3 ? 90 : 215); ctx.beginPath(); ctx.ellipse(56, 128, 70, 18, 0, Math.PI, 0); ctx.fill();
+      // 夜は木を明るく描く（暗い空に溶けないように）
+      const tree = g(time >= 3 ? 225 : 25);
+      ctx.strokeStyle = tree; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(48, 118); ctx.quadraticCurveTo(40, 70, 60, 34); ctx.stroke();
+      ctx.fillStyle = tree;
+      [[-1.1, 46], [-0.4, 42], [0.4, 44], [1.1, 40], [2.6, 36]].forEach(([a, len]) => { ctx.save(); ctx.translate(60, 34); ctx.rotate(a); ctx.beginPath(); ctx.ellipse(len / 2, 0, len / 2, 6, 0.25, 0, Math.PI * 2); ctx.fill(); ctx.restore(); });
     },
-    music(ctx) {
-      ctx.fillStyle = vertical(ctx, 225, 190); ctx.fillRect(0, 0, W, H);
+    music(ctx, time) {
+      sky(ctx, time, 86);
       ctx.fillStyle = g(250); ctx.fillRect(0, 86, W, 64);
       ctx.strokeStyle = g(60); ctx.lineWidth = 1;
       for (let x = 0; x <= W; x += 18.7) { ctx.beginPath(); ctx.moveTo(x, 86); ctx.lineTo(x, H); ctx.stroke(); }
-      ctx.fillStyle = g(30);
-      [1, 2, 4, 5, 6, 8, 9, 11, 12, 13].forEach(k => ctx.fillRect(k * 18.7 - 6, 86, 12, 38));
+      ctx.fillStyle = g(30); [1, 2, 4, 5, 6, 8, 9, 11, 12, 13].forEach(k => ctx.fillRect(k * 18.7 - 6, 86, 12, 38));
       ctx.fillStyle = g(45); ctx.fillRect(0, 80, W, 6);
-      ctx.fillStyle = g(35); ctx.strokeStyle = g(35); ctx.lineWidth = 2;
-      [[64, 52], [96, 38], [150, 46], [196, 30]].forEach(([x, y], i) => {
+      const ink = time >= 3 ? 240 : 35; ctx.fillStyle = g(ink); ctx.strokeStyle = g(ink); ctx.lineWidth = 2;
+      [[64, 52], [96, 38], [150, 46]].forEach(([x, y], i) => {
         ctx.beginPath(); ctx.ellipse(x, y, 6.5, 4.6, -0.4, 0, Math.PI * 2); ctx.fill();
         ctx.beginPath(); ctx.moveTo(x + 6, y); ctx.lineTo(x + 6, y - 24); ctx.stroke();
         if (i % 2 === 0) { ctx.beginPath(); ctx.moveTo(x + 6, y - 24); ctx.quadraticCurveTo(x + 16, y - 18, x + 13, y - 8); ctx.stroke(); }
       });
     },
-    sky(ctx) {
-      ctx.fillStyle = vertical(ctx, 30, 95); ctx.fillRect(0, 0, W, H);
-      stars(ctx, 7, 70, 100);
+    sky(ctx, time) {
+      sky(ctx, 3, H);
+      if (time === 1) { ctx.fillStyle = g(120); ctx.globalAlpha = .35; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+      if (time === 2) { ctx.fillStyle = vertical(ctx, 60, 170, 60, H); ctx.globalAlpha = .6; ctx.fillRect(0, 60, W, H - 60); ctx.globalAlpha = 1; }
       ctx.strokeStyle = g(210); ctx.lineWidth = 0.8;
-      const c = [[150, 24], [172, 40], [196, 34], [214, 52], [190, 64]];
+      const c = [[130, 24], [152, 40], [176, 34], [194, 52], [170, 64]];
       ctx.beginPath(); c.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.stroke();
       ctx.fillStyle = g(255); c.forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.fill(); });
       ctx.fillStyle = g(15); ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(0, 118); ctx.quadraticCurveTo(110, 92, W, 124); ctx.lineTo(W, H); ctx.fill();
-      [[96, 104], [112, 102]].forEach(([x, y]) => {
-        ctx.beginPath(); ctx.arc(x, y - 16, 4.5, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(x - 6, y); ctx.quadraticCurveTo(x, y - 18, x + 6, y); ctx.fill();
-      });
-      ctx.strokeStyle = g(15); ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(108, 92); ctx.lineTo(140, 66); ctx.stroke();
+      [[96, 104], [112, 102]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y - 16, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.moveTo(x - 6, y); ctx.quadraticCurveTo(x, y - 18, x + 6, y); ctx.fill(); });
     },
-    learn(ctx) {
-      ctx.fillStyle = vertical(ctx, 230, 200); ctx.fillRect(0, 0, W, H);
+    learn(ctx, time) {
+      sky(ctx, time, H);
       ctx.fillStyle = g(250); ctx.strokeStyle = g(40); ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(131, 40); ctx.quadraticCurveTo(90, 26, 40, 36); ctx.lineTo(40, 124); ctx.quadraticCurveTo(90, 114, 131, 128); ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(131, 40); ctx.quadraticCurveTo(172, 26, 222, 36); ctx.lineTo(222, 124); ctx.quadraticCurveTo(172, 114, 131, 128); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(131, 46); ctx.quadraticCurveTo(90, 32, 40, 42); ctx.lineTo(40, 130); ctx.quadraticCurveTo(90, 120, 131, 134); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(131, 46); ctx.quadraticCurveTo(172, 32, 222, 42); ctx.lineTo(222, 130); ctx.quadraticCurveTo(172, 120, 131, 134); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.strokeStyle = g(120); ctx.lineWidth = 1;
-      for (let y = 50; y < 112; y += 10) { ctx.beginPath(); ctx.moveTo(52, y); ctx.lineTo(120, y + 2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(142, y + 2); ctx.lineTo(210, y); ctx.stroke(); }
+      for (let y = 56; y < 118; y += 10) { ctx.beginPath(); ctx.moveTo(52, y); ctx.lineTo(120, y + 2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(142, y + 2); ctx.lineTo(210, y); ctx.stroke(); }
     },
-    food(ctx) {
-      ctx.fillStyle = vertical(ctx, 235, 205); ctx.fillRect(0, 0, W, H);
+    food(ctx, time) {
+      sky(ctx, time, H);
+      ctx.fillStyle = g(235); ctx.fillRect(0, 100, W, 50);
       ctx.fillStyle = g(60); ctx.beginPath(); ctx.ellipse(131, 92, 70, 14, 0, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = vertical(ctx, 90, 30, 92, 140); ctx.beginPath(); ctx.moveTo(61, 92); ctx.quadraticCurveTo(70, 140, 131, 140); ctx.quadraticCurveTo(192, 140, 201, 92); ctx.fill();
-      ctx.strokeStyle = g(140); ctx.lineWidth = 2;
+      ctx.strokeStyle = g(time >= 3 ? 230 : 140); ctx.lineWidth = 2;
       [100, 131, 162].forEach(x => { ctx.beginPath(); ctx.moveTo(x, 70); ctx.bezierCurveTo(x - 10, 56, x + 10, 44, x, 26); ctx.stroke(); });
     },
-    mountain(ctx) {
-      ctx.fillStyle = vertical(ctx, 240, 200); ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = vertical(ctx, 120, 70, 30, H); ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(90, 42); ctx.lineTo(130, 80); ctx.lineTo(176, 30); ctx.lineTo(W, H); ctx.fill();
-      ctx.fillStyle = g(245); ctx.beginPath(); ctx.moveTo(176, 30); ctx.lineTo(160, 48); ctx.lineTo(176, 44); ctx.lineTo(192, 50); ctx.fill();
-      ctx.strokeStyle = g(230); ctx.setLineDash([3, 4]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(60, H); ctx.quadraticCurveTo(120, 120, 150, 96); ctx.quadraticCurveTo(170, 70, 176, 34); ctx.stroke(); ctx.setLineDash([]);
+    mountain(ctx, time) {
+      sky(ctx, time, H);
+      ctx.fillStyle = vertical(ctx, time >= 3 ? 60 : 120, time >= 3 ? 20 : 70, 30, H); ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(90, 52); ctx.lineTo(130, 86); ctx.lineTo(176, 40); ctx.lineTo(W, H); ctx.fill();
+      ctx.fillStyle = g(245); ctx.beginPath(); ctx.moveTo(176, 40); ctx.lineTo(160, 58); ctx.lineTo(176, 54); ctx.lineTo(192, 60); ctx.fill();
+      ctx.strokeStyle = g(230); ctx.setLineDash([3, 4]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(60, H); ctx.quadraticCurveTo(120, 124, 150, 104); ctx.quadraticCurveTo(170, 80, 176, 44); ctx.stroke(); ctx.setLineDash([]);
     },
   };
-  const artCache = new Map();
-  function art(keyword) {
-    if (artCache.has(keyword)) return artCache.get(keyword);
-    const canvas = document.createElement('canvas');
-    canvas.width = W; canvas.height = H;
+  const cache = new Map();
+  function art(keyword, variant) {
+    const key = `${keyword}-${variant.id}`;
+    if (cache.has(key)) return cache.get(key);
+    const canvas = document.createElement('canvas'); canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d', {willReadFrequently: true});
-    drawings[keyword](ctx);
+    subjects[keyword](ctx, variant.rare ? 3 : variant.id);
+    if (variant.rare) shootingStar(ctx);
     dither(ctx);
-    const url = canvas.toDataURL('image/png');
-    artCache.set(keyword, url);
-    return url;
+    const url = canvas.toDataURL('image/png'); cache.set(key, url); return url;
   }
 
-  // ---- バーコード風（番号から決まる。読み取りはできない飾り） ----
-  function bars(serial) {
-    let s = [...serial].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 100000, 7);
-    const rand = () => (s = (s * 9301 + 49297) % 233280) / 233280;
-    let x = 4, out = '';
-    while (x < 258) { const w = 1 + Math.floor(rand() * 3); out += `<rect x="${x}" y="0" width="${w}" height="34" fill="#1c1c1e"/>`; x += w + 1 + Math.floor(rand() * 3); }
-    return `<svg class="bars" viewBox="0 0 262 34" preserveAspectRatio="none" aria-hidden="true">${out}</svg>`;
-  }
-
-  // ---- 票 ----
-  let mode = 'deposit';
-  const state = samples.map(sample => ({...sample}));
-  const escape = value => String(value).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'})[c]);
-
-  function wishLine(sample, printText) {
-    return printText
-      ? `<div class="wish">「${escape(sample.text)}」</div>`
-      : `<div class="wish hidden-text">願いの言葉は印字していません<br>（あなたの端末の中にだけあります）</div>`;
-  }
-  function depositReceipt(sample, printText) {
-    return `
-      <div class="r-brand"><div class="mark">25143 · ORBIT</div><div class="name">願いの預かり票</div><div class="en">WISH RECEIPT</div></div>
-      <hr class="rule">
-      <div class="rows">
-        <div class="row"><span>番号</span><span>${sample.number}</span></div>
-        <div class="row"><span>預けた日</span><span>${sample.deposited}</span></div>
-        <div class="row jp"><span>帰還</span><span>${escape(sample.returnFrom)}</span></div>
-      </div>
-      <hr class="rule">
-      <img class="art" src="${art(sample.keyword)}" alt="キーワード「${keywords[sample.keyword]}」の絵">
-      <div class="art-caption">KEYWORD · ${keywords[sample.keyword]}</div>
-      ${wishLine(sample, printText)}
-      <div class="status">STATUS · ORBITING / 周回中</div>
-      <p class="message">願いを1件、たしかに預かりました。<br>帰ってくる日まで、星が持っています。</p>
-      <hr class="rule">
-      ${bars(sample.number)}
-      <div class="serial">${sample.number.replace('-', ' ')}</div>
-      <p class="fine">番号は作品 MORUNE 25143 の中だけの番号です。<br>本物の星や小惑星の名前ではありません。</p>`;
-  }
-  function returnReceipt(sample, printText) {
-    return `
-      <div class="r-brand"><div class="mark">25143 · EARTH</div><div class="name">願いの帰還票</div><div class="en">RETURN RECEIPT</div></div>
-      <hr class="rule">
-      <div class="rows">
-        <div class="row"><span>番号</span><span>${sample.number}</span></div>
-        <div class="row"><span>預けた日</span><span>${sample.deposited.slice(0, 10)}</span></div>
-        <div class="row"><span>帰った日</span><span>${sample.returned}</span></div>
-        <div class="row"><span>旅した日数</span><span>${sample.days}日</span></div>
-        <div class="row"><span>応援の信号</span><span>${sample.signals}回</span></div>
-      </div>
-      <hr class="rule">
-      <img class="art" src="${art(sample.keyword)}" alt="キーワード「${keywords[sample.keyword]}」の絵">
-      <div class="art-caption">KEYWORD · ${keywords[sample.keyword]}</div>
-      ${wishLine(sample, printText)}
-      <div class="status">STATUS · RETURNED / 6等星</div>
-      <p class="message">いま、イトカワは地球から${sample.km}。<br>光でも${sample.light}かかる距離を帰ってきました。</p>
-      <div class="write-line"><span>最初の小さな一歩（ペンでどうぞ）</span><i></i><i></i></div>
-      <hr class="rule">
-      <p class="fine">一歩ふみ出すたびに、アプリの中の星が明るくなります。<br>距離：NASA/JPL Horizons ／ 本物の星や小惑星の名前ではありません。</p>`;
-  }
-
-  // 案B：応援の半券に載せる、読み取れない飾りの2次元コード（見本）
+  // 応援券の2次元コード（読み取れない飾り。見本）
   function codeMark(serial) {
     let s = [...serial].reduce((a, c) => (a * 17 + c.charCodeAt(0)) % 100000, 3);
     const rand = () => (s = (s * 9301 + 49297) % 233280) / 233280;
-    const n = 21, cell = 76 / n;
-    let out = '';
+    const n = 21, cell = 76 / n; let out = '';
     const finder = (cx, cy) => `<rect x="${cx * cell}" y="${cy * cell}" width="${7 * cell}" height="${7 * cell}" fill="#1c1c1e"/><rect x="${(cx + 1) * cell}" y="${(cy + 1) * cell}" width="${5 * cell}" height="${5 * cell}" fill="#f6f6f2"/><rect x="${(cx + 2) * cell}" y="${(cy + 2) * cell}" width="${3 * cell}" height="${3 * cell}" fill="#1c1c1e"/>`;
     const inFinder = (x, y) => (x < 8 && y < 8) || (x > n - 9 && y < 8) || (x < 8 && y > n - 9);
-    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-      if (!inFinder(x, y) && rand() < 0.48) out += `<rect x="${x * cell}" y="${y * cell}" width="${cell + 0.2}" height="${cell + 0.2}" fill="#1c1c1e"/>`;
-    }
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (!inFinder(x, y) && rand() < 0.48) out += `<rect x="${x * cell}" y="${y * cell}" width="${cell + 0.2}" height="${cell + 0.2}" fill="#1c1c1e"/>`;
     return `<svg viewBox="0 0 76 76" aria-hidden="true"><rect width="76" height="76" fill="#f6f6f2"/>${out}${finder(0, 0)}${finder(n - 7, 0)}${finder(0, n - 7)}</svg>`;
   }
-  function handLine(sample, printText) {
-    return printText
-      ? `<div class="hand">${escape(sample.text)}</div>`
+  const escape = value => String(value).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'})[c]);
+  const today = () => { const d = new Date(); return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`; };
+
+  function receiptHtml({text, keyword, variant, number, printText, mode}) {
+    const words = printText && text.trim()
+      ? `<div class="hand">${escape(text.trim())}</div>`
       : `<div class="hand hidden-text">言葉は、あなたの端末の中に。</div>`;
-  }
-  function photoDeposit(sample, printText) {
+    const drawLine = `<div class="draw"><span>${keywords[keyword]} · ${variant.name}</span>${variant.rare ? '<span class="rare">★ RARE</span>' : `<span>${variant.id}/3</span>`}</div>`;
+    const picture = `<img class="art" src="${art(keyword, variant)}" alt="${keywords[keyword]}の絵（${variant.name}）">${drawLine}`;
+    if (mode === 'return') {
+      return `
+        <div class="top"><span>MORUNE 25143</span><span>帰還票</span></div>
+        ${picture}
+        ${words}
+        <div class="welcome">おかえりなさい。<b>46</b>日の旅でした</div>
+        <div class="meta"><span>${today()}</span><span>·</span><span>信号 12回</span><span>·</span><span>約2.6億km</span></div>
+        <div class="perf"><span aria-hidden="true">✂</span></div>
+        <div class="stub single"><div class="stub-text"><strong>最初の小さな一歩</strong><span>ペンで書いて、見えるところに貼っておけます。</span></div><div class="lines"><i></i><i></i></div></div>
+        <p class="fine">距離：NASA/JPL Horizons ／ 本物の星や小惑星の名前ではありません。</p>`;
+    }
     return `
       <div class="top"><span>MORUNE 25143</span><span>預かり票</span></div>
-      <img class="art" src="${art(sample.keyword)}" alt="キーワード「${keywords[sample.keyword]}」の絵">
-      ${handLine(sample, printText)}
-      <div class="meta"><span>${sample.deposited.slice(0, 10)}</span><span>·</span><span>${sample.number}</span><span>·</span><span>周回中</span></div>
+      ${picture}
+      ${words}
+      <div class="meta"><span>${today()}</span><span>·</span><span>${number}</span><span>·</span><span>周回中</span></div>
       <div class="perf"><span aria-hidden="true">✂</span></div>
-      <div class="stub">
-        ${codeMark(sample.number)}
-        <div class="stub-text"><strong>応援券</strong><span>ここから切って、応援してくれる人に渡してください。読み取ると、この星に信号を送れます。</span></div>
-      </div>
+      <div class="stub">${codeMark(number)}<div class="stub-text"><strong>応援券</strong><span>ここから切って、応援してくれる人に渡してください。読み取ると、この星に信号を送れます。</span></div></div>
       <p class="fine">番号は作品の中だけの番号です。本物の星や小惑星の名前ではありません。</p>`;
   }
-  function photoReturn(sample, printText) {
-    return `
-      <div class="top"><span>MORUNE 25143</span><span>帰還票</span></div>
-      <img class="art" src="${art(sample.keyword)}" alt="キーワード「${keywords[sample.keyword]}」の絵">
-      ${handLine(sample, printText)}
-      <div class="big">おかえりなさい。<b>${sample.days}</b>日の旅でした</div>
-      <div class="meta"><span>${sample.returned}</span><span>·</span><span>信号 ${sample.signals}回</span><span>·</span><span>${sample.km}</span></div>
-      <div class="perf"><span aria-hidden="true">✂</span></div>
-      <div class="stub" style="grid-template-columns:1fr">
-        <div class="stub-text"><strong>最初の小さな一歩</strong><span>ペンで書いて、見えるところに貼っておけます。</span></div>
-        <div class="write-line"><i></i><i></i></div>
-      </div>
-      <p class="fine">距離：NASA/JPL Horizons ／ 本物の星や小惑星の名前ではありません。</p>`;
-  }
 
-  const rails = {a: document.getElementById('rail-a'), b: document.getElementById('rail-b')};
+  // ---- 画面 ----
+  const form = document.getElementById('wish-form');
+  const text = document.getElementById('wish-text');
+  const chips = document.getElementById('keywords');
   const printText = document.getElementById('print-text');
-  function render() {
-    renderRail('a');
-    renderRail('b');
-  }
-  function renderRail(variant) {
-    const rail = rails[variant];
-    rail.replaceChildren();
-    state.forEach((sample, index) => {
-      const slot = document.createElement('div');
-      slot.className = 'slot';
-      const receipt = document.createElement('article');
-      receipt.className = variant === 'b' ? 'receipt photo' : 'receipt';
-      receipt.style.setProperty('--tilt', sample.tilt);
-      receipt.setAttribute('aria-label', `案${variant.toUpperCase()} ${mode === 'deposit' ? '預かり票' : '帰還票'}の見本 ${index + 1}`);
-      const builders = variant === 'b' ? [photoDeposit, photoReturn] : [depositReceipt, returnReceipt];
-      receipt.innerHTML = (mode === 'deposit' ? builders[0] : builders[1])(sample, printText.checked);
-      const label = document.createElement('label');
-      const id = `keyword-${variant}-${index}`;
-      label.setAttribute('for', id);
-      label.textContent = 'キーワード';
-      const select = document.createElement('select');
-      select.id = id;
-      Object.entries(keywords).forEach(([value, name]) => {
-        const option = document.createElement('option');
-        option.value = value; option.textContent = name; option.selected = value === sample.keyword;
-        select.append(option);
-      });
-      select.addEventListener('change', () => { sample.keyword = select.value; render(); document.getElementById(id)?.focus(); });
-      label.append(select);
-      slot.append(receipt, label);
-      rail.append(slot);
+  const feed = document.getElementById('feed');
+  const result = document.getElementById('result');
+  const returnMode = document.getElementById('return-mode');
+  const deposit = document.getElementById('deposit');
+  let keyword = 'travel';
+  let counter = 7;
+  let last = {variant: variants[0], number: '25143-0007'};
+
+  Object.entries(keywords).forEach(([value, name]) => {
+    const button = document.createElement('button');
+    button.type = 'button'; button.textContent = name; button.dataset.value = value;
+    button.setAttribute('aria-pressed', String(value === keyword));
+    button.addEventListener('click', () => {
+      keyword = value;
+      chips.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.value === keyword)));
+      renderPool();
+      show(false);
     });
+    chips.append(button);
+  });
+
+  function drawVariant() {
+    if (Math.random() < RARE_CHANCE) return variants[3];
+    return variants[Math.floor(Math.random() * 3)];
   }
-  const tabDeposit = document.getElementById('tab-deposit');
-  const tabReturn = document.getElementById('tab-return');
-  function setMode(next) {
-    mode = next;
-    tabDeposit.setAttribute('aria-pressed', String(next === 'deposit'));
-    tabReturn.setAttribute('aria-pressed', String(next === 'return'));
-    render();
+  const isReturn = () => returnMode.getAttribute('aria-pressed') === 'true';
+  function show(animate) {
+    const receipt = document.createElement('article');
+    receipt.className = 'receipt';
+    receipt.setAttribute('aria-label', isReturn() ? '帰還票' : '預かり票');
+    receipt.innerHTML = receiptHtml({text: text.value, keyword, variant: last.variant, number: last.number, printText: printText.checked, mode: isReturn() ? 'return' : 'deposit'});
+    feed.replaceChildren(receipt);
+    feed.classList.remove('printing');
+    if (animate) { void feed.offsetWidth; feed.classList.add('printing'); }
   }
-  tabDeposit.addEventListener('click', () => setMode('deposit'));
-  tabReturn.addEventListener('click', () => setMode('return'));
-  printText.addEventListener('change', render);
-  render();
+  form.addEventListener('submit', event => {
+    event.preventDefault();
+    counter += 1;
+    last = {variant: drawVariant(), number: `25143-${String(counter).padStart(4, '0')}`};
+    deposit.disabled = true;
+    result.textContent = '印刷しています…';
+    show(true);
+    setTimeout(() => {
+      deposit.disabled = false;
+      result.textContent = last.variant.rare
+        ? `★ レアが出ました。「${keywords[keyword]}・${last.variant.name}」`
+        : `「${keywords[keyword]}・${last.variant.name}」が出ました。`;
+    }, 1600);
+  });
+  returnMode.addEventListener('click', () => {
+    const next = !isReturn();
+    returnMode.setAttribute('aria-pressed', String(next));
+    returnMode.textContent = next ? '預かり票にする' : '帰還票にする';
+    show(false);
+  });
+  printText.addEventListener('change', () => show(false));
+  text.addEventListener('input', () => show(false));
+
+  function renderPool() {
+    document.getElementById('pool-lead').textContent = `「${keywords[keyword]}」の絵は${variants.length}枚。ふつうの3枚（昼・夕方・夜）が同じくらいの確率で出て、レアの流れ星はおよそ10回に1回です。本番は、画風をそろえて描いた絵に入れ替えます。`;
+    const grid = document.getElementById('pool-grid');
+    grid.replaceChildren(...variants.map(variant => {
+      const item = document.createElement('figure');
+      item.className = variant.rare ? 'pool-item is-rare' : 'pool-item';
+      item.innerHTML = `<img src="${art(keyword, variant)}" alt="${keywords[keyword]}の絵（${variant.name}）"><figcaption><b>${variant.name}</b><b>${variant.rare ? '★ RARE' : `${variant.id}/3`}</b></figcaption>`;
+      return item;
+    }));
+  }
+  renderPool();
+  show(false);
 })();
 </script>
