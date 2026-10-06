@@ -16,6 +16,10 @@
       "migrations_dir": "drizzle"
     }
   ],
+  // 願いの絵（Workers AI：翻訳 m2m100 と、絵 FLUX.1 schnell）。本人が押したときだけ使う
+  "ai": {
+    "binding": "AI"
+  },
   "vars": {
     "CHATGPT_SYNC_ENABLED": "false",
     "PUBLIC_STARS_ENABLED": "false"

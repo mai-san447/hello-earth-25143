@@ -482,3 +482,5 @@ body:has(.mission-app){background:transparent}
 .receipt-primary:focus-visible{outline-color:#edcb8c}
 .archive-growth-receipt{min-height:34px;border:1px dashed rgba(245,222,175,.4);border-radius:999px;background:transparent;color:#e8d4a8;font:500 10px/1.4 "Zen Kaku Gothic New",sans-serif;cursor:pointer}
 .archive-growth-receipt:focus-visible{outline:2px solid #e6ca91;outline-offset:2px}
+.receipt-art{border-color:rgba(230,200,120,.55);color:#f2d08d}
+.receipt-art-note{margin:4px 0 0;font-size:10px}

@@ -38,6 +38,7 @@ function formatDate(time) {
 // 願いの言葉を入れるかは本人が選ぶ（カプセルの「願いの言葉も入れる」。初期値は入れない）
 export function returnReceiptContent({wish, now, days, signals = 0, distanceText = '', number = null, includeText = false, qrUrl = ''}) {
   const firstStep = typeof wish.firstStep === 'string' ? wish.firstStep.trim() : '';
+  const art = typeof wish.art === 'string' ? wish.art : '';
   const variant = receiptVariant(wish.id);
   const meta = [formatDate(now)];
   if (signals > 0) meta.push(`信号 ${signals}回`);
@@ -45,7 +46,9 @@ export function returnReceiptContent({wish, now, days, signals = 0, distanceText
   return {
     kind: '帰還票',
     variant,
-    drawLabel: variant.rare ? `${variant.name} ★ RARE` : variant.name,
+    // AI でつくった願いの絵があれば、星の絵のかわりに使う
+    art,
+    drawLabel: art ? '願いの絵' : variant.rare ? `${variant.name} ★ RARE` : variant.name,
     wishText: includeText ? wish.text : '',
     welcome: days > 0 ? `おかえりなさい。${days}日の旅でした` : 'おかえりなさい。今日の旅でした',
     meta,

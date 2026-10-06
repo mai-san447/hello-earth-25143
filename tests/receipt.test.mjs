@@ -58,3 +58,10 @@ test('アプリで書いた最初の一歩があれば、紙に載せる', () =>
   assert.equal(content.firstStep, '天文台の見学に申し込む');
   assert.match(content.stubHint, /QR/);
 });
+
+test('AI でつくった願いの絵があれば、星の絵のかわりに使う', () => {
+  assert.equal(returnReceiptContent({wish, now, days: 1}).art, '');
+  const content = returnReceiptContent({wish: {...wish, art: 'data:image/png;base64,AAA'}, now, days: 1});
+  assert.equal(content.art, 'data:image/png;base64,AAA');
+  assert.equal(content.drawLabel, '願いの絵');
+});
