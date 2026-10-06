@@ -163,4 +163,4 @@ npx wrangler d1 export morune-25143 --remote --output backup-$(date +%Y-%m-%d).s
 
 `public/sky.js` が端末時刻と位置から恒星時・高度・方位を計算する。位置は送信・永続保存しない。拒否・未対応時は東京（35.68, 139.76）。同梱データを使い1分ごとと画面復帰時に更新し、願いの状態遷移には影響しない。真北・高度45度の固定視線で、端末の向きとは連動しない。3Dが使えない場合は天頂を中心にした2D星図。昼間も星を表示し、大気差・歳差・地形は含めない。大きなイトカワと軌道は演出、小さな水色の印と方位・高度が実際の方向。地平線下・暦の期間外・データ未取得は明示する。データ未取得でも願いを使え、再接続後に再読み込みできる。
 
-恒星：Yale Bright Star Catalogue（Hoffleit & Warren 1991）、[VizieR V/50](https://cdsarc.cds.unistra.fr/viz-bin/cat/V/50)、5等級まで1604個。VizieR catalogue access tool, CDS, Strasbourg, France（DOI: 10.26093/cds/vizier）に謝意を表します。イトカワ：[NASA/JPL Horizons](https://ssd.jpl.nasa.gov/horizons/)、地心ICRF赤経・赤緯、2026-10-01〜2027-12-31の毎日00:00 UT、線形補間（赤経の0度折り返しを考慮）。期間外は外挿しない。JSとJSONをService Workerで保存し、実行時に外部の天文APIへ問い合わせない。
+恒星：Yale Bright Star Catalogue（Hoffleit & Warren 1991）、[VizieR V/50](https://cdsarc.cds.unistra.fr/viz-bin/cat/V/50)、6等級まで5080個（肉眼で見える星ほぼすべて）。VizieR catalogue access tool, CDS, Strasbourg, France（DOI: 10.26093/cds/vizier）に謝意を表します。イトカワ：[NASA/JPL Horizons](https://ssd.jpl.nasa.gov/horizons/)、地心ICRF赤経・赤緯、2026-10-01〜2027-12-31の毎日00:00 UT、線形補間（赤経の0度折り返しを考慮）。期間外は外挿しない。JSとJSONをService Workerで保存し、実行時に外部の天文APIへ問い合わせない。

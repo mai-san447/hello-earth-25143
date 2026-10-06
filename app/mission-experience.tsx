@@ -196,7 +196,7 @@ export function MissionExperience({
                 <p>ページ配信にはCloudflareを利用し、フォントや描画ライブラリーの読み込みにGoogle Fonts、jsDelivrなど外部配信元を利用します。ページ表示時には、各サービスへIPアドレスやブラウザー情報など通信に通常必要な情報が送られる場合があります。これらの情報の取り扱いは各提供者のポリシーにも従います。</p>
               </section>
               <section>
-                <h3>星空のデータと出典</h3><p>恒星は Yale Bright Star Catalogue（Hoffleit &amp; Warren 1991）、VizieR V/50 の5等級までを使用しています。VizieR catalogue access tool, CDS, Strasbourg, France（DOI: 10.26093/cds/vizier）に謝意を表します。イトカワの方向は NASA/JPL Horizons の地心赤経・赤緯（2026年10月1日〜2027年12月31日）を日ごとに補間した概算です。位置は端末内だけで計算に使います。大気差・歳差・地形や昼の明るさは再現しません。真北・高度45度の固定視線で、端末の向きとは連動しません。大きなイトカワと軌道は演出で、小さな水色の印が実際の方向です。</p></section><section><h3>利用上の注意</h3>
+                <h3>星空のデータと出典</h3><p>恒星は Yale Bright Star Catalogue（Hoffleit &amp; Warren 1991）、VizieR V/50 の6等級まで（肉眼で見える星ほぼすべて）を使用しています。VizieR catalogue access tool, CDS, Strasbourg, France（DOI: 10.26093/cds/vizier）に謝意を表します。イトカワの方向は NASA/JPL Horizons の地心赤経・赤緯（2026年10月1日〜2027年12月31日）を日ごとに補間した概算です。位置は端末内だけで計算に使います。大気差・歳差・地形や昼の明るさは再現しません。真北・高度45度の固定視線で、端末の向きとは連動しません。大きなイトカワと軌道は演出で、小さな水色の印が実際の方向です。</p></section><section><h3>利用上の注意</h3>
                 <p>画面内のイトカワ・探査機表現は創作上の演出で、公式の科学資料ではありません。イトカワまでの距離は、NASA/JPL Horizons の暦（小惑星 25143 Itokawa、地球中心から見た距離、1日ごとの値）をもとにした概算で、アプリに同梱した表から表示しています。サービスは試験公開中のため、予告なく変更・停止する場合があります。データの永続性、特定目的への適合性、常時利用可能であることは保証しません。大切な記録の保管には使わないでください。</p>
               </section>
               <p className="policy-contact-note">個人制作の試験公開版です。お問い合わせは、MORUNE のサイトの<a href="https://morune.store/contact" target="_blank" rel="noopener noreferrer">問い合わせフォーム</a>からお願いします。</p>

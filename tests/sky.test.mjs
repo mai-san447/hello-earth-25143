@@ -37,7 +37,7 @@ test('イトカワのUTC補間、赤経の折り返しと期間外', () => {
 test('同梱データで計算でき、不正な入力を拒否する', () => {
   const stars=JSON.parse(readFileSync(new URL('../public/sky-stars.json',import.meta.url))).stars;
   const table=JSON.parse(readFileSync(new URL('../public/itokawa-radec.json',import.meta.url)));
-  assert.equal(stars.length,1604);
+  assert.equal(stars.length,5080);
   assert.ok(visibleStars(stars,Date.parse('2026-10-07T00:00Z'),35.68,139.76).length>0);
   assert.deepEqual(itokawaPosition(table,Date.parse('2026-10-07T00:00Z')),{raDeg:132.787,decDeg:18.307});
   assert.throws(()=>julianDay(NaN)); assert.throws(()=>equatorialToHorizontal(0,0,time,91,0));
