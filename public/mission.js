@@ -605,11 +605,11 @@
     return {x: centerX + Math.cos(angle) * orbitX * lane, y: centerY + Math.sin(angle) * orbitY * lane};
   }
 
-  function applyLocation(latitude, longitude) {
+  function applyLocation(latitude, longitude, place = '現在地') {
     const lat = Math.max(-90, Math.min(90, latitude));
     const lon = ((longitude + 180) % 360 + 360) % 360 - 180;
     pendingLocation = {lat, lon};
-    skyPlace = '現在地';
+    skyPlace = place;
     refreshSky();
     locationStatus.textContent = `星空を現在地に合わせました（緯度 ${lat.toFixed(1)}°）。`;
     setTimeout(() => locationModal.classList.add('is-hidden'), 650);
@@ -876,7 +876,7 @@
       {enableHighAccuracy: false, timeout: 10000, maximumAge: 300000},
     );
   });
-  locationSkip.addEventListener('click', () => { applyLocation(35.68, 139.76); locationModal.classList.add('is-hidden'); });
+  locationSkip.addEventListener('click', () => { applyLocation(35.68, 139.76, '東京'); locationModal.classList.add('is-hidden'); });
 
   function drawSpace() {
     const sky = context.createLinearGradient(0, 0, width * 0.65, height);
@@ -1557,7 +1557,15 @@
     context.fillRect(0, 0, width, height);
     const scale = Math.min(width / image.width, height / image.height);
     context.drawImage(image, (width - image.width * scale) / 2, (height - image.height * scale) / 2, image.width * scale, image.height * scale);
-    ditherToInk(context, width, height);
+    // AI の絵は線画なので、網点ではなく2色にくっきり分ける（網点だと細い線が薄くかすれた）
+    const pixels = context.getImageData(0, 0, width, height);
+    const data = pixels.data;
+    for (let index = 0; index < data.length; index += 4) {
+      const lum = (data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114) / 255;
+      data[index] = data[index + 1] = data[index + 2] = lum < 0.78 ? 0 : 255;
+      data[index + 3] = 255;
+    }
+    context.putImageData(pixels, 0, 0);
     return canvas;
   }
 
