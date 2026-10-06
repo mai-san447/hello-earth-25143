@@ -20,7 +20,7 @@ export function MissionExperience({
         <canvas id="orbit-canvas" aria-label="数を数えずに眺める、願いの星がイトカワを周回する宇宙" />
         <header className="mission-header">
           <span className="mission-brand">MORUNE <b>25143</b></span>
-          <span className="mission-phase">HAYABUSA SAMPLE RETURN</span>
+          <span className="mission-phase">WISH SAMPLE RETURN</span>
         </header>
         <div className="observer-pill" aria-label="観測位置">
           <span className="observer-dot" aria-hidden="true" />
@@ -268,7 +268,7 @@ export function MissionExperience({
         <div className="itokawa-label" id="itokawa-label" aria-hidden="true" hidden>25143 ITOKAWA</div>
         <section className="location-backdrop" id="location-modal" role="dialog" aria-modal="true" aria-labelledby="location-title" aria-describedby="location-description">
           <div className="location-panel">
-            <p className="sheet-kicker">HAYABUSA / ITOKAWA</p>
+            <p className="sheet-kicker">25143 / ITOKAWA</p>
             <h2 id="location-title">現在の星空と同期するために位置情報を利用します</h2>
             <p id="location-description">場所に合わせて、星空の向きを調整します。</p>
             <button className="location-allow" id="location-allow" type="button">現在地で星空を同期</button>
