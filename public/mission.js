@@ -2085,6 +2085,20 @@
     return WishState.wishNumber(readStorage(NUMBER_KEY), WishState.wishSeqOf(wish, wishes));
   }
 
+  // 番号を持たない前からの願いに、番号を付けて保存する。保存できなくても使い続けられる（表示は預けた順で数える）
+  async function fixWishSeq() {
+    const {updated, counter} = WishState.assignMissingSeq(wishes, Number(readStorage(WISH_SEQ_KEY)) || 0);
+    if (!updated.length) return;
+    try {
+      for (const wish of updated) await store('readwrite', object => object.put(wish));
+      const byId = new Map(updated.map(wish => [wish.id, wish]));
+      wishes = wishes.map(wish => byId.get(wish.id) ?? wish);
+      writeStorage(WISH_SEQ_KEY, String(counter));
+    } catch (error) {
+      console.error('fix wish seq', error);
+    }
+  }
+
   // 人の番号を受け取る。願いを1つでも預けていて、まだ番号がないときだけ。失敗しても預けることは止めない
   let numbering = false;
   async function ensureNumber() {
@@ -2471,6 +2485,7 @@
   loadItokawaDistance();
   recordOpenDay();
   await init();
+  await fixWishSeq();
   ensureNumber();
   showConnection();
   registerOfflineSupport();

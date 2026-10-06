@@ -158,6 +158,14 @@ export function parseStarSignal(body) {
 }
 
 /** @param {number | null} number @returns {string | null} */
+// 人の番号を新しく発行できる速さ。1分あたり全体で60まで（イベントで大勢が一度に始めても足りる数）。
+// ランダムな軌道ID で呼び続けて、番号と書き込みを使い切られないようにする（2026-10-06 Codex レビュー）
+export const ORBIT_ISSUE_LIMIT = Object.freeze({windowMs: 60 * 1000, max: 60});
+
+export function canIssueOrbit(recentCount) {
+  return Number.isInteger(recentCount) && recentCount < ORBIT_ISSUE_LIMIT.max;
+}
+
 // 番号は 25143-人-願い の「人」の部分。0 は作者（25143-0000）で、本人が SQL で登録する。参加した人は 1 から順に
 export function formatNumber(number) {
   if (!Number.isInteger(number) || number < 0) return null;
