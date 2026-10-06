@@ -36,7 +36,6 @@ export function MissionExperience({
           <button className="policy-open" id="policy-open" type="button" aria-haspopup="dialog">利用規約・プライバシー <span aria-hidden="true">›</span></button>
         </section>
         <section className="mission-title" aria-labelledby="mission-title">
-          <p className="mission-kicker">SIGNAL: はやぶさ、地球を撮って。</p>
           <h1 id="mission-title">願いを星に、<br /><span>想いを地球へ。</span></h1>
         </section>
         <div className="telemetry" aria-live="polite">
