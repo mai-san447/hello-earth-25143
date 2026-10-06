@@ -1906,13 +1906,14 @@
   // シェアは X だけにする（2026-10-07、本人の判断）。OS の共有シートは PC では X が出ず、
   // 画像を描いてから（await のあと）開くと、ブラウザが「押した直後」と見なさず投稿画面が開かなかった。
   // そのため投稿画面は押した瞬間に開き、画像（切り取り線より上だけ）は端末に保存して、投稿に添えてもらう
+  // シェアの文は「やると決めた」宣言にする。アプリの中の言葉（25143・願い星）は外の人に通じないので入れない（2026-10-07、本人と決定）
   function shareReceipt() {
     const status = $('#receipt-status');
     const button = $('#receipt-share');
     const wish = receiptWish();
     if (!wish) return;
     const includeText = $('#receipt-include-text').checked;
-    const message = [includeText ? `「${wish.text}」` : '', '25143 から、願い星が帰ってきました。', '#MORUNE25143'].filter(Boolean).join('\n');
+    const message = [includeText ? `「${wish.text}」` : '', '星に預けていた願いを、やってみることにした。', '#MORUNE25143'].filter(Boolean).join('\n');
     const url = `${location.origin}/`;
     window.open(`https://x.com/intent/post?text=${encodeURIComponent(message)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer');
     button.disabled = true;
