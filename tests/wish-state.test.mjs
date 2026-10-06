@@ -54,7 +54,7 @@ test('待っていた日数は時刻ではなく日付で数える', () => {
 
 test('待っていた日数の文言', () => {
   assert.equal(waitedMessage(0), '今日、預けた願いです。');
-  assert.equal(waitedMessage(37), '37日間、イトカワの軌道であなたを待っていました。');
+  assert.equal(waitedMessage(37), '37日間、北の空であなたを待っていました。');
 });
 
 // #7 帰還が始まる日
@@ -95,7 +95,7 @@ test('日付の入力を端末の 0:00 に直す。空や存在しない日付�
   assert.equal(parseReturnFrom('10/25'), null);
 });
 
-test('「軌道へ戻す」を選んでも、帰還が始まる日はそのまま残る', () => {
+test('「星空へ戻す」を選んでも、帰還が始まる日はそのまま残る', () => {
   const back = decide(wish({status: STATUS.RETURNED, returnFrom: discharge}), 'later', at(2026, 10, 26));
   assert.equal(back.returnFrom, discharge);
   assert.deepEqual(returnCandidates([back], at(2026, 10, 26)).map(item => item.id), ['a']);
@@ -120,7 +120,7 @@ test('帰還が始まる日は翌日から1年後まで。空欄はすぐ帰還�
   assert.deepEqual(returnFromRange(now), {min: '2026-10-02', max: '2027-10-01'});
 });
 
-test('軌道へ戻した回数を数え、5回目に一度だけやさしい一言を出す', () => {
+test('星空へ戻した回数を数え、5回目に一度だけやさしい一言を出す', () => {
   let current = wish({status: STATUS.RETURNED});
   const messages = [];
   for (let count = 1; count <= 6; count++) {

@@ -41,7 +41,7 @@ export function MissionExperience({
         </section>
         <div className="telemetry" aria-live="polite">
           <span className="telemetry-dot" />
-          <span id="mission-status">イトカワの軌道を観測中</span>
+          <span id="mission-status">北の空を観測中</span>
         </div>
         <section className="mission-dock" id="mission-dock" data-step="deposit" aria-label="ミッション操作">
           <nav className="mission-segmented" role="tablist" aria-label="ミッションの段階">
@@ -67,7 +67,7 @@ export function MissionExperience({
             <button className="sample-trigger" id="sample-trigger" type="button" hidden>カプセルを開く <span aria-hidden="true">↗</span></button>
           </div>
           <div className="mission-dock-meta">
-            <p className="gesture-hint" id="gesture-hint">願いを預けると、星がイトカワの軌道に浮かびます</p>
+            <p className="gesture-hint" id="gesture-hint">願いを預けると、北の空に星がひとつ灯ります</p>
             <button className="others-trigger" id="others-open" type="button" hidden>みんなの星 <span id="others-count">0</span></button>
             <button className="archive-trigger" id="archive-open" type="button">地球の回収記録 <span id="archive-count">0</span></button>
           </div>
@@ -91,7 +91,7 @@ export function MissionExperience({
             </label>
             <p id="publish-hint">言葉だけが30日間、ほかの人の星空に小さく出ます。預けた願いは、これまでどおりこの端末の中にあります。</p>
           </div>
-          <button className="launch-button" id="deposit" type="button">星を軌道へ送る <span aria-hidden="true">↗</span></button>
+          <button className="launch-button" id="deposit" type="button">星を北の空へ送る <span aria-hidden="true">↗</span></button>
           <p className="sheet-status" id="deposit-status" role="status" />
         </section>
         <section className="return-card" id="return-card" role="dialog" aria-modal="true" aria-labelledby="returned-text" hidden>
@@ -99,7 +99,7 @@ export function MissionExperience({
           <button className="sheet-close" id="card-close" type="button" aria-label="閉じる">×</button>
           <p className="card-kicker">WISH CAPSULE / 25143</p>
           <p className="returned-stamp">WISH STAR / RETURNED</p>
-          <div className="sample-particle-stage" role="img" aria-label="イトカワの軌道から地球へ帰還した願い星">
+          <div className="sample-particle-stage" role="img" aria-label="北の空から地球へ帰還した願い星">
             <span className="sample-particle-orbit sample-particle-orbit-outer" aria-hidden="true" />
             <span className="sample-particle-orbit sample-particle-orbit-inner" aria-hidden="true" />
             <span className="sample-particle-aura" aria-hidden="true">
@@ -107,7 +107,7 @@ export function MissionExperience({
             </span>
             <span className="sample-name" id="returned-number">WISH STAR</span>
           </div>
-          <p className="sample-caption">イトカワの軌道をめぐり、地球へ帰ってきた願い星。</p>
+          <p className="sample-caption">北の空から、地球へ帰ってきた願い星。</p>
           <h2 id="returned-text" />
           <time id="returned-date" />
           <p className="returned-wait" id="returned-wait" />
@@ -117,7 +117,7 @@ export function MissionExperience({
           <p className="share-status">受け取ると、帰還票（紙に印刷・シェアできる1枚）をつくれます。</p>
           <div className="return-actions" aria-label="帰還した願いの扱い">
             <button className="return-action-primary" id="try-wish" type="button">想いを受け取る</button>
-            <button id="return-to-orbit" type="button">軌道へ戻す</button>
+            <button id="return-to-orbit" type="button">星空へ戻す</button>
             <button className="return-action-later" id="finish-wish" type="button">アーカイブに保存</button>
           </div>
         </section>
@@ -127,7 +127,7 @@ export function MissionExperience({
           <h2 id="archive-title">地球へ帰還した願い</h2>
           <p className="archive-empty" id="archive-empty">まだ帰還した願いはありません。</p>
           <div className="signal-share" id="signal-share" hidden>
-            <p>応援リンクを送ると、受け取った人がスマホを振るだけで、軌道で待つあなたの星に信号が届き、少し明るくなります。名前も言葉も、願いの中身も届きません。</p>
+            <p>応援リンクを送ると、受け取った人がスマホを振るだけで、北の空で待つあなたの星に信号が届き、少し明るくなります。名前も言葉も、願いの中身も届きません。</p>
             <button id="signal-share-button" type="button">応援リンクを送る</button>
             <p className="signal-share-status" id="signal-share-status" role="status" aria-live="polite" />
           </div>
@@ -170,7 +170,7 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>入力内容と保存</h3>
-                <p>願いは60文字以内で入力できます。イトカワの軌道に置ける願いは30個まで、帰還が始まる日は翌日から1年後までです。応援の信号は、同じ星へは1台の端末から1日1回まで送れます。現在のCloudflare版では、願いと回収記録はこのブラウザーのIndexedDBに保存され、アプリのサーバーやクラウドへ送信されません（「星空に流す」を選んだ言葉だけは例外です。下の「みんなの星」をご覧ください）。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。</p>
+                <p>願いは60文字以内で入力できます。北の空に預けられる願いは30個まで、帰還が始まる日は翌日から1年後までです。応援の信号は、同じ星へは1台の端末から1日1回まで送れます。現在のCloudflare版では、願いと回収記録はこのブラウザーのIndexedDBに保存され、アプリのサーバーやクラウドへ送信されません（「星空に流す」を選んだ言葉だけは例外です。下の「みんなの星」をご覧ください）。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。</p>
                 <p>願いはこの端末の中にだけ保存され、「星空に流す」を選ぶか「AIで願いの絵をつくる」を押さない限り、運営者やサーバーには送られません。「AIで願いの絵をつくる」を押すと、その願いの言葉を Cloudflare（Workers AI）に送り、絵を1枚つくります。言葉と絵はサーバーに保存しません（回数の上限のため、軌道IDと時刻だけを記録します）。1日5回までです。ほかの人に見られたくない内容を書くときは、端末の画面ロックをお使いください。パスワードや、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
               </section>
               <section>
