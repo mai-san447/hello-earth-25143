@@ -5,20 +5,23 @@
   let WishState;
   let Itokawa;
   let Constellation;
-  let Certificate;
   let PublicStars;
   let KeyedQueue;
   let Receipt;
+  // 帰還票の QR を描く部品（public/vendor/qrcode.mjs、qrcode-generator 2.0.4、MIT）
+  let QrCode;
   try {
-    [WishState, Itokawa, Constellation, Certificate, PublicStars, KeyedQueue, Receipt] = await Promise.all([
+    let QrModule;
+    [WishState, Itokawa, Constellation, PublicStars, KeyedQueue, Receipt, QrModule] = await Promise.all([
       import('/wish-state.js'),
       import('/itokawa.js'),
       import('/constellation.js'),
-      import('/certificate.js'),
       import('/public-stars.js'),
       import('/keyed-queue.js'),
       import('/receipt.js'),
+      import('/vendor/qrcode.mjs'),
     ]);
+    QrCode = QrModule.qrcode;
   } catch (error) {
     console.error('mission modules', error);
     document.querySelector('#splash-screen')?.remove();
@@ -1415,75 +1418,6 @@
   }
 
   // #26 帰還証明書。端末の中で画像を描いて保存する（願いの言葉はサーバーへ送らない）
-  function drawCertificate(content) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1080;
-    canvas.height = 1350;
-    const context = canvas.getContext('2d');
-    const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
-    gradient.addColorStop(0, '#07101c');
-    gradient.addColorStop(1, '#141a2e');
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    // 星は決まった並びで描く（保存するたびに見た目が変わらないよう乱数を使わない）
-    context.fillStyle = 'rgba(255, 248, 230, 0.7)';
-    for (let index = 0; index < 90; index += 1) {
-      const size = index % 7 === 0 ? 3 : 2;
-      context.fillRect((index * 397) % canvas.width, (index * 241) % canvas.height, size, size);
-    }
-    context.strokeStyle = 'rgba(237, 203, 140, 0.55)';
-    context.lineWidth = 3;
-    context.strokeRect(60, 60, canvas.width - 120, canvas.height - 120);
-    const serif = '"Yu Mincho", "Hiragino Mincho ProN", serif';
-    const center = canvas.width / 2;
-    context.textAlign = 'center';
-    context.fillStyle = '#edcb8c';
-    context.font = '28px ui-monospace, monospace';
-    context.fillText(content.kicker, center, 170);
-    context.fillStyle = '#fff9ed';
-    context.font = `72px ${serif}`;
-    context.fillText(content.title, center, 280);
-    let y = 400;
-    if (content.wishText) {
-      context.font = `46px ${serif}`;
-      const chars = [...`「${content.wishText}」`];
-      const perLine = 16;
-      for (let start = 0; start < chars.length; start += perLine) {
-        context.fillText(chars.slice(start, start + perLine).join(''), center, y);
-        y += 66;
-      }
-      y += 30;
-    }
-    context.font = `40px ${serif}`;
-    for (const line of content.lines) {
-      context.fillStyle = '#aab5b3';
-      context.textAlign = 'right';
-      context.fillText(line.label, center - 24, y);
-      context.fillStyle = '#fff9ed';
-      context.textAlign = 'left';
-      context.fillText(line.value, center + 24, y);
-      y += 76;
-    }
-    context.textAlign = 'center';
-    if (content.distanceLine) {
-      // 「距離。」と「光でも〜」の2行に分けて、はみ出さないようにする
-      const split = content.distanceLine.indexOf('。') + 1;
-      context.fillStyle = '#c1cbc4';
-      context.font = `30px ${serif}`;
-      context.fillText(content.distanceLine.slice(0, split), center, y + 30);
-      context.fillText(content.distanceLine.slice(split), center, y + 76);
-    }
-    context.fillStyle = '#edcb8c';
-    context.font = `44px ${serif}`;
-    context.fillText('願いを星に、想いを地球へ。', center, canvas.height - 200);
-    context.fillStyle = '#829090';
-    context.font = '24px "Zen Kaku Gothic New", sans-serif';
-    context.fillText(content.footnote, center, canvas.height - 116);
-    context.font = '20px "Zen Kaku Gothic New", sans-serif';
-    context.fillText(content.credit, center, canvas.height - 80);
-    return canvas;
-  }
-
   // スマホでは共有シートの「画像を保存」で写真に残せる。使えない端末ではダウンロードにする。返すのは画面に出す言葉
   async function saveImage(blob, fileName, title, savedMessage) {
     const file = new File([blob], fileName, {type: 'image/png'});
@@ -1609,6 +1543,33 @@
     return lines;
   }
 
+  // 読み取ると、自分の星（MORUNE 25143 のページ）に戻れる QR。財布に入れた紙から、また開くきっかけにする
+  function drawReceiptQr(context, content, top, margin) {
+    const qr = QrCode(0, 'M');
+    qr.addData(content.qrUrl);
+    qr.make();
+    const modules = qr.getModuleCount();
+    const cell = 5;
+    const quiet = 4;
+    const size = (modules + quiet * 2) * cell;
+    context.fillStyle = '#fff';
+    context.fillRect(margin, top, size, size);
+    context.fillStyle = '#000';
+    for (let row = 0; row < modules; row += 1) {
+      for (let column = 0; column < modules; column += 1) {
+        if (qr.isDark(row, column)) context.fillRect(margin + (column + quiet) * cell, top + (row + quiet) * cell, cell, cell);
+      }
+    }
+    context.textAlign = 'left';
+    const textLeft = margin + size + 18;
+    context.font = `700 26px ${RECEIPT_FONT}`;
+    context.fillText(content.qrLabel, textLeft, top + size / 2 - 8);
+    context.font = `400 18px ${RECEIPT_FONT}`;
+    context.fillText(content.qrHint, textLeft, top + size / 2 + 24);
+    context.textAlign = 'center';
+    return top + size + 4;
+  }
+
   function drawReceipt(content) {
     const width = Receipt.RECEIPT_WIDTH;
     const margin = 24;
@@ -1661,6 +1622,7 @@
     y += 40;
     context.font = `500 19px ${RECEIPT_MONO}`;
     context.fillText(content.meta.join(' · '), width / 2, y);
+    if (content.qrUrl) y = drawReceiptQr(context, content, y + 24, margin);
     // 切り取り線
     y += 40;
     context.setLineDash([10, 8]);
@@ -1707,7 +1669,7 @@
   async function saveReceipt() {
     if (!returningWish || !landed) return;
     const status = $('#certificate-status');
-    const button = $('#receipt-save');
+    const button = $('#certificate-save');
     button.disabled = true;
     status.textContent = '帰還票を描いています…';
     try {
@@ -1721,51 +1683,20 @@
         distanceText: km == null ? '' : Itokawa.formatDistanceJa(km),
         number: currentWishNumber(returningWish),
         includeText: $('#certificate-include-text').checked,
+        qrUrl: `${location.origin}/`,
       });
       // 文字の形がそろうよう、画面のフォントを読み込んでから描く
       await document.fonts?.ready;
       const blob = await new Promise((resolve, reject) => {
         drawReceipt(content).toBlob(result => (result ? resolve(result) : reject(new Error('画像を作れませんでした'))), 'image/png');
       });
-      status.textContent = await saveImage(blob, content.fileName, 'MORUNE 25143 帰還票', '印刷用の帰還票を保存しました');
+      status.textContent = await saveImage(blob, content.fileName, 'MORUNE 25143 帰還票', '帰還票を保存しました');
     } catch (error) {
       if (error?.name === 'AbortError') {
         status.textContent = '';
       } else {
         console.error('receipt', error);
         status.textContent = '帰還票を保存できませんでした。もう一度お試しください';
-      }
-    } finally {
-      button.disabled = false;
-    }
-  }
-
-  async function saveCertificate() {
-    if (!returningWish || !landed) return;
-    const status = $('#certificate-status');
-    const button = $('#certificate-save');
-    button.disabled = true;
-    status.textContent = '証明書を描いています…';
-    try {
-      const now = Date.now();
-      const content = Certificate.certificateContent({
-        wish: returningWish,
-        now,
-        includeText: $('#certificate-include-text').checked,
-        distanceLine: Itokawa.distanceMessage(Itokawa.distanceKmOn(distanceTable, now)),
-        number: currentWishNumber(returningWish),
-      });
-      const blob = await new Promise((resolve, reject) => {
-        drawCertificate(content).toBlob(result => (result ? resolve(result) : reject(new Error('画像を作れませんでした'))), 'image/png');
-      });
-      status.textContent = await saveImage(blob, content.fileName, 'MORUNE 25143 帰還証明書', '帰還証明書を保存しました');
-    } catch (error) {
-      if (error?.name === 'AbortError') {
-        // 共有シートを閉じただけ。失敗ではない
-        status.textContent = '';
-      } else {
-        console.error('certificate', error);
-        status.textContent = '証明書を保存できませんでした。もう一度お試しください';
       }
     } finally {
       button.disabled = false;
@@ -2007,8 +1938,7 @@
   $('#return-to-orbit').addEventListener('click', () => chooseDisposition('later'));
   $('#finish-wish').addEventListener('click', () => chooseDisposition('finish'));
   $('#share-wish').addEventListener('click', shareWish);
-  $('#certificate-save').addEventListener('click', saveCertificate);
-  $('#receipt-save').addEventListener('click', saveReceipt);
+  $('#certificate-save').addEventListener('click', saveReceipt);
   $('#archive-open').addEventListener('click', () => {
     $('#archive-sheet').hidden = false;
     drawConstellation();

@@ -119,8 +119,7 @@ export function MissionExperience({
               <input id="certificate-include-text" type="checkbox" />
               願いの言葉も入れる
             </label>
-            <button className="return-action-share" id="certificate-save" type="button">帰還証明書を保存</button>
-            <button className="return-action-share" id="receipt-save" type="button">印刷用の帰還票を保存（感熱紙80mm）</button>
+            <button className="return-action-share" id="certificate-save" type="button">帰還票を保存（印刷もできます）</button>
             <p className="share-status" id="certificate-status" role="status" aria-live="polite" />
           </div>
           <label className="share-comment-label" htmlFor="share-comment">コメントを添えてシェア</label>

@@ -44,3 +44,10 @@ test('信号がないときは書かない。今日帰ってきた願いの言�
   assert.deepEqual(content.meta, ['2026.10.07']);
   assert.equal(content.welcome, 'おかえりなさい。今日の旅でした');
 });
+
+test('QR は、渡したときだけ入れる（読み取ると自分の星へ）', () => {
+  assert.equal(returnReceiptContent({wish, now, days: 1}).qrUrl, '');
+  const content = returnReceiptContent({wish, now, days: 1, qrUrl: 'https://morune-25143.morune-25143.workers.dev/'});
+  assert.equal(content.qrUrl, 'https://morune-25143.morune-25143.workers.dev/');
+  assert.equal(content.qrLabel, 'あなたの星へ');
+});
