@@ -158,7 +158,7 @@
     visibleSky = catalog ? Sky.visibleStars(catalog.stars, now, lat, lon) : [];
     const position = radecTable ? Sky.itokawaPosition(radecTable, now) : null;
     realItokawa = position ? Sky.equatorialToHorizontal(position.raDeg, position.decDeg, now, lat, lon) : null;
-    if (catalog) observerReading.textContent = Sky.skySummary(skyPlace, realItokawa);
+    if (catalog) observerReading.textContent = Sky.skySummary(skyPlace, realItokawa, lat, lon);
     refreshThreeSky();
   }
   async function loadSkyData() {
@@ -2820,7 +2820,7 @@
   });
   loadSkyData();
   setInterval(refreshSky, 60000);
-  observerReading.textContent = '東京の、今の空';
+  observerReading.textContent = '東京 35.7°N 139.8°E の、今の空';
   loadItokawaDistance();
   recordOpenDay();
   await init();

@@ -64,9 +64,18 @@ export function compassJa(azimuth) {
   return DIRECTIONS[Math.round(value / 45) % 8];
 }
 
+// 緯度経度は小数点以下1けた（約10km）に丸めて出す。画面を写して共有したとき、住んでいる場所が細かく分からないように
+export function coordinatesLabel(latitude, longitude) {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return '';
+  const lat = `${Math.abs(latitude).toFixed(1)}°${latitude >= 0 ? 'N' : 'S'}`;
+  const lon = `${Math.abs(longitude).toFixed(1)}°${longitude >= 0 ? 'E' : 'W'}`;
+  return `${lat} ${lon}`;
+}
+
 // 上の帯に出す、ひと言の空の説明。place は「東京」か「現在地」
-export function skySummary(place, itokawa) {
-  if (!itokawa) return `${place}の、今の空`;
-  if (itokawa.altitude <= 0) return `${place}の、今の空 · 25143 はいま地平線の下`;
-  return `${place}の、今の空 · 25143 は${compassJa(itokawa.azimuth)}の空`;
+export function skySummary(place, itokawa, latitude, longitude) {
+  const where = [place, coordinatesLabel(latitude, longitude)].filter(Boolean).join(' ');
+  if (!itokawa) return `${where} の、今の空`;
+  if (itokawa.altitude <= 0) return `${where} の、今の空 · 25143 はいま地平線の下`;
+  return `${where} の、今の空 · 25143 は${compassJa(itokawa.azimuth)}の空`;
 }

@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {julianDay, greenwichSiderealTime, localSiderealTime, equatorialToHorizontal, visibleStars, itokawaPosition} from '../public/sky.js';
-import {compassJa, skySummary} from '../public/sky.js';
+import {compassJa, coordinatesLabel, skySummary} from '../public/sky.js';
 import {readFileSync} from 'node:fs';
 const time = Date.parse('2000-01-01T12:00:00Z');
 const near = (a,b,tolerance=1e-6) => assert.ok(Math.abs(a-b)<tolerance, `${a} ≈ ${b}`);
@@ -57,8 +57,10 @@ test('方位は、ひと言の方角にする', () => {
   assert.equal(compassJa(-45), '北西');
 });
 
-test('上の帯は、ひと言で空を説明する', () => {
-  assert.equal(skySummary('東京', {azimuth: 81, altitude: 20}), '東京の、今の空 · 25143 は東の空');
-  assert.equal(skySummary('現在地', {azimuth: 81, altitude: -5}), '現在地の、今の空 · 25143 はいま地平線の下');
-  assert.equal(skySummary('東京', null), '東京の、今の空');
+test('上の帯は、場所・緯度経度（1けたに丸める）と、25143 の方角をひと言で', () => {
+  assert.equal(coordinatesLabel(35.6812, 139.7671), '35.7°N 139.8°E');
+  assert.equal(coordinatesLabel(-33.86, -70.65), '33.9°S 70.7°W');
+  assert.equal(skySummary('東京', {azimuth: 81, altitude: 20}, 35.68, 139.76), '東京 35.7°N 139.8°E の、今の空 · 25143 は東の空');
+  assert.equal(skySummary('現在地', {azimuth: 81, altitude: -5}, 35.68, 139.76), '現在地 35.7°N 139.8°E の、今の空 · 25143 はいま地平線の下');
+  assert.equal(skySummary('東京', null), '東京 の、今の空');
 });
