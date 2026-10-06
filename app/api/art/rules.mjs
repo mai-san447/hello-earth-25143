@@ -7,7 +7,9 @@ export const ART_TEXT_MAX = 60;
 // 1つの軌道（端末）は1日5回まで。全体は1日300回まで（費用の上限）
 export const ART_LIMIT = Object.freeze({perOrbitDaily: 5, globalDaily: 300, windowMs: 24 * 60 * 60 * 1000});
 
-export const TRANSLATE_MODEL = '@cf/meta/m2m100-1.2b';
+// 願い（日本語）を「絵に描ける場面の英語」にする。直訳（m2m100）だと「パンを焼いてみる」が「burn」になるなど弱かったため、言葉を理解できるモデルにした
+export const SCENE_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8';
+export const SCENE_SYSTEM = 'You turn a Japanese wish into a short English description of a picture. Describe only what can be seen: one small person doing the wish, the place, and objects. Use 8 to 20 words. Start with a verb in -ing form or a place. Do not use the words I, we, wish, want, dream, text, words, letters. Output only the description, no quotes.';
 export const IMAGE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
 
 /** @returns {{ok: true, value: {orbitId: string, text: string}} | {ok: false, status: number, error: string}} */
@@ -29,13 +31,20 @@ export function acceptArt({orbitCount, globalCount}) {
 }
 
 // 画風は固定し、願いの中身だけを変える（メンター会の助言）。感熱紙で映えるよう、白黒・太い線・白い背景にする
+// 「I want to go into space」のような一人称の文は、そのまま文字として描かれやすいので、場面の言葉だけにする
+export function sceneOf(englishWish) {
+  return String(englishWish ?? '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/^(i|we)\s+(really\s+)?(want|would like|'d like|wish|hope|plan|am going|will|would love|love)\s+(to\s+)?/i, '')
+    .replace(/^(i|we)'d\s+(like|love)\s+to\s+/i, '')
+    .replace(/^(someday|one day|someday,|one day,)\s*/i, '')
+    .replace(/[.。!！?？]+$/, '')
+    .slice(0, 300);
+}
+
 export function buildPrompt(englishWish) {
-  const subject = String(englishWish ?? '').replace(/\s+/g, ' ').trim().slice(0, 300);
-  // 「receipt」「print」などの言葉を入れると、紙そのものを描いてしまうので入れない（2026-10-07 試して分かった）
-  return [
-    `An illustration of this wish coming true: ${subject}.`,
-    'Show one person and the scene of the wish, seen from a little distance, with a few tiny stars in the sky.',
-    'Black and white ink drawing, bold clean lines, high contrast, plain white background, hand-drawn picture book style, gentle and hopeful mood.',
-    'No text, no letters, no numbers, no logos, no watermark, no realistic faces, no religious symbols.',
-  ].join(' ');
+  // 説明の言葉（wish, receipt, text など）を入れると、AI がそれを文字として絵に描いてしまう。
+  // 場面だけを書き、画風は肯定の言葉だけで指定する（2026-10-07 試して分かった）
+  return `A small person, ${sceneOf(englishWish)}. Simple black and white ink illustration, hand-drawn picture book style, thick bold lines, high contrast, plain white background, a few tiny stars in the sky, gentle and hopeful mood, wordless.`;
 }

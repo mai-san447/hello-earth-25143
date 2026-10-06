@@ -1542,7 +1542,8 @@
     context.putImageData(image, 0, 0);
   }
 
-  // AI の絵を、帰還票の絵の大きさに切り抜いて白黒にする（端末に保存する形）
+  // AI の絵を、帰還票の絵の枠に「全体が収まるように」置いて白黒にする（端末に保存する形）。
+  // 切り抜くと背の高い絵（ロケットなど）が切れるため。AI の絵は背景が白なので、余白も白で自然になる
   function inkArtFromImage(image, width, height) {
     const canvas = document.createElement('canvas');
     canvas.width = width;
@@ -1550,7 +1551,7 @@
     const context = canvas.getContext('2d', {willReadFrequently: true});
     context.fillStyle = '#fff';
     context.fillRect(0, 0, width, height);
-    const scale = Math.max(width / image.width, height / image.height);
+    const scale = Math.min(width / image.width, height / image.height);
     context.drawImage(image, (width - image.width * scale) / 2, (height - image.height * scale) / 2, image.width * scale, image.height * scale);
     ditherToInk(context, width, height);
     return canvas;

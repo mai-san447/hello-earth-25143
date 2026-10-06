@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {ART_LIMIT, ART_TEXT_MAX, acceptArt, buildPrompt, parseArt} from '../app/api/art/rules.mjs';
+import {ART_LIMIT, ART_TEXT_MAX, acceptArt, buildPrompt, parseArt, sceneOf} from '../app/api/art/rules.mjs';
 
 const orbitId = '80e68463-d1fb-46cd-984f-a6cb7d8a863a';
 
@@ -18,11 +18,15 @@ test('1人1日5回、全体1日300回まで', () => {
   assert.equal(acceptArt({orbitCount: undefined, globalCount: 0}).ok, false);
 });
 
-test('画風は固定し、願いの中身だけを入れる。文字・ロゴ・宗教の印は描かせない', () => {
-  const prompt = buildPrompt('I want to go to space');
-  assert.match(prompt, /this wish coming true: I want to go to space\./);
-  assert.doesNotMatch(prompt, /receipt|print/i);
+test('一人称の文は、場面の言葉だけにする（文字として描かれないように）', () => {
+  assert.equal(sceneOf('I want to go into space.'), 'go into space');
+  assert.equal(sceneOf("I'd like to live in a town near the sea"), "I'd like to live in a town near the sea".replace(/^I'd like to /, ''));
+  assert.equal(sceneOf('Playing the piano again.'), 'Playing the piano again');
+});
+
+test('画風は固定。説明の言葉（AI が文字として描いてしまう）は入れない', () => {
+  const prompt = buildPrompt('I want to go into space.');
+  assert.match(prompt, /^A small person, go into space\. /);
   assert.match(prompt, /black and white/i);
-  assert.match(prompt, /No text/);
-  assert.match(prompt, /no religious symbols/);
+  assert.doesNotMatch(prompt, /receipt|print|wish|text|letter|I want/i);
 });
