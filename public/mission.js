@@ -151,18 +151,14 @@
   let visibleSky = [];
   let realItokawa = null;
   let refreshThreeSky = () => {};
-  const skyDirectionLabel = document.createElement('div');
-  skyDirectionLabel.className = 'itokawa-label';
-  skyDirectionLabel.style.cssText = 'left:50%;top:22%;max-width:90%;text-align:center';
-  skyDirectionLabel.setAttribute('role', 'status');
-  app.append(skyDirectionLabel);
+  let skyPlace = '東京';
   function refreshSky() {
     const {lat, lon} = pendingLocation;
     const now = Date.now();
     visibleSky = catalog ? Sky.visibleStars(catalog.stars, now, lat, lon) : [];
     const position = radecTable ? Sky.itokawaPosition(radecTable, now) : null;
     realItokawa = position ? Sky.equatorialToHorizontal(position.raDeg, position.decDeg, now, lat, lon) : null;
-    skyDirectionLabel.textContent = !radecTable ? '25143 ITOKAWA · 位置データを読み込めません' : !realItokawa ? '25143 ITOKAWA · 暦の期間外です' : realItokawa.altitude <= 0 ? '25143 ITOKAWA · いまは地平線の下' : `25143 ITOKAWA · 方位 ${realItokawa.azimuth.toFixed(0)}° / 高度 ${realItokawa.altitude.toFixed(0)}°`;
+    if (catalog) observerReading.textContent = Sky.skySummary(skyPlace, realItokawa);
     refreshThreeSky();
   }
   async function loadSkyData() {
@@ -613,9 +609,7 @@
     const lat = Math.max(-90, Math.min(90, latitude));
     const lon = ((longitude + 180) % 360 + 360) % 360 - 180;
     pendingLocation = {lat, lon};
-    const latitudeLabel = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'}`;
-    const longitudeLabel = `${Math.abs(lon).toFixed(2)}°${lon >= 0 ? 'E' : 'W'}`;
-    observerReading.textContent = `現在地 ${latitudeLabel}, ${longitudeLabel} · 真北・高度45°（端末の向きとは連動しません）`;
+    skyPlace = '現在地';
     refreshSky();
     locationStatus.textContent = `星空を現在地に合わせました（緯度 ${lat.toFixed(1)}°）。`;
     setTimeout(() => locationModal.classList.add('is-hidden'), 650);
@@ -859,15 +853,6 @@
       }
       renderer.render(threeScene, threeCamera);
       updateLabel();
-      if (directionMarker.visible) {
-        const projected = directionMarker.getWorldPosition(new THREE.Vector3()).project(threeCamera);
-        const inView = projected.z > -1 && projected.z < 1 && Math.abs(projected.x) < 0.9 && Math.abs(projected.y) < 0.9;
-        skyDirectionLabel.style.left = inView ? `${(projected.x * 0.5 + 0.5) * window.innerWidth}px` : '50%';
-        skyDirectionLabel.style.top = inView ? `${(-projected.y * 0.5 + 0.5) * window.innerHeight - 18}px` : '22%';
-      } else {
-        skyDirectionLabel.style.left = '50%';
-        skyDirectionLabel.style.top = '22%';
-      }
     }
     animate();
   }
@@ -2796,7 +2781,7 @@
   });
   loadSkyData();
   setInterval(refreshSky, 60000);
-  observerReading.textContent = '東京の星空 · 真北・高度45°を表示（端末の向きとは連動しません）';
+  observerReading.textContent = '東京の、今の空';
   loadItokawaDistance();
   recordOpenDay();
   await init();
