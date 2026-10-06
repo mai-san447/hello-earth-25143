@@ -247,6 +247,8 @@ export function MissionExperience({
             <label className="certificate-option" htmlFor="receipt-include-text"><input id="receipt-include-text" type="checkbox" /> 願いの言葉も入れる</label>
             {/* eslint-disable-next-line @next/next/no-img-element -- 端末の中で描いた帰還票（data URL）を出すだけなので、画像の最適化は要らない */}
             <img className="receipt-preview" id="receipt-preview" alt="帰還票のプレビュー" />
+            <button className="stars-secondary receipt-art" id="receipt-art" type="button">AIで願いの絵をつくる</button>
+            <p className="stars-note receipt-art-note">押すと、願いの言葉を AI（Cloudflare）に送って絵を1枚つくります。言葉と絵はサーバーに残しません。1日5回まで。</p>
             <button className="stars-primary receipt-primary" id="receipt-save" type="button">紙に印刷する・保存する</button>
             <button className="stars-secondary" id="receipt-share" type="button">シェアする（X など）</button>
             <button className="stars-secondary" id="receipt-close" type="button">あとで</button>

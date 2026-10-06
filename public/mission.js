@@ -1522,18 +1522,47 @@
     context.moveTo(person.x - 13, person.y);
     context.quadraticCurveTo(person.x, person.y - 34, person.x + 13, person.y);
     context.fill();
+    ditherToInk(context, width, height);
+    return canvas;
+  }
+
+  // グレーの絵を、4x4 の網点で黒1色にする（感熱紙は黒しか出ない）
+  function ditherToInk(context, width, height) {
     const image = context.getImageData(0, 0, width, height);
     const data = image.data;
     for (let y = 0; y < height; y += 1) {
       for (let x = 0; x < width; x += 1) {
         const index = (y * width + x) * 4;
-        const on = data[index] / 255 < (BAYER[(y % 4) * 4 + (x % 4)] + 0.5) / 16;
+        const lum = (data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114) / 255;
+        const on = lum < (BAYER[(y % 4) * 4 + (x % 4)] + 0.5) / 16;
         data[index] = data[index + 1] = data[index + 2] = on ? 0 : 255;
         data[index + 3] = 255;
       }
     }
     context.putImageData(image, 0, 0);
+  }
+
+  // AI の絵を、帰還票の絵の大きさに切り抜いて白黒にする（端末に保存する形）
+  function inkArtFromImage(image, width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', {willReadFrequently: true});
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, width, height);
+    const scale = Math.max(width / image.width, height / image.height);
+    context.drawImage(image, (width - image.width * scale) / 2, (height - image.height * scale) / 2, image.width * scale, image.height * scale);
+    ditherToInk(context, width, height);
     return canvas;
+  }
+
+  function loadImage(src) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('絵を読み込めませんでした'));
+      image.src = src;
+    });
   }
 
   // 1行に収まるように折り返す（日本語は1文字ずつ測る）
@@ -1626,7 +1655,7 @@
     return y;
   }
 
-  function drawReceipt(content, {withStub = true} = {}) {
+  function drawReceipt(content, {withStub = true, artImage = null} = {}) {
     const width = Receipt.RECEIPT_WIDTH;
     const margin = 24;
     const inner = width - margin * 2;
@@ -1648,7 +1677,7 @@
     context.fillText(content.kind, width - margin, y);
     y += 16;
     const artHeight = Math.round(inner * 0.58);
-    context.drawImage(drawReceiptArt(content.variant, inner, artHeight), margin, y);
+    context.drawImage(artImage ?? drawReceiptArt(content.variant, inner, artHeight), margin, y, inner, artHeight);
     context.lineWidth = 3;
     context.strokeRect(margin, y, inner, artHeight);
     y += artHeight + 28;
@@ -1763,7 +1792,9 @@
       const wish = receiptWish();
       if (!wish) return;
       await document.fonts?.ready;
-      $('#receipt-preview').src = drawReceipt(receiptContentFor(wish)).toDataURL('image/png');
+      const content = receiptContentFor(wish);
+      const artImage = content.art ? await loadImage(content.art).catch(() => null) : null;
+      $('#receipt-preview').src = drawReceipt(content, {artImage}).toDataURL('image/png');
     }, 200);
   }
 
@@ -1771,6 +1802,41 @@
     return new Promise((resolve, reject) => {
       canvas.toBlob(result => (result ? resolve(result) : reject(new Error('画像を作れませんでした'))), 'image/png');
     });
+  }
+
+  // AI で願いの絵をつくる。押したときだけ、願いの言葉をサーバー（Cloudflare Workers AI）へ送る。言葉と絵はサーバーに残らない
+  async function makeReceiptArt() {
+    const wish = receiptWish();
+    const status = $('#receipt-status');
+    const button = $('#receipt-art');
+    if (!wish) return;
+    if (!navigator.onLine) {
+      status.textContent = '絵をつくるにはネットが必要です。つながったときに押してください';
+      return;
+    }
+    button.disabled = true;
+    status.textContent = '絵をつくっています…（10秒ほど）';
+    try {
+      const response = await fetch('/api/art', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({orbitId: orbitId(), text: wish.text})});
+      const data = await response.json().catch(() => ({}));
+      if (data.enabled === false) {
+        status.textContent = 'この環境では、絵をつくれません';
+        return;
+      }
+      if (!response.ok || !data.image) {
+        status.textContent = data.error || '絵をつくれませんでした。時間をおいて、もう一度お試しください';
+        return;
+      }
+      const image = await loadImage(`data:image/jpeg;base64,${data.image}`);
+      const ink = inkArtFromImage(image, Receipt.RECEIPT_WIDTH - 48, Math.round((Receipt.RECEIPT_WIDTH - 48) * 0.58)).toDataURL('image/png');
+      await updateGrowth(wish.id, current => WishState.setArt(current, ink), '願いの絵をつくりました。');
+      renderReceiptPreview();
+    } catch (error) {
+      console.error('receipt art', error?.name);
+      status.textContent = '絵をつくれませんでした。時間をおいて、もう一度お試しください';
+    } finally {
+      button.disabled = false;
+    }
   }
 
   async function saveReceipt() {
@@ -1783,7 +1849,8 @@
       if (!wish) return;
       await document.fonts?.ready;
       const content = receiptContentFor(wish);
-      const blob = await canvasBlob(drawReceipt(content));
+      const artImage = content.art ? await loadImage(content.art).catch(() => null) : null;
+      const blob = await canvasBlob(drawReceipt(content, {artImage}));
       status.textContent = await saveImage(blob, content.fileName, 'MORUNE 25143 帰還票', '帰還票を保存しました。感熱プリンターなどで印刷できます');
     } catch (error) {
       if (error?.name === 'AbortError') status.textContent = '';
@@ -1810,7 +1877,8 @@
       const includeText = $('#receipt-include-text').checked;
       const message = [includeText ? `「${wish.text}」` : '', '25143 から、願い星が帰ってきました。', '#MORUNE25143'].filter(Boolean).join('\n');
       const url = `${location.origin}/`;
-      const blob = await canvasBlob(drawReceipt(content, {withStub: false}));
+      const artImage = content.art ? await loadImage(content.art).catch(() => null) : null;
+      const blob = await canvasBlob(drawReceipt(content, {withStub: false, artImage}));
       const file = new File([blob], content.fileName.replace('receipt', 'share'), {type: 'image/png'});
       if (typeof navigator.canShare === 'function' && navigator.canShare({files: [file]})) {
         await navigator.share({files: [file], text: `${message}\n${url}`});
@@ -2038,6 +2106,7 @@
   $('#try-wish').addEventListener('click', () => chooseDisposition('try'));
   $('#return-to-orbit').addEventListener('click', () => chooseDisposition('later'));
   $('#finish-wish').addEventListener('click', () => chooseDisposition('finish'));
+  $('#receipt-art').addEventListener('click', makeReceiptArt);
   $('#receipt-save').addEventListener('click', saveReceipt);
   $('#receipt-share').addEventListener('click', shareReceipt);
   $('#receipt-close').addEventListener('click', closeReceiptSheet);

@@ -255,6 +255,14 @@ export function setFirstStep(wish, text) {
   return next;
 }
 
+// 願いの絵（AI でつくって白黒にした PNG）。端末の中だけに保存し、次からはネットなしでも同じ絵で印刷する
+export const ART_MAX_LENGTH = 600000;
+export function setArt(wish, dataUrl) {
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) throw new Error('絵の形が正しくありません');
+  if (dataUrl.length > ART_MAX_LENGTH) throw new Error('絵が大きすぎます');
+  return {...wish, art: dataUrl};
+}
+
 // 叶った。状態（status）は doing のまま、叶った日だけを持たせる（状態遷移を増やさない）
 export function markFulfilled(wish, now) {
   if (wish.status !== STATUS.DOING) throw new Error(`受け取った願いだけが叶います: ${wish.status}`);

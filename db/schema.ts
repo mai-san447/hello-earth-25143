@@ -48,3 +48,12 @@ export const starReports = sqliteTable("star_reports", {
   reporterOrbitId: text("reporter_orbit_id").notNull(),
   createdAt: integer("created_at").notNull(),
 }, table => [primaryKey({columns:[table.starId,table.reporterOrbitId]})]);
+
+// 願いの絵（AI）を使った記録。1日の回数の上限のためだけに使う。願いの言葉・絵は保存しない
+export const artUses = sqliteTable("art_uses", {
+  orbitId: text("orbit_id").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, table => [
+  index("art_uses_orbit_created").on(table.orbitId, table.createdAt),
+  index("art_uses_created").on(table.createdAt),
+]);
