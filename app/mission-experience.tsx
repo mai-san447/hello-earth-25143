@@ -119,11 +119,6 @@ export function MissionExperience({
             </details>
             <p id="archive-status" role="status" aria-live="polite" />
           </div>
-          <div className="signal-share" id="signal-share" hidden>
-            <p>見た人がスマホを振ると、北の空のあなたの星が少し明るくなります。願いの中身は届きません。</p>
-            <button id="signal-share-button" type="button">応援リンクを送る</button>
-            <p className="signal-share-status" id="signal-share-status" role="status" aria-live="polite" />
-          </div>
           <div className="orbit-number" id="orbit-number" hidden>
             <p>あなたの番号 <b id="orbit-number-value" /></p>
             <p className="orbit-number-note">作品の中だけの番号です（本物の小惑星の名前ではありません）。</p>
@@ -164,7 +159,7 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>応援の信号</h3>
-                <p>応援リンク（/signal）から信号が送られると、サーバーにはこの端末で作ったランダムな識別子（軌道ID）と、信号が届いた時刻だけを保存します。送った人の名前・言葉、願いの内容は保存しません。応援リンクを知っている人は誰でも信号を送れます。この機能は、サーバー側の準備ができた環境でだけ表示されます。</p>
+                <p>X でシェアした投稿のリンク（/signal）から信号が送られると、サーバーにはこの端末で作ったランダムな識別子（軌道ID）と、信号が届いた時刻だけを保存します。送った人の名前・言葉、願いの内容は保存しません。投稿を見た人は誰でも信号を送れます。</p>
               </section>
               <section>
                 <h3>みんなの星（匿名の公開）</h3>
