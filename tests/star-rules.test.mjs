@@ -141,7 +141,8 @@ test('枝番は 25143-0001 の形。この作品の中だけの番号', () => {
   assert.equal(formatNumber(1), '25143-0001');
   assert.equal(formatNumber(312), '25143-0312');
   assert.equal(formatNumber(12345), '25143-12345');
-  assert.equal(formatNumber(0), null);
+  assert.equal(formatNumber(0), '25143-0000');
+  assert.equal(formatNumber(-1), null);
   assert.equal(formatNumber(null), null);
 });
 
