@@ -333,10 +333,15 @@
     const archiveIds = new Set(archiveItems.map(wish => wish.id));
     selectedArchiveIds.forEach(id => { if (!archiveIds.has(id)) selectedArchiveIds.delete(id); });
     $('#archive-count').textContent = String(archiveItems.length);
-    $('#shake').disabled = $('#fallback').disabled = count === 0 || Boolean(returningWish) || Boolean(returnFlight);
+    // カプセルが着地して開かれていないとき、「帰還」のタブからも開けるようにする。
+    // 「カプセルを開く」は「受け取り」のタブにしかなく、帰還のタブではボタンが全部止まって行き止まりに見えたため（2026-10-07）
+    const capsuleWaiting = landed && Boolean(returningWish) && !returnFlight;
+    $('#shake').disabled = count === 0 || Boolean(returningWish) || Boolean(returnFlight);
+    $('#fallback').disabled = capsuleWaiting ? false : $('#shake').disabled;
+    $('#fallback').textContent = capsuleWaiting ? 'カプセルを開く' : 'タップで帰還';
     $('#choose-status').textContent = landed ? '帰還カプセルを回収しました' : 'カプセルの帰還を待っています';
     $('#gesture-hint').textContent = landed
-      ? '着地したカプセルを開いて、あの日の言葉を受信してください'
+      ? 'カプセルが着地しています。「カプセルを開く」から、あの日の言葉を受け取ってください'
       : count ? 'シグナルを探すと、想いがひとつ地球へ帰還します'
         : orbiting().length ? `星はイトカワの軌道で待っています。${waitingForStartMessage()}`
           : '願いを預けると、星がイトカワの軌道に浮かびます';
@@ -1931,7 +1936,8 @@
   launchButton.addEventListener('click', launchWish);
   wishInput.addEventListener('input', () => { $('#wish-length').textContent = String(wishInput.value.length); });
   $('#shake').addEventListener('click', enableMotion);
-  $('#fallback').addEventListener('click', returnOne);
+  // カプセルが着地して待っているときは開き、そうでなければ1つ帰す
+  $('#fallback').addEventListener('click', () => (landed && returningWish && !returnFlight ? openCard() : returnOne()));
   sampleButton.addEventListener('click', openCard);
   $('#card-close').addEventListener('click', closeCard);
   $('#try-wish').addEventListener('click', () => chooseDisposition('try'));
