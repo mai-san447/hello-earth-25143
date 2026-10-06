@@ -35,8 +35,8 @@ function formatDate(time) {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
 }
 
-// 願いの言葉を入れるかは本人が選ぶ（帰還証明書と同じチェックを使う。初期値は入れない）
-export function returnReceiptContent({wish, now, days, signals = 0, distanceText = '', number = null, includeText = false}) {
+// 願いの言葉を入れるかは本人が選ぶ（カプセルの「願いの言葉も入れる」。初期値は入れない）
+export function returnReceiptContent({wish, now, days, signals = 0, distanceText = '', number = null, includeText = false, qrUrl = ''}) {
   const variant = receiptVariant(wish.id);
   const meta = [formatDate(now)];
   if (signals > 0) meta.push(`信号 ${signals}回`);
@@ -49,6 +49,10 @@ export function returnReceiptContent({wish, now, days, signals = 0, distanceText
     welcome: days > 0 ? `おかえりなさい。${days}日の旅でした` : 'おかえりなさい。今日の旅でした',
     meta,
     number,
+    // 読み取ると、自分の星（このアプリ）へ。紙を財布に入れておけば、また開くきっかけになる
+    qrUrl,
+    qrLabel: 'あなたの星へ',
+    qrHint: '読み取ると、また空を見に行けます。',
     stub: '最初の小さな一歩',
     stubHint: 'ペンで書いて、見えるところに貼っておけます。',
     fine: [

@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     // AI agents check out whole copies of the repo here (git-ignored);
     // linting them double-counts and flags their build output.
     ".claude/**",
+    // 同梱した外部の部品（qrcode-generator）。自分たちのコードではないので検査しない
+    "public/vendor/**",
   ]),
   {
     files: ["components/ui/**/*.{ts,tsx}", "hooks/use-mobile.ts"],
