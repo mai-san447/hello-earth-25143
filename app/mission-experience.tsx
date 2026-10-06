@@ -20,7 +20,7 @@ export function MissionExperience({
         <canvas id="orbit-canvas" aria-label="数を数えずに眺める、願いの星がイトカワを周回する宇宙" />
         <header className="mission-header">
           <span className="mission-brand">MORUNE <b>25143</b></span>
-          <span className="mission-phase">WISH SAMPLE RETURN</span>
+          <span className="mission-phase">25143 SAMPLE RETURN</span>
         </header>
         <div className="observer-pill" aria-label="観測位置">
           <span className="observer-dot" aria-hidden="true" />
