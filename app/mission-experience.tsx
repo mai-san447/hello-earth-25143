@@ -158,7 +158,7 @@ export function MissionExperience({
             <button className="policy-close" id="policy-close" type="button" aria-label="利用規約を閉じる">×</button>
             <p className="sheet-kicker">TERMS / PRIVACY</p>
             <h2 id="policy-title">利用規約・プライバシー</h2>
-            <p className="policy-updated">内容更新日：2026年9月30日</p>
+            <p className="policy-updated">内容更新日：2026年10月7日</p>
             <div className="policy-content" id="policy-content" tabIndex={0}>
               <section>
                 <h3>運営者</h3>
@@ -189,14 +189,14 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>位置情報</h3>
-                <p>位置情報の利用は任意です。許可した場合、座標はこのブラウザー内で星空の向きとObserver表示を調整するために使い、アプリの願い保存APIへ送信しません。「位置情報なしで見る」を選んでも利用できます。許可の扱いはブラウザーや端末の設定にも従います。</p>
+                <p>位置情報の利用は任意です。許可した場合、座標はこのブラウザー内で現在時刻の星の高度・方位を計算するためだけに使い、送信・保存しません。「東京の星空で見る」を選んでも利用できます。許可の扱いはブラウザーや端末の設定にも従います。</p>
               </section>
               <section>
                 <h3>通信と外部サービス</h3>
                 <p>ページ配信にはCloudflareを利用し、フォントや描画ライブラリーの読み込みにGoogle Fonts、jsDelivrなど外部配信元を利用します。ページ表示時には、各サービスへIPアドレスやブラウザー情報など通信に通常必要な情報が送られる場合があります。これらの情報の取り扱いは各提供者のポリシーにも従います。</p>
               </section>
               <section>
-                <h3>利用上の注意</h3>
+                <h3>星空のデータと出典</h3><p>恒星は Yale Bright Star Catalogue（Hoffleit &amp; Warren 1991）、VizieR V/50 の5等級までを使用しています。VizieR catalogue access tool, CDS, Strasbourg, France（DOI: 10.26093/cds/vizier）に謝意を表します。イトカワの方向は NASA/JPL Horizons の地心赤経・赤緯（2026年10月1日〜2027年12月31日）を日ごとに補間した概算です。位置は端末内だけで計算に使います。大気差・歳差・地形や昼の明るさは再現しません。真北・高度45度の固定視線で、端末の向きとは連動しません。大きなイトカワと軌道は演出で、小さな水色の印が実際の方向です。</p></section><section><h3>利用上の注意</h3>
                 <p>画面内のイトカワ・探査機表現は創作上の演出で、公式の科学資料ではありません。イトカワまでの距離は、NASA/JPL Horizons の暦（小惑星 25143 Itokawa、地球中心から見た距離、1日ごとの値）をもとにした概算で、アプリに同梱した表から表示しています。サービスは試験公開中のため、予告なく変更・停止する場合があります。データの永続性、特定目的への適合性、常時利用可能であることは保証しません。大切な記録の保管には使わないでください。</p>
               </section>
               <p className="policy-contact-note">個人制作の試験公開版です。お問い合わせは、MORUNE のサイトの<a href="https://morune.store/contact" target="_blank" rel="noopener noreferrer">問い合わせフォーム</a>からお願いします。</p>
@@ -272,10 +272,10 @@ export function MissionExperience({
         <section className="location-backdrop" id="location-modal" role="dialog" aria-modal="true" aria-labelledby="location-title" aria-describedby="location-description">
           <div className="location-panel">
             <p className="sheet-kicker">25143 / ITOKAWA</p>
-            <h2 id="location-title">現在の星空と同期するために位置情報を利用します</h2>
-            <p id="location-description">場所に合わせて、星空の向きを調整します。</p>
-            <button className="location-allow" id="location-allow" type="button">現在地で星空を同期</button>
-            <button className="location-skip" id="location-skip" type="button">位置情報なしで見る</button>
+            <h2 id="location-title">あなたのいる場所の、今の本物の星空を表示します</h2>
+            <p id="location-description">位置は端末の中だけで使い、送信しません。許可しなくても東京の星空で使えます。昼間も星を表示します。</p>
+            <button className="location-allow" id="location-allow" type="button">現在地の星空を見る</button>
+            <button className="location-skip" id="location-skip" type="button">東京の星空で見る</button>
             <p className="location-status" id="location-status" role="status" aria-live="polite" />
           </div>
         </section>
