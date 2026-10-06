@@ -1,18 +1,18 @@
 import { MissionRuntime } from "./mission-runtime";
-import { CircleUserRound, Smartphone, X } from "lucide-react";
+import { Smartphone } from "lucide-react";
 
+// アカウント（ログイン同期）の入口は 2026-10-07 に外した（本番では同期を使っていない）。accountLabel は呼び出し側の互換のため受け取るだけ
 export function MissionExperience({
   syncMode,
-  accountLabel,
 }: {
   syncMode: "cloud" | "local";
-  accountLabel: React.ReactNode;
+  accountLabel?: React.ReactNode;
 }) {
   return (
     <>
       <div id="sync-mode" data-sync={syncMode} hidden />
       <div className="splash-screen" id="splash-screen" role="status" aria-live="polite">
-        <span>SIGNAL SEARCHING...</span>
+        <span>MORUNE 25143</span>
       </div>
       <canvas id="starfield-canvas" aria-hidden="true" />
       <main className="mission-app" id="mission-app">
@@ -26,15 +26,6 @@ export function MissionExperience({
           <span className="observer-dot" aria-hidden="true" />
           <span id="observer-reading">OBSERVER: TOKYO, EARTH [ 35.68°N, 139.76°E ]</span>
         </div>
-        <button className="account-trigger" id="account-open" type="button" aria-label="アカウントと同期設定" aria-expanded="false" aria-controls="account-sheet">
-          <CircleUserRound size={19} strokeWidth={1.65} aria-hidden="true" />
-        </button>
-        <section className="account-sheet" id="account-sheet" aria-label="アカウントと同期設定" hidden>
-          <button className="account-close" id="account-close" type="button" aria-label="閉じる"><X size={16} aria-hidden="true" /></button>
-          <p className="account-sheet-kicker">ACCOUNT / SYNC</p>
-          <div className="account-identity">{accountLabel}</div>
-          <button className="policy-open" id="policy-open" type="button" aria-haspopup="dialog">利用規約・プライバシー <span aria-hidden="true">›</span></button>
-        </section>
         <section className="mission-title" aria-labelledby="mission-title">
           <h1 id="mission-title">願いを星に、<br /><span>想いを地球へ。</span></h1>
         </section>
@@ -43,11 +34,6 @@ export function MissionExperience({
           <span id="mission-status">北の空を観測中</span>
         </div>
         <section className="mission-dock" id="mission-dock" data-step="deposit" aria-label="ミッション操作">
-          <nav className="mission-segmented" role="tablist" aria-label="ミッションの段階">
-            <button id="step-deposit" type="button" role="tab" aria-selected="true" aria-controls="step-panel-deposit" data-mission-step="deposit"><span>01</span>送信 (SEND)</button>
-            <button id="step-receive" type="button" role="tab" aria-selected="false" aria-controls="step-panel-receive" data-mission-step="receive"><span>02</span>帰還 (RETURN)</button>
-            <button id="step-choose" type="button" role="tab" aria-selected="false" aria-controls="step-panel-choose" data-mission-step="choose"><span>03</span>受け取り (RECEIVE)</button>
-          </nav>
           <div className="mission-step-panel" id="step-panel-deposit" role="tabpanel" aria-labelledby="step-deposit" data-step-panel="deposit">
             <div className="mission-controls">
               <button className="primary-control" id="deposit-open" type="button"><span className="control-icon" aria-hidden="true">＋</span>願いを星に預ける</button>
@@ -96,8 +82,6 @@ export function MissionExperience({
         <section className="return-card" id="return-card" role="dialog" aria-modal="true" aria-labelledby="returned-text" hidden>
           <div className="card-light" aria-hidden="true" />
           <button className="sheet-close" id="card-close" type="button" aria-label="閉じる">×</button>
-          <p className="card-kicker">WISH CAPSULE / 25143</p>
-          <p className="returned-stamp">WISH STAR / RETURNED</p>
           <div className="sample-particle-stage" role="img" aria-label="北の空から地球へ帰還した願い星">
             <span className="sample-particle-orbit sample-particle-orbit-outer" aria-hidden="true" />
             <span className="sample-particle-orbit sample-particle-orbit-inner" aria-hidden="true" />
@@ -106,23 +90,19 @@ export function MissionExperience({
             </span>
             <span className="sample-name" id="returned-number">WISH STAR</span>
           </div>
-          <p className="sample-caption">北の空から、地球へ帰ってきた願い星。</p>
           <h2 id="returned-text" />
           <time id="returned-date" />
           <p className="returned-wait" id="returned-wait" />
           <p className="returned-distance" id="returned-distance" />
           <p className="returned-signals" id="returned-signals" />
-          <p className="card-footnote">あの日のあなたから、今日のあなたへ。</p>
           <p className="share-status">受け取ると、帰還票（紙に印刷・シェアできる1枚）をつくれます。</p>
           <div className="return-actions" aria-label="帰還した願いの扱い">
             <button className="return-action-primary" id="try-wish" type="button">想いを受け取る</button>
-            <button id="return-to-orbit" type="button">星空へ戻す</button>
-            <button className="return-action-later" id="finish-wish" type="button">アーカイブに保存</button>
+            <button id="return-to-orbit" type="button">もう少し預ける</button>
           </div>
         </section>
         <section className="archive-sheet" id="archive-sheet" aria-labelledby="archive-title" hidden>
           <button className="sheet-close" id="archive-close" type="button" aria-label="閉じる">×</button>
-          <p className="sheet-kicker">EARTH RECOVERY LOG</p>
           <h2 id="archive-title">地球へ帰還した願い</h2>
           <p className="archive-empty" id="archive-empty">まだ帰還した願いはありません。</p>
           <div className="signal-share" id="signal-share" hidden>
@@ -140,7 +120,7 @@ export function MissionExperience({
             <p className="my-record-note">数だけを、この端末の中で数えています。願いの中身は含みません。検証に協力するときは、下のボタンで数をコピーして渡してください。</p>
             <button id="my-record-copy" type="button">記録の数をコピー</button>
             <p className="my-record-status" id="my-record-status" role="status" aria-live="polite" />
-          </section>
+        </section>
           <ul id="archive-list" />
           <div className="archive-management">
             <label className="archive-select-all"><input id="archive-select-all" type="checkbox" disabled />すべて選択</label>
@@ -151,6 +131,7 @@ export function MissionExperience({
             <p id="archive-status" role="status" aria-live="polite" />
             <button id="archive-next" className="archive-next" type="button">次の願いを送る <span aria-hidden="true">↗</span></button>
           </div>
+          <button className="policy-open" id="policy-open" type="button" aria-haspopup="dialog">利用規約・プライバシー <span aria-hidden="true">›</span></button>
         </section>
         <section className="policy-backdrop" id="policy-sheet" role="dialog" aria-modal="true" aria-labelledby="policy-title" hidden>
           <div className="policy-panel">

@@ -107,13 +107,10 @@
   const itokawaLabel = $('#itokawa-label');
   const telemetryLabel = $('.telemetry');
   const observerReading = $('#observer-reading');
-  const accountTrigger = $('#account-open');
-  const accountSheet = $('#account-sheet');
   const policySheet = $('#policy-sheet');
   const policyOpen = $('#policy-open');
   const policyClose = $('#policy-close');
   const missionDock = $('#mission-dock');
-  const stepButtons = [...document.querySelectorAll('[data-mission-step]')];
   const splashScreen = $('#splash-screen');
   const context = canvas.getContext('2d');
   const wishInput = $('#wish');
@@ -314,16 +311,19 @@
     return next == null ? '' : `${WishState.returnFromLabel(next)}から、帰還が始まります`;
   }
 
+  // 3つのタブはやめた（2026-10-07、帰還のタブで行き止まりになったため）。
+  // 「預ける」はいつも出し、「帰す／カプセルを開く」は、できるときだけ出す。step は見た目の調整にだけ使う
   function setMissionStep(step) {
     missionDock.dataset.step = step;
-    for (const button of stepButtons) {
-      const selected = button.dataset.missionStep === step;
-      button.setAttribute('aria-selected', String(selected));
-      button.tabIndex = selected ? 0 : -1;
-    }
-    for (const panel of document.querySelectorAll('[data-step-panel]')) {
-      panel.hidden = panel.dataset.stepPanel !== step;
-    }
+    updateDockPanels();
+  }
+
+  function updateDockPanels() {
+    const capsuleWaiting = landed && Boolean(returningWish);
+    const canReturn = readyToReturn().length > 0 || capsuleWaiting || Boolean(returnFlight);
+    $('#step-panel-deposit').hidden = false;
+    $('#step-panel-receive').hidden = !canReturn;
+    $('#step-panel-choose').hidden = true;
     requestAnimationFrame(alignTelemetryToDock);
   }
 
@@ -366,6 +366,7 @@
     $('#shake').disabled = count === 0 || Boolean(returningWish) || Boolean(returnFlight);
     $('#fallback').disabled = capsuleWaiting ? false : $('#shake').disabled;
     $('#fallback').textContent = capsuleWaiting ? 'カプセルを開く' : 'タップで帰還';
+    updateDockPanels();
     $('#choose-status').textContent = landed ? '帰還カプセルを回収しました' : 'カプセルの帰還を待っています';
     $('#gesture-hint').textContent = landed
       ? 'カプセルが着地しています。「カプセルを開く」から、あの日の言葉を受け取ってください'
@@ -979,7 +980,6 @@
     context.fillStyle = 'rgba(207, 232, 226, .78)';
     context.textAlign = 'center';
     context.font = '9px ui-monospace, monospace';
-    context.fillText('EARTH / CAPSULE RECOVERY', width * 0.5, height - 26);
   }
 
   function drawItokawa(time) {
@@ -1423,7 +1423,6 @@
       if (returnFlight) $('#mission-status').textContent = '2007 — イオンエンジンで地球帰還の航路へ';
     }, 1150);
     setTimeout(() => {
-      if (returnFlight) $('#mission-status').textContent = '2010 — 帰還カプセルを分離';
     }, 2050);
     refreshInterface();
   }
@@ -1442,13 +1441,13 @@
     $('#returned-signals').textContent = Constellation.signalMessage(Constellation.signalsWhileWaiting(returningWish, signalTimes));
     returnCard.hidden = false;
     setTimeout(() => returnCard.classList.add('card-open'), 20);
-    $('#mission-status').textContent = '2010 — 帰還カプセル / 願い星を回収';
+    $('#mission-status').textContent = '';
     $('#card-close').focus({preventScroll: true});
   }
 
   async function chooseDisposition(choice) {
     if (!returningWish || !landed) return;
-    const actions = [...document.querySelectorAll('#try-wish, #return-to-orbit, #finish-wish')];
+    const actions = [...document.querySelectorAll('#try-wish, #return-to-orbit')];
     actions.forEach(button => { button.disabled = true; });
     let updated;
     try {
@@ -2120,50 +2119,12 @@
 
   $('#deposit-open').addEventListener('click', openDeposit);
   $('#deposit-close').addEventListener('click', closeDeposit);
-  stepButtons.forEach((button, index) => {
-    button.addEventListener('click', () => {
-      const step = button.dataset.missionStep;
-      setMissionStep(step);
-      if (step === 'deposit') $('#deposit-open').focus({preventScroll: true});
-      if (step === 'receive') {
-        if (!orbiting().length) $('#mission-status').textContent = '北の空に待つ願いはありません';
-        else if (!readyToReturn().length) $('#mission-status').textContent = waitingForStartMessage();
-        else $('#fallback').focus({preventScroll: true});
-      }
-      if (step === 'choose') {
-        if (landed) sampleButton.focus({preventScroll: true});
-        else $('#choose-status').textContent = 'カプセルの帰還を待っています';
-      }
-    });
-    button.addEventListener('keydown', event => {
-      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-      event.preventDefault();
-      const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? stepButtons.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : stepButtons.length - 1)) % stepButtons.length;
-      stepButtons[nextIndex].click();
-      stepButtons[nextIndex].focus({preventScroll: true});
-    });
-  });
-  accountTrigger.addEventListener('click', () => {
-    const open = accountSheet.hidden;
-    accountSheet.hidden = !open;
-    accountTrigger.setAttribute('aria-expanded', String(open));
-    if (open) $('#account-close').focus({preventScroll: true});
-  });
-  $('#account-close').addEventListener('click', () => {
-    accountSheet.hidden = true;
-    accountTrigger.setAttribute('aria-expanded', 'false');
-    accountTrigger.focus({preventScroll: true});
-  });
   policyOpen.addEventListener('click', () => {
-    accountSheet.hidden = true;
-    accountTrigger.setAttribute('aria-expanded', 'false');
     policySheet.hidden = false;
     policyClose.focus({preventScroll: true});
   });
   function closePolicy() {
     policySheet.hidden = true;
-    accountSheet.hidden = false;
-    accountTrigger.setAttribute('aria-expanded', 'true');
     policyOpen.focus({preventScroll: true});
   }
   policyClose.addEventListener('click', closePolicy);
@@ -2179,7 +2140,6 @@
   $('#card-close').addEventListener('click', closeCard);
   $('#try-wish').addEventListener('click', () => chooseDisposition('try'));
   $('#return-to-orbit').addEventListener('click', () => chooseDisposition('later'));
-  $('#finish-wish').addEventListener('click', () => chooseDisposition('finish'));
   $('#receipt-art').addEventListener('click', makeReceiptArt);
   $('#receipt-save').addEventListener('click', saveReceipt);
   $('#receipt-share').addEventListener('click', shareReceipt);
@@ -2344,11 +2304,6 @@
       if (!returnCard.hidden) closeCard();
       else if (!depositSheet.hidden) closeDeposit();
       else if (!policySheet.hidden) closePolicy();
-      else if (!accountSheet.hidden) {
-        accountSheet.hidden = true;
-        accountTrigger.setAttribute('aria-expanded', 'false');
-        accountTrigger.focus({preventScroll: true});
-      }
       else $('#archive-sheet').hidden = true;
     }
   });
