@@ -628,21 +628,46 @@
     starfieldGroup = new THREE.Group();
     skyGroup.add(starfieldGroup);
 
+    // 本物の星を、以前の星空と同じ見た目で描く（遠近で広げ、ゆっくりまたたく）。
+    // 色は星ごとに少しずつ変える（青白・白・淡い黄色）。小さすぎて見えなかったため、2026-10-07 に以前の描き方へ戻した
     const starGeometry = new THREE.BufferGeometry();
     starMaterial = new THREE.ShaderMaterial({
-      transparent: true, depthWrite: false,
+      transparent: true,
+      depthWrite: false,
       uniforms: {uTime: {value: 0}, uPixelRatio: {value: renderer.getPixelRatio()}},
-      vertexShader: `attribute float aSize; attribute float aBrightness;
-        uniform float uPixelRatio; varying float vAlpha;
-        void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-          gl_PointSize = aSize * uPixelRatio; vAlpha = aBrightness; }`,
-      fragmentShader: `varying float vAlpha;
-        void main() { float r = length(gl_PointCoord - vec2(0.5)); if (r > 0.5) discard;
-          gl_FragColor = vec4(0.76, 0.86, 0.98, (1.0 - smoothstep(0.02, 0.5, r)) * vAlpha); }`,
+      vertexShader: `
+        attribute float aSize;
+        attribute float aBrightness;
+        attribute float aPhase;
+        attribute vec3 aColor;
+        uniform float uTime;
+        uniform float uPixelRatio;
+        varying float vAlpha;
+        varying vec3 vColor;
+        void main() {
+          vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+          gl_Position = projectionMatrix * viewPosition;
+          float pulse = 0.72 + 0.28 * sin(uTime * (0.4 + aPhase * 0.25) + aPhase * 6.2831);
+          vAlpha = aBrightness * pulse;
+          vColor = aColor;
+          gl_PointSize = min(aSize * uPixelRatio * pulse * (220.0 / -viewPosition.z), 9.0);
+        }
+      `,
+      fragmentShader: `
+        varying float vAlpha;
+        varying vec3 vColor;
+        void main() {
+          float radius = length(gl_PointCoord - vec2(0.5));
+          if (radius > 0.5) discard;
+          float glow = 1.0 - smoothstep(0.02, 0.5, radius);
+          gl_FragColor = vec4(vColor, glow * vAlpha * 0.95);
+        }
+      `,
     });
     starfieldGroup.add(new THREE.Points(starGeometry, starMaterial));
     // 固定の視線：真北、高度45度。端末の向きを測る機能ではない。
-    starfieldGroup.rotation.x = Math.PI / 4;
+    // 北の空を高度45度で見上げる向き。+π/4 だと地平線の下を見下ろしてしまい、星が1つも入らなかった（2026-10-07）
+    starfieldGroup.rotation.x = -Math.PI / 4;
     const directionMarker = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshBasicMaterial({color: 0xa6e7ef}));
     starfieldGroup.add(directionMarker);
     function skyVector(point) {
@@ -652,8 +677,14 @@
     refreshThreeSky = () => {
       const positions = visibleSky.flatMap(point => skyVector(point).toArray());
       starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-      starGeometry.setAttribute('aSize', new THREE.Float32BufferAttribute(visibleSky.map(s => 1 + 3 * Math.pow(10, -0.15 * (s.magnitude + 1.46))), 1));
-      starGeometry.setAttribute('aBrightness', new THREE.Float32BufferAttribute(visibleSky.map(s => 0.2 + 0.8 * Math.pow(10, -0.16 * (s.magnitude + 1.46))), 1));
+      // 等級（明るいほど小さい数）から、大きさと明るさを決める。暗い星も、以前の星空くらいには見えるようにする
+      starGeometry.setAttribute('aSize', new THREE.Float32BufferAttribute(visibleSky.map(s => 0.7 + 2.6 * Math.pow(10, -0.13 * (s.magnitude + 1.46))), 1));
+      starGeometry.setAttribute('aBrightness', new THREE.Float32BufferAttribute(visibleSky.map(s => 0.45 + 0.55 * Math.pow(10, -0.12 * (s.magnitude + 1.46))), 1));
+      // またたきの位相と色は、星の位置から決まった値にする（再計算のたびに変わらないように）
+      const tints = [[0.76, 0.86, 0.98], [0.95, 0.96, 1.0], [1.0, 0.92, 0.78], [0.86, 0.9, 1.0]];
+      const seedOf = s => Math.abs(Math.sin(s.raDeg * 12.9898 + s.decDeg * 78.233) * 43758.5453) % 1;
+      starGeometry.setAttribute('aPhase', new THREE.Float32BufferAttribute(visibleSky.map(seedOf), 1));
+      starGeometry.setAttribute('aColor', new THREE.Float32BufferAttribute(visibleSky.flatMap(s => tints[Math.floor(seedOf(s) * 997) % tints.length]), 3));
       starGeometry.computeBoundingSphere();
       directionMarker.visible = Boolean(realItokawa && realItokawa.altitude > 0);
       if (directionMarker.visible) directionMarker.position.copy(skyVector(realItokawa));

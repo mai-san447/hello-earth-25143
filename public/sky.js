@@ -32,7 +32,8 @@ export function equatorialToHorizontal(raDeg, decDeg, time, latitude, longitude)
 export function visibleStars(stars, time, latitude, longitude) {
   return stars.map(([ra, dec, magnitude]) => {
     finite(magnitude);
-    return {...equatorialToHorizontal(ra, dec, time, latitude, longitude), magnitude};
+    // 赤経・赤緯も返す（星ごとの色やまたたきを、時間がたっても変わらない値で決めるため）
+    return {...equatorialToHorizontal(ra, dec, time, latitude, longitude), magnitude, raDeg: ra, decDeg: dec};
   }).filter(star => star.altitude > 0);
 }
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
