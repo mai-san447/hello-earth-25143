@@ -8,14 +8,16 @@
   let Certificate;
   let PublicStars;
   let KeyedQueue;
+  let Receipt;
   try {
-    [WishState, Itokawa, Constellation, Certificate, PublicStars, KeyedQueue] = await Promise.all([
+    [WishState, Itokawa, Constellation, Certificate, PublicStars, KeyedQueue, Receipt] = await Promise.all([
       import('/wish-state.js'),
       import('/itokawa.js'),
       import('/constellation.js'),
       import('/certificate.js'),
       import('/public-stars.js'),
       import('/keyed-queue.js'),
+      import('/receipt.js'),
     ]);
   } catch (error) {
     console.error('mission modules', error);
@@ -1482,6 +1484,262 @@
     return canvas;
   }
 
+  // スマホでは共有シートの「画像を保存」で写真に残せる。使えない端末ではダウンロードにする。返すのは画面に出す言葉
+  async function saveImage(blob, fileName, title, savedMessage) {
+    const file = new File([blob], fileName, {type: 'image/png'});
+    if (typeof navigator.canShare === 'function' && navigator.canShare({files: [file]})) {
+      await navigator.share({files: [file], title});
+      return '共有シートを開きました。「画像を保存」で端末に残せます';
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return savedMessage;
+  }
+
+  // ---- 印刷用の帰還票（感熱紙 80mm、黒1色）。内容は receipt.js、ここは描くだけ ----
+  const RECEIPT_FONT = '"Zen Kaku Gothic New", "Noto Sans JP", "Hiragino Sans", sans-serif';
+  const RECEIPT_MONO = 'ui-monospace, "SFMono-Regular", Menlo, monospace';
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+
+  // 星の絵をグレーで描いてから、4x4 の網点で黒1色にする（感熱紙は黒しか出ない）
+  function drawReceiptArt(variant, width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', {willReadFrequently: true});
+    const gray = value => `rgb(${value},${value},${value})`;
+    const sky = context.createLinearGradient(0, 0, 0, height);
+    const tones = {dusk: [70, 210], night: [18, 85], dawn: [40, 225], meteor: [14, 70]}[variant.id];
+    sky.addColorStop(0, gray(tones[0]));
+    sky.addColorStop(1, gray(tones[1]));
+    context.fillStyle = sky;
+    context.fillRect(0, 0, width, height);
+    // 星は決まった並びで描く（同じ願いなら同じ絵）
+    let seed = 7;
+    const random = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    const starCount = {dusk: 14, night: 120, dawn: 30, meteor: 110}[variant.id];
+    context.fillStyle = gray(255);
+    for (let index = 0; index < starCount; index += 1) {
+      const radius = random() < 0.12 ? 2.6 : 1.4;
+      const y = random() * height * (variant.id === 'dawn' ? 0.45 : 0.72);
+      context.beginPath();
+      context.arc(random() * width, y, radius, 0, Math.PI * 2);
+      context.fill();
+    }
+    // 願いの星（いちばん明るい星）と、小さな光の筋
+    const star = {x: width * 0.66, y: height * 0.3};
+    context.strokeStyle = gray(255);
+    context.lineWidth = 3;
+    for (const [dx, dy] of [[1, 0], [0, 1]]) {
+      context.beginPath();
+      context.moveTo(star.x - dx * 26, star.y - dy * 26);
+      context.lineTo(star.x + dx * 26, star.y + dy * 26);
+      context.stroke();
+    }
+    context.beginPath();
+    context.arc(star.x, star.y, 8, 0, Math.PI * 2);
+    context.fill();
+    if (variant.id === 'dawn') {
+      const glow = context.createRadialGradient(width * 0.3, height, 10, width * 0.3, height, height * 0.8);
+      glow.addColorStop(0, gray(255));
+      glow.addColorStop(1, 'rgba(255,255,255,0)');
+      context.fillStyle = glow;
+      context.fillRect(0, 0, width, height);
+    }
+    if (variant.rare) {
+      context.strokeStyle = gray(255);
+      context.lineWidth = 5;
+      context.beginPath();
+      context.moveTo(width * 0.08, height * 0.12);
+      context.lineTo(width * 0.42, height * 0.4);
+      context.stroke();
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(width * 0.03, height * 0.1);
+      context.lineTo(width * 0.42, height * 0.4);
+      context.stroke();
+    }
+    // 丘と、空を見上げる人
+    context.fillStyle = gray(variant.id === 'dusk' || variant.id === 'dawn' ? 30 : 5);
+    context.beginPath();
+    context.moveTo(0, height);
+    context.lineTo(0, height * 0.8);
+    context.quadraticCurveTo(width * 0.42, height * 0.62, width, height * 0.84);
+    context.lineTo(width, height);
+    context.fill();
+    const person = {x: width * 0.38, y: height * 0.71};
+    context.beginPath();
+    context.arc(person.x, person.y - 30, 9, 0, Math.PI * 2);
+    context.fill();
+    context.beginPath();
+    context.moveTo(person.x - 13, person.y);
+    context.quadraticCurveTo(person.x, person.y - 34, person.x + 13, person.y);
+    context.fill();
+    const image = context.getImageData(0, 0, width, height);
+    const data = image.data;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const index = (y * width + x) * 4;
+        const on = data[index] / 255 < (BAYER[(y % 4) * 4 + (x % 4)] + 0.5) / 16;
+        data[index] = data[index + 1] = data[index + 2] = on ? 0 : 255;
+        data[index + 3] = 255;
+      }
+    }
+    context.putImageData(image, 0, 0);
+    return canvas;
+  }
+
+  // 1行に収まるように折り返す（日本語は1文字ずつ測る）
+  function wrapLines(context, text, maxWidth) {
+    const lines = [];
+    let line = '';
+    for (const char of [...text]) {
+      if (context.measureText(line + char).width > maxWidth && line) {
+        lines.push(line);
+        line = char;
+      } else {
+        line += char;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  function drawReceipt(content) {
+    const width = Receipt.RECEIPT_WIDTH;
+    const margin = 24;
+    const inner = width - margin * 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = 1400;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, width, canvas.height);
+    context.fillStyle = '#000';
+    context.strokeStyle = '#000';
+    let y = 34;
+    context.font = `500 20px ${RECEIPT_MONO}`;
+    context.textBaseline = 'alphabetic';
+    context.textAlign = 'left';
+    context.fillText('MORUNE 25143', margin, y);
+    context.textAlign = 'right';
+    context.font = `700 22px ${RECEIPT_FONT}`;
+    context.fillText(content.kind, width - margin, y);
+    y += 16;
+    const artHeight = Math.round(inner * 0.58);
+    context.drawImage(drawReceiptArt(content.variant, inner, artHeight), margin, y);
+    context.lineWidth = 3;
+    context.strokeRect(margin, y, inner, artHeight);
+    y += artHeight + 28;
+    context.font = `500 18px ${RECEIPT_MONO}`;
+    context.textAlign = 'left';
+    context.fillText(content.drawLabel, margin, y);
+    if (content.number) {
+      context.textAlign = 'right';
+      context.fillText(content.number, width - margin, y);
+    }
+    y += 26;
+    context.textAlign = 'center';
+    if (content.wishText) {
+      context.font = `700 40px ${RECEIPT_FONT}`;
+      for (const line of wrapLines(context, content.wishText, inner)) {
+        y += 50;
+        context.fillText(line, width / 2, y);
+      }
+    } else {
+      context.font = `400 24px ${RECEIPT_FONT}`;
+      y += 40;
+      context.fillText('言葉は、あなたの端末の中に。', width / 2, y);
+    }
+    y += 52;
+    context.font = `700 30px ${RECEIPT_FONT}`;
+    context.fillText(content.welcome, width / 2, y);
+    y += 40;
+    context.font = `500 19px ${RECEIPT_MONO}`;
+    context.fillText(content.meta.join(' · '), width / 2, y);
+    // 切り取り線
+    y += 40;
+    context.setLineDash([10, 8]);
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(width, y);
+    context.stroke();
+    context.setLineDash([]);
+    context.textAlign = 'left';
+    context.font = `400 22px ${RECEIPT_FONT}`;
+    context.fillText('✂', 8, y - 6);
+    y += 46;
+    context.font = `700 26px ${RECEIPT_FONT}`;
+    context.fillText(content.stub, margin, y);
+    y += 30;
+    context.font = `400 18px ${RECEIPT_FONT}`;
+    context.fillText(content.stubHint, margin, y);
+    for (let index = 0; index < 2; index += 1) {
+      y += 56;
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(margin, y);
+      context.lineTo(width - margin, y);
+      context.stroke();
+    }
+    y += 40;
+    context.textAlign = 'center';
+    context.font = `400 16px ${RECEIPT_FONT}`;
+    for (const line of content.fine) {
+      for (const part of wrapLines(context, line, inner)) {
+        context.fillText(part, width / 2, y);
+        y += 24;
+      }
+    }
+    // 紙の長さを中身に合わせて切る
+    const trimmed = document.createElement('canvas');
+    trimmed.width = width;
+    trimmed.height = Math.ceil(y + 16);
+    trimmed.getContext('2d').drawImage(canvas, 0, 0);
+    return trimmed;
+  }
+
+  async function saveReceipt() {
+    if (!returningWish || !landed) return;
+    const status = $('#certificate-status');
+    const button = $('#receipt-save');
+    button.disabled = true;
+    status.textContent = '帰還票を描いています…';
+    try {
+      const now = Date.now();
+      const km = Itokawa.distanceKmOn(distanceTable, now);
+      const content = Receipt.returnReceiptContent({
+        wish: returningWish,
+        now,
+        days: WishState.daysWaited(returningWish, now),
+        signals: Constellation.signalsWhileWaiting(returningWish, signalTimes),
+        distanceText: km == null ? '' : Itokawa.formatDistanceJa(km),
+        number: currentWishNumber(returningWish),
+        includeText: $('#certificate-include-text').checked,
+      });
+      // 文字の形がそろうよう、画面のフォントを読み込んでから描く
+      await document.fonts?.ready;
+      const blob = await new Promise((resolve, reject) => {
+        drawReceipt(content).toBlob(result => (result ? resolve(result) : reject(new Error('画像を作れませんでした'))), 'image/png');
+      });
+      status.textContent = await saveImage(blob, content.fileName, 'MORUNE 25143 帰還票', '印刷用の帰還票を保存しました');
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        status.textContent = '';
+      } else {
+        console.error('receipt', error);
+        status.textContent = '帰還票を保存できませんでした。もう一度お試しください';
+      }
+    } finally {
+      button.disabled = false;
+    }
+  }
+
   async function saveCertificate() {
     if (!returningWish || !landed) return;
     const status = $('#certificate-status');
@@ -1500,20 +1758,7 @@
       const blob = await new Promise((resolve, reject) => {
         drawCertificate(content).toBlob(result => (result ? resolve(result) : reject(new Error('画像を作れませんでした'))), 'image/png');
       });
-      const file = new File([blob], content.fileName, {type: 'image/png'});
-      // スマホでは共有シートの「画像を保存」で写真に残せる。使えない端末ではダウンロードにする
-      if (typeof navigator.canShare === 'function' && navigator.canShare({files: [file]})) {
-        await navigator.share({files: [file], title: 'MORUNE 25143 帰還証明書'});
-        status.textContent = '共有シートを開きました。「画像を保存」で端末に残せます';
-      } else {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = content.fileName;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 1000);
-        status.textContent = '帰還証明書を保存しました';
-      }
+      status.textContent = await saveImage(blob, content.fileName, 'MORUNE 25143 帰還証明書', '帰還証明書を保存しました');
     } catch (error) {
       if (error?.name === 'AbortError') {
         // 共有シートを閉じただけ。失敗ではない
@@ -1763,6 +2008,7 @@
   $('#finish-wish').addEventListener('click', () => chooseDisposition('finish'));
   $('#share-wish').addEventListener('click', shareWish);
   $('#certificate-save').addEventListener('click', saveCertificate);
+  $('#receipt-save').addEventListener('click', saveReceipt);
   $('#archive-open').addEventListener('click', () => {
     $('#archive-sheet').hidden = false;
     drawConstellation();
