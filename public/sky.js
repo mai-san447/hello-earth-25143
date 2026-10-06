@@ -117,10 +117,9 @@ export function coordinatesLabel(latitude, longitude) {
   return `${lat} ${lon}`;
 }
 
-// 上の帯に出す、ひと言の空の説明。place は「東京」か「現在地」
-export function skySummary(place, itokawa, latitude, longitude) {
-  const where = [place, coordinatesLabel(latitude, longitude)].filter(Boolean).join(' ');
-  if (!itokawa) return `${where} の、今の空`;
-  if (itokawa.altitude <= 0) return `${where} の、今の空 · 25143 はいま地平線の下`;
-  return `${where} の、今の空 · 25143 は${compassJa(itokawa.azimuth)}の空`;
+// 上の帯。文章で説明せず、カメラの撮影情報のように「方角・場所・時刻」だけを並べる（2026-10-07 本人の判断）
+export function skyCaption(latitude, longitude, time) {
+  const date = new Date(time);
+  const clock = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  return ['北の空', coordinatesLabel(latitude, longitude), clock].filter(Boolean).join('　');
 }
