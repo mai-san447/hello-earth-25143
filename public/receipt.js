@@ -35,36 +35,32 @@ function formatDate(time) {
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
 }
 
-// 願いの言葉を入れるかは本人が選ぶ（カプセルの「願いの言葉も入れる」。初期値は入れない）
-export function returnReceiptContent({wish, now, days, signals = 0, distanceText = '', number = null, includeText = false, qrUrl = ''}) {
+// 願いの言葉を入れるかは本人が選ぶ（「願いの言葉も入れる」。紙の主役なので初期値は入れる。2026-10-07 変更）
+export function returnReceiptContent({wish, now, signals = 0, distanceText = '', number = null, includeText = false, qrUrl = ''}) {
   const firstStep = typeof wish.firstStep === 'string' ? wish.firstStep.trim() : '';
   const art = typeof wish.art === 'string' ? wish.art : '';
   const variant = receiptVariant(wish.id);
-  const meta = [formatDate(now)];
+  // 預けた日 → 帰ってきた日。同じ日なら1つだけ（旅の長さが、紙を見ただけで分かるように）
+  const deposited = Number.isFinite(wish.createdAt) && wish.createdAt > 0 ? formatDate(wish.createdAt) : '';
+  const meta = [deposited && deposited !== formatDate(now) ? `${deposited} → ${formatDate(now)}` : formatDate(now)];
   if (signals > 0) meta.push(`信号 ${signals}回`);
   if (distanceText) meta.push(`25143まで ${distanceText}`);
+  // 紙の文字は最小限にする（2026-10-07、本人の判断：文字が多くてごちゃごちゃする）。
+  // 載せるのは、番号・絵・（選んだときだけ）願いの言葉・日付と距離・QR・最初の一歩だけ
   return {
-    kind: '帰還票',
     variant,
     // AI でつくった願いの絵があれば、星の絵のかわりに使う
     art,
-    drawLabel: art ? '願いの絵' : variant.rare ? `${variant.name} ★ RARE` : variant.name,
     wishText: includeText ? wish.text : '',
-    welcome: days > 0 ? `おかえりなさい。${days}日の旅でした` : 'おかえりなさい。今日の旅でした',
     meta,
     number,
     // 読み取ると、自分の星（このアプリ）へ。紙を財布に入れておけば、また開くきっかけになる
     qrUrl,
-    qrLabel: 'あなたの星へ',
-    qrHint: '読み取ると、また空を見に行けます。',
     stub: '最初の小さな一歩',
     // アプリで書いた一歩があれば印刷する。なければペンで書く線を残す（記録はアプリ、紙は目に入る場所に置くメモ）
     firstStep,
-    stubHint: firstStep ? '見えるところに貼っておけます。ふみ出したら、QR からアプリで記録。' : 'ペンで書いて、見えるところに貼っておけます。',
-    fine: [
-      '紙の文字は、いつか消えます。願いは、星が持っています。',
-      distanceText ? '距離：NASA/JPL Horizons ／ 本物の星や小惑星の名前ではありません。' : '本物の星や小惑星の名前ではありません。',
-    ],
+    // 距離の出典だけは残す
+    source: distanceText ? '距離：NASA/JPL Horizons' : '',
     fileName: `morune-25143-receipt-${new Date(now).toLocaleDateString('sv-SE')}.png`,
   };
 }

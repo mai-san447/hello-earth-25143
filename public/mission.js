@@ -1647,7 +1647,7 @@
   }
 
   // 読み取ると、自分の星（MORUNE 25143 のページ）に戻れる QR。財布に入れた紙から、また開くきっかけにする
-  function drawReceiptQr(context, content, top, margin) {
+  function drawReceiptQr(context, content, top) {
     const qr = QrCode(0, 'M');
     qr.addData(content.qrUrl);
     qr.make();
@@ -1655,6 +1655,8 @@
     const cell = 5;
     const quiet = 4;
     const size = (modules + quiet * 2) * cell;
+    // 説明の文字は付けず、QR だけを真ん中に置く
+    const margin = Math.round((Receipt.RECEIPT_WIDTH - size) / 2);
     context.fillStyle = '#fff';
     context.fillRect(margin, top, size, size);
     context.fillStyle = '#000';
@@ -1663,13 +1665,6 @@
         if (qr.isDark(row, column)) context.fillRect(margin + (column + quiet) * cell, top + (row + quiet) * cell, cell, cell);
       }
     }
-    context.textAlign = 'left';
-    const textLeft = margin + size + 18;
-    context.font = `700 26px ${RECEIPT_FONT}`;
-    context.fillText(content.qrLabel, textLeft, top + size / 2 - 8);
-    context.font = `400 18px ${RECEIPT_FONT}`;
-    context.fillText(content.qrHint, textLeft, top + size / 2 + 24);
-    context.textAlign = 'center';
     return top + size + 4;
   }
 
@@ -1689,11 +1684,6 @@
     y += 46;
     context.font = `700 26px ${RECEIPT_FONT}`;
     context.fillText(content.stub, margin, y);
-    context.font = `400 18px ${RECEIPT_FONT}`;
-    for (const line of wrapLines(context, content.stubHint, inner)) {
-      y += 28;
-      context.fillText(line, margin, y);
-    }
     if (content.firstStep) {
       context.font = `700 30px ${RECEIPT_FONT}`;
       for (const line of wrapLines(context, content.firstStep, inner)) {
@@ -1737,51 +1727,36 @@
     context.textBaseline = 'alphabetic';
     context.textAlign = 'left';
     context.fillText('MORUNE 25143', margin, y);
-    context.textAlign = 'right';
-    context.font = `700 22px ${RECEIPT_FONT}`;
-    context.fillText(content.kind, width - margin, y);
+    if (content.number) {
+      context.textAlign = 'right';
+      context.fillText(content.number, width - margin, y);
+    }
     y += 16;
     const artHeight = Math.round(inner * 0.58);
     context.drawImage(artImage ?? drawReceiptArt(content.variant, inner, artHeight), margin, y, inner, artHeight);
     context.lineWidth = 3;
     context.strokeRect(margin, y, inner, artHeight);
-    y += artHeight + 28;
-    context.font = `500 18px ${RECEIPT_MONO}`;
-    context.textAlign = 'left';
-    context.fillText(content.drawLabel, margin, y);
-    if (content.number) {
-      context.textAlign = 'right';
-      context.fillText(content.number, width - margin, y);
-    }
-    y += 26;
+    y += artHeight;
     context.textAlign = 'center';
     if (content.wishText) {
       context.font = `700 40px ${RECEIPT_FONT}`;
+      y += 10;
       for (const line of wrapLines(context, content.wishText, inner)) {
         y += 50;
         context.fillText(line, width / 2, y);
       }
-    } else {
-      context.font = `400 24px ${RECEIPT_FONT}`;
-      y += 40;
-      context.fillText('言葉は、あなたの端末の中に。', width / 2, y);
     }
-    y += 52;
-    context.font = `700 30px ${RECEIPT_FONT}`;
-    context.fillText(content.welcome, width / 2, y);
     y += 40;
     context.font = `500 19px ${RECEIPT_MONO}`;
     context.fillText(content.meta.join(' · '), width / 2, y);
-    if (content.qrUrl) y = drawReceiptQr(context, content, y + 24, margin);
+    if (content.qrUrl) y = drawReceiptQr(context, content, y + 24);
     if (withStub) y = drawReceiptStub(context, content, y, margin, width, inner);
     y += 40;
     context.textAlign = 'center';
     context.font = `400 16px ${RECEIPT_FONT}`;
-    for (const line of content.fine) {
-      for (const part of wrapLines(context, line, inner)) {
-        context.fillText(part, width / 2, y);
-        y += 24;
-      }
+    if (content.source) {
+      context.fillText(content.source, width / 2, y);
+      y += 24;
     }
     // 紙の長さを中身に合わせて切る
     const trimmed = document.createElement('canvas');
@@ -1805,7 +1780,7 @@
     receiptWishId = wish.id;
     receiptThenFulfilled = thenFulfilled;
     $('#receipt-first-step').value = growthDrafts.get(wish.id) ?? wish.firstStep ?? '';
-    $('#receipt-include-text').checked = false;
+    $('#receipt-include-text').checked = true;
     $('#receipt-status').textContent = '';
     $('#receipt-preview').removeAttribute('src');
     receiptSheet.hidden = false;
@@ -1937,8 +1912,7 @@
     const wish = receiptWish();
     if (!wish) return;
     const includeText = $('#receipt-include-text').checked;
-    const message = [includeText ? `「${wish.text}」` : '', '25143 から、願い星が帰ってきました。', '#MORUNE25143'].filter(Boolean).join('
-');
+    const message = [includeText ? `「${wish.text}」` : '', '25143 から、願い星が帰ってきました。', '#MORUNE25143'].filter(Boolean).join('\n');
     const url = `${location.origin}/`;
     window.open(`https://x.com/intent/post?text=${encodeURIComponent(message)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer');
     button.disabled = true;

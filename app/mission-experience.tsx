@@ -95,7 +95,6 @@ export function MissionExperience({
           <p className="returned-wait" id="returned-wait" />
           <p className="returned-distance" id="returned-distance" />
           <p className="returned-signals" id="returned-signals" />
-          <p className="share-status">受け取ると、帰還票（紙に印刷・シェアできる1枚）をつくれます。</p>
           <div className="return-actions" aria-label="帰還した願いの扱い">
             <button className="return-action-primary" id="try-wish" type="button">想いを受け取る</button>
             <button id="return-to-orbit" type="button">もう少し預ける</button>
@@ -105,32 +104,38 @@ export function MissionExperience({
           <button className="sheet-close" id="archive-close" type="button" aria-label="閉じる">×</button>
           <h2 id="archive-title">地球へ帰還した願い</h2>
           <p className="archive-empty" id="archive-empty">まだ帰還した願いはありません。</p>
+          {/* 回収記録は「帰ってきた願い」が主役。一覧を先に置き、応援・番号・記録の数はその下へ（2026-10-07） */}
+          <ul id="archive-list" />
+          <div className="archive-management">
+            <button id="archive-next" className="archive-next" type="button">次の願いを預ける <span aria-hidden="true">↗</span></button>
+            {/* 削除・リセットはめったに使わないので畳んでおく（2026-10-07） */}
+            <details className="archive-tidy">
+              <summary>整理する</summary>
+              <label className="archive-select-all"><input id="archive-select-all" type="checkbox" disabled />すべて選択</label>
+              <div className="archive-management-actions">
+                <button id="archive-delete-selected" type="button" disabled>選択した願いを削除 <span id="archive-selection-count">0</span></button>
+                <button id="archive-reset" type="button">すべてリセット</button>
+              </div>
+            </details>
+            <p id="archive-status" role="status" aria-live="polite" />
+          </div>
           <div className="signal-share" id="signal-share" hidden>
-            <p>応援リンクを送ると、受け取った人がスマホを振るだけで、北の空で待つあなたの星に信号が届き、少し明るくなります。名前も言葉も、願いの中身も届きません。</p>
+            <p>見た人がスマホを振ると、北の空のあなたの星が少し明るくなります。願いの中身は届きません。</p>
             <button id="signal-share-button" type="button">応援リンクを送る</button>
             <p className="signal-share-status" id="signal-share-status" role="status" aria-live="polite" />
           </div>
           <div className="orbit-number" id="orbit-number" hidden>
             <p>あなたの番号 <b id="orbit-number-value" /></p>
-            <p className="orbit-number-note">この作品の中だけの番号です。本物の星や小惑星に名前が付くわけではありません（国際天文学連合・JAXA とは関係ありません）。</p>
+            <p className="orbit-number-note">作品の中だけの番号です（本物の小惑星の名前ではありません）。</p>
           </div>
-          <section className="my-record" aria-labelledby="my-record-title">
-            <h3 id="my-record-title">あなたの記録</h3>
+          {/* 検証用の数。ふだんは畳んでおく */}
+          <details className="my-record">
+            <summary id="my-record-title">あなたの記録</summary>
             <dl id="my-record" />
-            <p className="my-record-note">数だけを、この端末の中で数えています。願いの中身は含みません。検証に協力するときは、下のボタンで数をコピーして渡してください。</p>
+            <p className="my-record-note">数だけを、この端末の中で数えています。願いの中身は含みません。</p>
             <button id="my-record-copy" type="button">記録の数をコピー</button>
             <p className="my-record-status" id="my-record-status" role="status" aria-live="polite" />
-        </section>
-          <ul id="archive-list" />
-          <div className="archive-management">
-            <label className="archive-select-all"><input id="archive-select-all" type="checkbox" disabled />すべて選択</label>
-            <div className="archive-management-actions">
-              <button id="archive-delete-selected" type="button" disabled>選択した願いを削除 <span id="archive-selection-count">0</span></button>
-              <button id="archive-reset" type="button">すべてリセット</button>
-            </div>
-            <p id="archive-status" role="status" aria-live="polite" />
-            <button id="archive-next" className="archive-next" type="button">次の願いを送る <span aria-hidden="true">↗</span></button>
-          </div>
+          </details>
           <button className="policy-open" id="policy-open" type="button" aria-haspopup="dialog">利用規約・プライバシー <span aria-hidden="true">›</span></button>
         </section>
         <section className="policy-backdrop" id="policy-sheet" role="dialog" aria-modal="true" aria-labelledby="policy-title" hidden>
@@ -220,7 +225,6 @@ export function MissionExperience({
         {/* #22 想いを受け取ったあとの「叶ったよ」（任意・24時間の流れ星） */}
         <section className="stars-backdrop receipt-backdrop" id="receipt-sheet" role="dialog" aria-modal="true" aria-labelledby="receipt-title" hidden>
           <div className="stars-panel receipt-panel">
-            <p className="sheet-kicker">RETURN RECEIPT / 25143</p>
             <h2 id="receipt-title">帰還票をつくる</h2>
             <label className="receipt-label" htmlFor="receipt-first-step">最初の小さな一歩（書かなくても大丈夫）</label>
             <input id="receipt-first-step" type="text" placeholder="例：天文台の見学に申し込む" />
@@ -228,12 +232,11 @@ export function MissionExperience({
             {/* eslint-disable-next-line @next/next/no-img-element -- 端末の中で描いた帰還票（data URL）を出すだけなので、画像の最適化は要らない */}
             <img className="receipt-preview" id="receipt-preview" alt="帰還票のプレビュー" />
             <button className="stars-secondary receipt-art" id="receipt-art" type="button">AIで願いの絵をつくる</button>
-            <p className="stars-note receipt-art-note">押すと、願いの言葉を AI（Cloudflare）に送って絵を1枚つくります。言葉と絵はサーバーに残しません。1日5回まで。</p>
+            <p className="stars-note receipt-art-note">願いの言葉を AI に送って絵にします（保存しません・1日5回）</p>
             <button className="stars-primary receipt-primary" id="receipt-save" type="button">紙に印刷する・保存する</button>
             <button className="stars-secondary" id="receipt-share" type="button">X でシェアする</button>
             <button className="stars-secondary" id="receipt-close" type="button">あとで</button>
             <p className="stars-status" id="receipt-status" role="status" aria-live="polite" />
-            <p className="stars-note">一歩の記録はアプリで（「地球の回収記録」の「一歩ふみ出した」）。紙は目に入る場所に置くメモ、シェアは切り取り線より上だけです。</p>
           </div>
         </section>
         <section className="stars-backdrop" id="fulfilled-sheet" role="dialog" aria-modal="true" aria-labelledby="fulfilled-title" hidden>
