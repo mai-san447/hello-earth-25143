@@ -1,0 +1,350 @@
+<title>MORUNE 応援スタンプ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hachi+Maru+Pop&family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap">
+<style>
+/* Layout: 左に「見た人の応援ページ」（スマホの枠）、右に応援が載る帰還票（韓国のレシート写真ふう）。押したスタンプが、そのまま紙に印刷される */
+:root {
+  color-scheme: dark;
+  --night: #11161c;
+  --raised: #1a212a;
+  --line: #2b3440;
+  --text: #e2e7eb;
+  --muted: #98a3ad;
+  --gold: #e6c878;
+  --pink: #ff9fc0;
+  --paper: #f7f6f2;
+  --ink: #161618;
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+  --hand: "Hachi Maru Pop", "Zen Kaku Gothic New", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+body { background: var(--night); color: var(--text); font-family: var(--body); line-height: 1.7; }
+.page { max-width: 1060px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 64px; display: grid; gap: 30px; }
+header { display: grid; gap: 8px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; color: var(--gold); }
+h1 { margin: 0; font-family: var(--hand); font-weight: 400; font-size: clamp(26px, 4.4vw, 38px); line-height: 1.35; text-wrap: balance; }
+.lead { margin: 0; color: var(--muted); font-size: 15px; max-width: 64ch; }
+.stage { display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); gap: 34px; align-items: start; }
+@media (max-width: 800px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+h2 { margin: 0 0 10px; font-size: 15px; font-weight: 700; color: var(--gold); letter-spacing: .04em; }
+.note { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+
+/* 見た人の応援ページ */
+.phone { position: relative; border: 1px solid var(--line); border-radius: 30px; background: radial-gradient(circle at 50% 38%, #1d2a3d 0%, #0b0f15 70%); padding: 26px 20px 22px; display: grid; gap: 14px; justify-items: center; overflow: hidden; min-height: 600px; }
+.phone .kicker { font-family: var(--mono); font-size: 10px; letter-spacing: .2em; color: var(--muted); }
+.phone .title { font-family: var(--hand); font-size: 22px; text-align: center; line-height: 1.4; }
+.sky { position: relative; width: 100%; height: 300px; }
+.star-button { position: absolute; left: 50%; top: 48%; width: 120px; height: 120px; margin: -60px 0 0 -60px; border: 0; border-radius: 50%; background: transparent; cursor: pointer; }
+.star-core { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, #fffbe9 0 10%, rgba(255,232,170,.85) 18%, rgba(255,214,140,.25) 42%, transparent 70%); transform: scale(var(--grow, 1)); transition: transform .45s cubic-bezier(.2,1.6,.4,1), filter .45s; filter: brightness(var(--glow, 1)); }
+.star-core::after { content: ""; position: absolute; left: 50%; top: 50%; width: 140%; height: 3px; margin: -1.5px 0 0 -70%; background: linear-gradient(90deg, transparent, rgba(255,250,230,.9), transparent); box-shadow: 0 0 0 0 transparent; }
+.star-core::before { content: ""; position: absolute; left: 50%; top: 50%; width: 3px; height: 140%; margin: -70% 0 0 -1.5px; background: linear-gradient(transparent, rgba(255,250,230,.9), transparent); }
+.star-button:focus-visible { outline: 2px solid var(--gold); outline-offset: 4px; }
+.pulse { animation: pulse .6s ease-out; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255,220,150,.7); } 100% { box-shadow: 0 0 0 46px rgba(255,220,150,0); } }
+.stamp-mark { position: absolute; font-size: 22px; color: var(--pink); transform: translate(-50%, -50%) rotate(var(--r)); text-shadow: 0 0 8px rgba(255,159,192,.6); animation: pop .5s cubic-bezier(.2,1.6,.4,1) both; pointer-events: none; }
+@keyframes pop { from { transform: translate(-50%, -50%) rotate(var(--r)) scale(0); } to { transform: translate(-50%, -50%) rotate(var(--r)) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .star-core, .stamp-mark, .pulse { transition: none; animation: none; } }
+.stamps { display: flex; gap: 10px; }
+.stamps button { display: grid; justify-items: center; gap: 2px; min-width: 76px; padding: 8px 6px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.04); color: var(--text); font: 500 11px var(--body); cursor: pointer; }
+.stamps button b { font-size: 24px; line-height: 1; color: var(--pink); font-weight: 400; }
+.stamps button:focus-visible, .shake:focus-visible, .actions button:focus-visible, .upload:focus-within { outline: 2px solid var(--gold); outline-offset: 2px; }
+.shake { min-height: 44px; padding: 0 22px; border: 1px solid rgba(230,200,120,.6); border-radius: 999px; background: rgba(230,200,120,.1); color: var(--gold); font: 700 14px var(--body); cursor: pointer; }
+.count { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.count b { color: var(--text); font-weight: 500; }
+
+/* 帰還票（レシート写真ふう） */
+.receipt-wrap { display: grid; gap: 14px; justify-items: start; }
+.toggle { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--raised); }
+.toggle button { border: 0; background: transparent; color: var(--muted); font: 500 13px var(--body); padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+.toggle button[aria-pressed="true"] { background: var(--gold); color: #1b1b12; }
+.receipt-canvas { width: 302px; max-width: 100%; height: auto; display: block; box-shadow: 0 16px 40px rgba(0,0,0,.5); background: var(--paper); }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.upload { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--text); border: 1px dashed var(--line); border-radius: 12px; padding: 8px 12px; cursor: pointer; }
+.upload input { width: 0; height: 0; opacity: 0; position: absolute; }
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; border-top: 1px solid var(--line); padding-top: 22px; }
+.rules div { min-width: 0; }
+.rules h3 { margin: 0 0 4px; font-size: 14px; color: var(--gold); }
+.rules p { margin: 0; font-size: 13.5px; color: var(--muted); }
+</style>
+
+<main class="page">
+  <header>
+    <div class="eyebrow">MORUNE 25143 · 見た人の応援 → 紙にスタンプ</div>
+    <h1>星をタップすると、育つ。押したスタンプは、紙にのこる。</h1>
+    <p class="lead">左は、帰還票の QR やブレスレットのカプセルから開く「見た人の応援ページ」の見本。右は、届いたスタンプが印刷される帰還票です。絵は、韓国で流行っている感熱紙のレシート写真のように、白黒の写真に手描きの落書きを重ねています。</p>
+  </header>
+
+  <section class="stage">
+    <div>
+      <h2>見た人の応援ページ</h2>
+      <div class="phone" aria-label="応援ページの見本">
+        <div class="kicker">CHEER · 25143-0000</div>
+        <div class="title">この星を、<br>応援してください</div>
+        <div class="sky" id="sky">
+          <button class="star-button" id="star" type="button" aria-label="星をタップして応援する"><span class="star-core" id="star-core"></span></button>
+        </div>
+        <div class="stamps" role="group" aria-label="スタンプ">
+          <button type="button" data-stamp="shine"><b>✦</b>光る</button>
+          <button type="button" data-stamp="go"><b>↗</b>進め</button>
+          <button type="button" data-stamp="watch"><b>◎</b>見てる</button>
+        </div>
+        <button class="shake" id="shake" type="button">スマホを振る（ここでは押す）</button>
+        <div class="count" id="count" aria-live="polite"></div>
+      </div>
+      <p class="note">願いの言葉と名前は出しません。言葉は書けず、選べるのは形だけ。1台から同じ星へは1日1回（見本では何度でも押せます）。</p>
+    </div>
+
+    <div class="receipt-wrap">
+      <h2>届いた応援が載る帰還票</h2>
+      <div class="toggle" role="group" aria-label="絵のデザイン">
+        <button type="button" id="style-doodle" aria-pressed="true">レシート写真ふう（新）</button>
+        <button type="button" id="style-plain" aria-pressed="false">いまの帰還票</button>
+      </div>
+      <canvas class="receipt-canvas" id="receipt" width="576" height="1200" role="img" aria-label="帰還票の見本"></canvas>
+      <div class="actions">
+        <label class="upload" for="photo">写真を入れてみる<input type="file" id="photo" accept="image/*"></label>
+        <span class="count">写真はこの画面の中だけで白黒にします（どこにも送りません）</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="rules" aria-label="デザインの決まり">
+    <div><h3>AI っぽくしない</h3><p>つるっとしたグラデーションや完璧な左右対称を使わない。線は手描きのように少し揺らし、写真は粗い網点にする。</p></div>
+    <div><h3>女子高校生に届く</h3><p>手書きの文字、小さな星の落書き、ピンクのスタンプ。日付は手書き風。プリクラやレシート写真のように「その日の記録」に見せる。</p></div>
+    <div><h3>宗教的にしない</h3><p>お守り・おみくじの形や「叶う」「ご利益」の言葉は使わない。宇宙の観測記録と、友だちのスタンプの見た目にする。</p></div>
+    <div><h3>紙に残るスタンプ</h3><p>押されたスタンプは種類ごとの数として帰還票に印刷する。誰が押したかは出さない。</p></div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const STAMPS = {shine: '✦', go: '↗', watch: '◎'};
+  const counts = {shine: 3, go: 1, watch: 2};
+  let cheers = 6;
+  let style = 'doodle';
+  let photo = null;
+
+  // ---- 応援ページ ----
+  const sky = document.getElementById('sky');
+  const core = document.getElementById('star-core');
+  const countEl = document.getElementById('count');
+  function grow() {
+    const level = Math.min(2.1, 1 + Math.log2(1 + cheers) * 0.22);
+    core.style.setProperty('--grow', level.toFixed(2));
+    core.style.setProperty('--glow', (0.9 + level * 0.25).toFixed(2));
+    countEl.innerHTML = `届いた応援 <b>${cheers}</b>　✦${counts.shine}　↗${counts.go}　◎${counts.watch}`;
+  }
+  function cheer(kind) {
+    cheers += 1;
+    if (kind) counts[kind] += 1;
+    const star = document.getElementById('star');
+    star.classList.remove('pulse'); void star.offsetWidth; star.classList.add('pulse');
+    if (kind) {
+      const mark = document.createElement('span');
+      mark.className = 'stamp-mark';
+      mark.textContent = STAMPS[kind];
+      const angle = Math.random() * Math.PI * 2;
+      const radius = 80 + Math.random() * 50;
+      mark.style.left = `${50 + Math.cos(angle) * radius / sky.clientWidth * 100}%`;
+      mark.style.top = `${48 + Math.sin(angle) * radius / sky.clientHeight * 100}%`;
+      mark.style.setProperty('--r', `${Math.round(Math.random() * 40 - 20)}deg`);
+      sky.append(mark);
+    }
+    if (navigator.vibrate) { try { navigator.vibrate(30); } catch {} }
+    grow();
+    drawReceipt();
+  }
+  document.getElementById('star').addEventListener('click', () => cheer(null));
+  document.getElementById('shake').addEventListener('click', () => cheer(null));
+  document.querySelectorAll('[data-stamp]').forEach(button => button.addEventListener('click', () => cheer(button.dataset.stamp)));
+
+  // ---- 帰還票 ----
+  const canvas = document.getElementById('receipt');
+  const W = 576;
+  let seed = 7;
+  const rand = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+  const HAND = '"Hachi Maru Pop", "Zen Kaku Gothic New", sans-serif';
+  const BODY = '"Zen Kaku Gothic New", sans-serif';
+  const MONO = '"IBM Plex Mono", monospace';
+
+  // 手描きのように揺れる線
+  function wobblyLine(ctx, points, width = 3, jitter = 1.6) {
+    ctx.lineWidth = width; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    points.forEach(([x, y], index) => {
+      const jx = x + (rand() - 0.5) * jitter, jy = y + (rand() - 0.5) * jitter;
+      if (index === 0) ctx.moveTo(jx, jy); else ctx.lineTo(jx, jy);
+    });
+    ctx.stroke();
+  }
+  function wobblyRect(ctx, x, y, w, h, width = 3) {
+    const pts = [];
+    const step = 18;
+    for (let i = 0; i <= w; i += step) pts.push([x + i, y]);
+    for (let i = 0; i <= h; i += step) pts.push([x + w, y + i]);
+    for (let i = w; i >= 0; i -= step) pts.push([x + i, y + h]);
+    for (let i = h; i >= 0; i -= step) pts.push([x, y + i]);
+    wobblyLine(ctx, pts, width, 2.4);
+  }
+  function doodleStar(ctx, cx, cy, r, filled = false) {
+    const pts = [];
+    for (let i = 0; i <= 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5; const rr = i % 2 ? r * 0.45 : r; pts.push([cx + Math.cos(a) * rr, cy + Math.sin(a) * rr]); }
+    if (filled) { ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.fill(); }
+    wobblyLine(ctx, pts, 2.5, 1.2);
+  }
+  function sparkle(ctx, cx, cy, r) {
+    wobblyLine(ctx, [[cx - r, cy], [cx + r, cy]], 2.5, 0.8);
+    wobblyLine(ctx, [[cx, cy - r], [cx, cy + r]], 2.5, 0.8);
+  }
+  function planet(ctx, cx, cy, r) {
+    const pts = []; for (let i = 0; i <= 24; i++) { const a = i / 24 * Math.PI * 2; pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]); }
+    wobblyLine(ctx, pts, 2.5, 1.4);
+    const ring = []; for (let i = 0; i <= 24; i++) { const a = i / 24 * Math.PI * 2; ring.push([cx + Math.cos(a) * r * 1.8, cy + Math.sin(a) * r * 0.5]); }
+    wobblyLine(ctx, ring.slice(3, 22), 2, 1.2);
+  }
+  // 白黒の網点（感熱紙）
+  function dither(ctx, x, y, w, h) {
+    const image = ctx.getImageData(x, y, w, h); const d = image.data;
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) {
+      const k = (j * w + i) * 4; const lum = (d[k] * 0.299 + d[k + 1] * 0.587 + d[k + 2] * 0.114) / 255;
+      const on = lum < (BAYER[(j % 4) * 4 + (i % 4)] + 0.5) / 16;
+      d[k] = d[k + 1] = d[k + 2] = on ? 22 : 247; d[k + 3] = 255;
+    }
+    ctx.putImageData(image, x, y);
+  }
+  function photoArea(ctx, x, y, w, h) {
+    if (photo) {
+      const scale = Math.max(w / photo.width, h / photo.height);
+      const pw = photo.width * scale, ph = photo.height * scale;
+      ctx.save(); ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+      ctx.filter = 'grayscale(1) contrast(1.25) brightness(1.05)';
+      ctx.drawImage(photo, x + (w - pw) / 2, y + (h - ph) / 2, pw, ph);
+      ctx.restore(); ctx.filter = 'none';
+    } else {
+      // 写真がないときは、夜空と丘と見上げる2人
+      const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, '#2a2a2a'); g.addColorStop(1, '#9a9a9a');
+      ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#fff'; seed = 11;
+      for (let i = 0; i < 70; i++) { ctx.beginPath(); ctx.arc(x + rand() * w, y + rand() * h * 0.7, rand() < .15 ? 2.4 : 1.2, 0, Math.PI * 2); ctx.fill(); }
+      ctx.fillStyle = '#111'; ctx.beginPath(); ctx.moveTo(x, y + h); ctx.lineTo(x, y + h * .78); ctx.quadraticCurveTo(x + w * .45, y + h * .6, x + w, y + h * .82); ctx.lineTo(x + w, y + h); ctx.fill();
+      [[.42, .7], [.5, .69]].forEach(([px, py]) => { ctx.beginPath(); ctx.arc(x + w * px, y + h * py - 24, 9, 0, Math.PI * 2); ctx.fill(); ctx.beginPath(); ctx.moveTo(x + w * px - 13, y + h * py); ctx.quadraticCurveTo(x + w * px, y + h * py - 30, x + w * px + 13, y + h * py); ctx.fill(); });
+    }
+    dither(ctx, x, y, w, h);
+  }
+  // ゴム印のようなスタンプ（かすれと傾き）
+  function inkStamp(ctx, cx, cy, symbol, count) {
+    ctx.save(); ctx.translate(cx, cy); ctx.rotate((rand() - 0.5) * 0.4);
+    ctx.strokeStyle = '#161618'; ctx.fillStyle = '#161618';
+    const pts = []; for (let i = 0; i <= 28; i++) { const a = i / 28 * Math.PI * 2; pts.push([Math.cos(a) * 38, Math.sin(a) * 38]); }
+    wobblyLine(ctx, pts, 4, 2);
+    ctx.font = `400 40px ${HAND}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(symbol, 0, 2);
+    // かすれ
+    ctx.fillStyle = '#f7f6f2'; for (let i = 0; i < 26; i++) ctx.fillRect((rand() - 0.5) * 80, (rand() - 0.5) * 80, 2, 2);
+    ctx.restore();
+    ctx.fillStyle = '#161618'; ctx.font = `400 26px ${HAND}`; ctx.textAlign = 'center'; ctx.fillText(`×${count}`, cx, cy + 66);
+  }
+  function fakeQr(ctx, x, y, size) {
+    seed = 23; const n = 21, c = size / n;
+    ctx.fillStyle = '#161618';
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const finder = (i < 7 && j < 7) || (i > 13 && j < 7) || (i < 7 && j > 13);
+      if (finder) { const fi = i % 14 > 6 ? i - 14 : i, fj = j % 14 > 6 ? j - 14 : j; const ring = Math.max(Math.abs(fi - 3), Math.abs(fj - 3)); if (ring !== 2) ctx.fillRect(x + i * c, y + j * c, c + .3, c + .3); }
+      else if (rand() < .5) ctx.fillRect(x + i * c, y + j * c, c + .3, c + .3);
+    }
+  }
+
+  function drawReceipt() {
+    const ctx = canvas.getContext('2d', {willReadFrequently: true});
+    seed = 5;
+    ctx.fillStyle = '#f7f6f2'; ctx.fillRect(0, 0, W, canvas.height);
+    ctx.fillStyle = '#161618'; ctx.strokeStyle = '#161618';
+    const doodle = style === 'doodle';
+    let y = 40;
+    if (doodle) {
+      ctx.font = `400 34px ${HAND}`; ctx.textAlign = 'left'; ctx.fillText('MORUNE 25143', 30, y + 6);
+      wobblyLine(ctx, [[30, y + 20], [150, y + 24], [300, y + 18]], 3, 2);
+      ctx.font = `400 22px ${HAND}`; ctx.textAlign = 'right'; ctx.fillText('2026.10.07', W - 30, y + 4);
+      sparkle(ctx, W - 40, y + 30, 8);
+      y += 46;
+      const px = 40, pw = W - 80, ph = 320;
+      ctx.save(); ctx.translate(W / 2, y + ph / 2 + 12); ctx.rotate(-0.015); ctx.translate(-W / 2, -(y + ph / 2 + 12));
+      photoArea(ctx, px, y + 12, pw, ph);
+      ctx.restore();
+      wobblyRect(ctx, px - 8, y + 4, pw + 16, ph + 18, 3.5);
+      // 落書き
+      doodleStar(ctx, px + 10, y + 14, 22, true);
+      planet(ctx, W - 70, y + ph - 6, 16);
+      sparkle(ctx, px + 40, y + ph + 6, 10); sparkle(ctx, W - 120, y + 30, 7);
+      ctx.font = `400 22px ${HAND}`; ctx.textAlign = 'left'; ctx.fillText('おかえり〜！', px + 20, y + ph + 54);
+      ctx.textAlign = 'right'; ctx.fillText('46日の旅', W - 40, y + ph + 54);
+      y += ph + 92;
+      ctx.textAlign = 'center'; ctx.font = `400 40px ${HAND}`; ctx.fillText('宇宙に行きたい', W / 2, y + 10);
+      wobblyLine(ctx, [[150, y + 26], [W / 2, y + 30], [W - 150, y + 24]], 2.5, 2);
+      y += 70;
+      ctx.font = `700 22px ${BODY}`; ctx.fillText('とどいた応援', W / 2, y);
+      y += 64;
+      inkStamp(ctx, W / 2 - 150, y, '✦', counts.shine);
+      inkStamp(ctx, W / 2, y, '↗', counts.go);
+      inkStamp(ctx, W / 2 + 150, y, '◎', counts.watch);
+      y += 120;
+    } else {
+      ctx.font = `500 20px ${MONO}`; ctx.textAlign = 'left'; ctx.fillText('MORUNE 25143', 24, y);
+      ctx.font = `700 22px ${BODY}`; ctx.textAlign = 'right'; ctx.fillText('帰還票', W - 24, y);
+      y += 16;
+      const keep = photo; photo = null; photoArea(ctx, 24, y, W - 48, 300); photo = keep;
+      ctx.lineWidth = 3; ctx.strokeRect(24, y, W - 48, 300);
+      y += 340;
+      ctx.textAlign = 'center'; ctx.font = `700 40px ${BODY}`; ctx.fillText('宇宙に行きたい', W / 2, y);
+      y += 52; ctx.font = `700 30px ${BODY}`; ctx.fillText('おかえりなさい。46日の旅でした', W / 2, y);
+      y += 40; ctx.font = `500 19px ${MONO}`; ctx.fillText(`2026.10.07 · 信号 ${cheers}回 · 25143まで 約2.5億km`, W / 2, y);
+      y += 30;
+    }
+    fakeQr(ctx, 40, y, 120);
+    ctx.textAlign = 'left'; ctx.font = doodle ? `400 26px ${HAND}` : `700 26px ${BODY}`;
+    ctx.fillText('あなたの星へ', 182, y + 52);
+    ctx.font = `400 17px ${BODY}`; ctx.fillText('読み取ると、また空を見に行けます。', 182, y + 84);
+    ctx.font = `500 16px ${MONO}`; ctx.fillText('25143-0000-03', 182, y + 112);
+    y += 150;
+    ctx.setLineDash([10, 8]); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font = '22px sans-serif'; ctx.fillText('✂', 8, y - 6);
+    y += 44;
+    ctx.font = doodle ? `400 26px ${HAND}` : `700 26px ${BODY}`; ctx.fillText('最初の小さな一歩', 30, y);
+    y += 46; ctx.font = doodle ? `400 30px ${HAND}` : `700 30px ${BODY}`; ctx.fillText('天文台の見学に申し込む', 30, y);
+    if (doodle) { wobblyLine(ctx, [[30, y + 14], [W - 30, y + 16]], 2.5, 1.5); doodleStar(ctx, W - 50, y - 12, 14, false); }
+    else { ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(30, y + 14); ctx.lineTo(W - 30, y + 14); ctx.stroke(); }
+    y += 54;
+    ctx.textAlign = 'center'; ctx.font = `400 15px ${BODY}`;
+    ctx.fillText('紙の文字は、いつか消えます。願いは、星が持っています。', W / 2, y);
+    ctx.fillText('本物の星や小惑星の名前ではありません。距離：NASA/JPL Horizons', W / 2, y + 22);
+    // 紙の長さを中身に合わせる
+    const height = Math.ceil(y + 40);
+    if (canvas.height !== height) { const copy = ctx.getImageData(0, 0, W, Math.min(height, canvas.height)); canvas.height = height; ctx.putImageData(copy, 0, 0); }
+  }
+
+  const doodleBtn = document.getElementById('style-doodle');
+  const plainBtn = document.getElementById('style-plain');
+  function setStyle(next) {
+    style = next;
+    doodleBtn.setAttribute('aria-pressed', String(next === 'doodle'));
+    plainBtn.setAttribute('aria-pressed', String(next === 'plain'));
+    drawReceipt();
+  }
+  doodleBtn.addEventListener('click', () => setStyle('doodle'));
+  plainBtn.addEventListener('click', () => setStyle('plain'));
+  document.getElementById('photo').addEventListener('change', event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => { photo = image; drawReceipt(); URL.revokeObjectURL(url); };
+    image.src = url;
+  });
+
+  grow();
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => { canvas.height = 1600; drawReceipt(); });
+})();
+</script>
