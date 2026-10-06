@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {
+  canIssueOrbit,
   publicStarsEnabled,
   CAUTION_WORDS, DAILY_LIMIT, MAX_LENGTH, REPORT_HIDE_THRESHOLD, SKY_LIMIT, TTL_MS,
   acceptPublish, expiresAt, formatNumber, isShowable, isStarId, normalizeText, parsePublish,
@@ -157,4 +158,11 @@ test('みんなの星は、D1 があってもスイッチが "true" のときだ
   assert.equal(publicStarsEnabled({DB: {}, PUBLIC_STARS_ENABLED: 'false'}), false);
   assert.equal(publicStarsEnabled({PUBLIC_STARS_ENABLED: 'true'}), false);
   assert.equal(publicStarsEnabled({DB: {}, PUBLIC_STARS_ENABLED: 'true'}), true);
+});
+
+test('人の番号は、1分あたり全体で60までしか新しく発行しない', () => {
+  assert.equal(canIssueOrbit(0), true);
+  assert.equal(canIssueOrbit(59), true);
+  assert.equal(canIssueOrbit(60), false);
+  assert.equal(canIssueOrbit(undefined), false);
 });

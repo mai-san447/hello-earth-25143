@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {createWish, nextWishSeq, wishNumber, wishSeqOf} from '../public/wish-state.js';
+import {assignMissingSeq, createWish, nextWishSeq, wishNumber, wishSeqOf} from '../public/wish-state.js';
 
 const wish = (id, createdAt, seq) => ({id, text: id, status: 'waiting', createdAt, updatedAt: createdAt, ...(seq ? {seq} : {})});
 
@@ -21,6 +21,16 @@ test('番号を持たない前からの願いは、預けた順に数える', ()
   assert.equal(wishSeqOf(wishes[1], wishes), 1);
   assert.equal(wishSeqOf(wishes[0], wishes), 2);
   assert.equal(wishSeqOf(wishes[2], wishes), 5);
+});
+
+test('前からの願いに番号を固定する。新しい願いと重ならない', () => {
+  const wishes = [wish('b', 20), wish('a', 10), wish('c', 30, 1)];
+  const {updated, counter} = assignMissingSeq(wishes, 1);
+  assert.deepEqual(updated.map(item => [item.id, item.seq]), [['a', 2], ['b', 3]]);
+  assert.equal(counter, 3);
+  const all = [wishes[2], ...updated];
+  assert.equal(nextWishSeq(all, counter), 4);
+  assert.deepEqual(assignMissingSeq(all, counter).updated, []);
 });
 
 test('25143-人-願い の形にする。人の番号がまだなければ出さない', () => {

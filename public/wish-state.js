@@ -130,7 +130,18 @@ export function nextWishSeq(wishes, counter = 0) {
   return Math.max(used, Number.isInteger(counter) ? counter : 0) + 1;
 }
 
-// 番号を持たない前からの願いは、預けた順に数える（表示だけ。保存は変えない）
+// 番号を持たない前からの願いに、預けた順で番号を付けて固定する（開いたときに1回）。
+// 付けないままだと、新しい願いの番号と重なったり、消したときに表示がずれたりする（2026-10-06 Codex レビュー）
+// 返すのは、番号を付けた願い（保存し直すもの）と、これまでに出した最大の番号
+export function assignMissingSeq(wishes, counter = 0) {
+  const legacy = wishes.filter(wish => !Number.isInteger(wish.seq))
+    .sort((a, b) => a.createdAt - b.createdAt || String(a.id).localeCompare(String(b.id)));
+  let next = nextWishSeq(wishes, counter);
+  const updated = legacy.map(wish => ({...wish, seq: next++}));
+  return {updated, counter: next - 1};
+}
+
+// 番号を持たない願い（固定する前）は、預けた順に数える（表示だけの予備）
 export function wishSeqOf(wish, wishes) {
   if (Number.isInteger(wish.seq)) return wish.seq;
   const legacy = wishes.filter(item => !Number.isInteger(item.seq))
