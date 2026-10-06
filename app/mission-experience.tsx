@@ -126,10 +126,6 @@ export function MissionExperience({
           <p className="sheet-kicker">EARTH RECOVERY LOG</p>
           <h2 id="archive-title">地球へ帰還した願い</h2>
           <p className="archive-empty" id="archive-empty">まだ帰還した願いはありません。</p>
-          <figure className="constellation" aria-labelledby="constellation-caption">
-            <canvas id="constellation-canvas" width="560" height="240" role="img" aria-label="受け取った願いを、言葉の近さでつないだ星座" />
-            <figcaption id="constellation-caption">願いを受け取るたびに、ここに星座が育っていきます。</figcaption>
-          </figure>
           <div className="signal-share" id="signal-share" hidden>
             <p>応援リンクを送ると、受け取った人がスマホを振るだけで、軌道で待つあなたの星に信号が届き、少し明るくなります。名前も言葉も、願いの中身も届きません。</p>
             <button id="signal-share-button" type="button">応援リンクを送る</button>
