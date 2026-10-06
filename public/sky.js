@@ -1,5 +1,50 @@
 // 角度は度、経度は東が正、方位は北=0・東=90。大気差は含めない。
 const RAD = Math.PI / 180;
+// J2000。同梱の恒星カタログと同じ赤経・赤緯を使い、星座の名前は画面に出さない。
+export const NORTH_CONSTELLATIONS = [
+  {id: 'big-dipper', stars: [
+    ['Dubhe',165.93,61.75], ['Merak',165.46,56.38], ['Phecda',178.46,53.69],
+    ['Megrez',183.86,57.03], ['Alioth',193.51,55.96], ['Mizar',200.98,54.93], ['Alkaid',206.88,49.31],
+  ], paths: [[1,0,3,2,1], [3,4,5,6]]},
+  {id: 'cassiopeia', stars: [
+    ['Caph',2.29,59.15], ['Schedar',10.13,56.54], ['Gamma Cas',14.18,60.72],
+    ['Ruchbah',21.45,60.24], ['Segin',28.6,63.67],
+  ], paths: [[0,1,2,3,4]]},
+  {id: 'little-dipper', stars: [
+    ['Polaris',37.95,89.26], ['Delta UMi',263.05,86.59], ['Epsilon UMi',251.49,82.04],
+    ['Zeta UMi',236.01,77.79], ['Eta UMi',244.38,75.76], ['Pherkad',230.18,71.83], ['Kochab',222.68,74.16],
+  ], paths: [[0,1,2,3,4,5,6,3]]},
+].map(group => Object.freeze({...group,
+  stars: Object.freeze(group.stars.map(([name,raDeg,decDeg]) => Object.freeze({name,raDeg,decDeg}))),
+  paths: Object.freeze(group.paths.map(path => Object.freeze(path))),
+}));
+Object.freeze(NORTH_CONSTELLATIONS);
+const NORTH_STAR_COUNT = 19;
+
+export function northStarForSeq(seq) {
+  if (!Number.isSafeInteger(seq) || seq < 1) throw new RangeError('願いの番号は1以上の整数です');
+  let index = (seq - 1) % NORTH_STAR_COUNT;
+  const cycle = Math.floor((seq - 1) / NORTH_STAR_COUNT);
+  for (const constellation of NORTH_CONSTELLATIONS) {
+    if (index < constellation.stars.length) {
+      // 重なる願いを見分けるため、2巡目から数pxだけ離す。元の恒星の位置は変えない。
+      const angle = cycle * 2.399963229728653;
+      const radius = cycle ? 5 * Math.sqrt(cycle) : 0;
+      return {constellation, starIndex: index, star: constellation.stars[index], cycle,
+        offsetX: Math.cos(angle) * radius, offsetY: Math.sin(angle) * radius};
+    }
+    index -= constellation.stars.length;
+  }
+}
+
+// 表示対象の願いの番号だけを受け取る。重複で完成扱いにせず、3星座を個別に判定する。
+export function completedNorthConstellations(seqs) {
+  const occupied = new Set(seqs.map(seq => {
+    const slot = northStarForSeq(seq);
+    return `${slot.constellation.id}:${slot.starIndex}`;
+  }));
+  return NORTH_CONSTELLATIONS.filter(group => group.stars.every((_, index) => occupied.has(`${group.id}:${index}`)));
+}
 const wrap = value => value >= 0 && value < 360 ? value : ((value % 360) + 360) % 360;
 function finite(...values) {
   if (!values.every(Number.isFinite)) throw new TypeError('天文計算の値が不正です');

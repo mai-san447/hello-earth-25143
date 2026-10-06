@@ -151,11 +151,16 @@
   let visibleSky = [];
   let realItokawa = null;
   let refreshThreeSky = () => {};
+  let projectThreeStar;
+  const northSky = new Map();
   let skyPlace = '東京';
   function refreshSky() {
     const {lat, lon} = pendingLocation;
     const now = Date.now();
     visibleSky = catalog ? Sky.visibleStars(catalog.stars, now, lat, lon) : [];
+    for (const group of Sky.NORTH_CONSTELLATIONS) {
+      northSky.set(group.id, group.stars.map(star => Sky.equatorialToHorizontal(star.raDeg, star.decDeg, now, lat, lon)));
+    }
     const position = radecTable ? Sky.itokawaPosition(radecTable, now) : null;
     realItokawa = position ? Sky.equatorialToHorizontal(position.raDeg, position.decDeg, now, lat, lon) : null;
     if (catalog) observerReading.textContent = Sky.skySummary(skyPlace, realItokawa);
@@ -366,8 +371,8 @@
     $('#gesture-hint').textContent = landed
       ? 'カプセルが着地しています。「カプセルを開く」から、あの日の言葉を受け取ってください'
       : count ? 'シグナルを探すと、想いがひとつ地球へ帰還します'
-        : orbiting().length ? `星はイトカワの軌道で待っています。${waitingForStartMessage()}`
-          : '願いを預けると、星がイトカワの軌道に浮かびます';
+        : orbiting().length ? `星は北の空で待っています。${waitingForStartMessage()}`
+          : '願いを預けると、北の空に星がひとつ灯ります';
     const list = $('#archive-list');
     // 「最初の一歩」を書いている途中（日本語の変換中を含む）は描き直さない。入力欄から出たときに描き直す
     const editing = list.contains(document.activeElement) && document.activeElement.matches('input[type="text"]');
@@ -582,12 +587,6 @@
     resize();
   }
 
-  function hash(text) {
-    let value = 2166136261;
-    for (const character of text) value = Math.imul(value ^ character.charCodeAt(0), 16777619);
-    return value >>> 0;
-  }
-
   function createWishId() {
     if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
     const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -597,12 +596,19 @@
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
 
-  function orbitPosition(wish, index, time) {
-    const {centerX, centerY, orbitX, orbitY} = geometry();
-    const seed = hash(wish.id);
-    const lane = 0.76 + (seed % 23) / 100;
-    const angle = seed % 628 / 100 + index * 0.37 + (reducedMotion ? 0 : time * (0.000025 + seed % 11 * 0.000001));
-    return {x: centerX + Math.cos(angle) * orbitX * lane, y: centerY + Math.sin(angle) * orbitY * lane};
+  function projectNorthStar(group, index) {
+    const horizontal = northSky.get(group.id)?.[index];
+    if (!horizontal) return null;
+    if (threeReady) return projectThreeStar(horizontal);
+    const radius = (90 - horizontal.altitude) / 90 * Math.min(width, height) * .48;
+    const az = horizontal.azimuth * Math.PI / 180;
+    return {x: width / 2 + radius * Math.sin(az), y: height / 2 - radius * Math.cos(az), visible: horizontal.altitude > 0};
+  }
+
+  function wishStarPosition(wish) {
+    const slot = Sky.northStarForSeq(WishState.wishSeqOf(wish, wishes));
+    const point = projectNorthStar(slot.constellation, slot.starIndex);
+    return point && {...point, x: point.x + slot.offsetX, y: point.y + slot.offsetY};
   }
 
   function applyLocation(latitude, longitude, place = '現在地') {
@@ -674,6 +680,13 @@
       const alt = point.altitude * Math.PI / 180, az = point.azimuth * Math.PI / 180;
       return new THREE.Vector3(100 * Math.cos(alt) * Math.sin(az), 100 * Math.sin(alt), -100 * Math.cos(alt) * Math.cos(az));
     }
+    projectThreeStar = horizontal => {
+      starfieldGroup.updateWorldMatrix(true, false);
+      threeCamera.updateMatrixWorld();
+      const point = starfieldGroup.localToWorld(skyVector(horizontal)).project(threeCamera);
+      return {x: (point.x * .5 + .5) * width, y: (-point.y * .5 + .5) * height,
+        visible: horizontal.altitude > 0 && point.z > -1 && point.z < 1};
+    };
     refreshThreeSky = () => {
       const positions = visibleSky.flatMap(point => skyVector(point).toArray());
       starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -1015,30 +1028,48 @@
     context.fillText('25143 ITOKAWA', centerX, centerY + asteroid + 23);
   }
 
-  function drawOrbit(time) {
+  const northLineStarted = new Map();
+  function drawWishStars(time) {
     const {centerX, centerY, orbitX, orbitY} = geometry();
-    context.save();
-    context.strokeStyle = 'rgba(197, 215, 218, .23)';
-    context.setLineDash([2, 7]);
-    context.lineWidth = .8;
-    context.beginPath();
-    context.ellipse(centerX, centerY, orbitX, orbitY, -.12, 0, Math.PI * 2);
-    context.stroke();
-    context.restore();
-
     if (!threeReady) drawHayabusa(centerX - orbitX * .48, centerY - orbitY * .82, -.22, 1);
-
-    orbiting().forEach((wish, index) => {
-      if (launchFlight?.wish.id === wish.id) return;
-      const point = orbitPosition(wish, index, time);
+    const stars = WishState.skyWishes(wishes).filter(wish => wish.id !== returnFlight?.wish.id && wish.id !== launchFlight?.wish.id);
+    context.save();
+    context.strokeStyle = 'rgba(255, 226, 166, .22)';
+    context.lineWidth = .6;
+    const completed = Sky.completedNorthConstellations(stars.map(wish => WishState.wishSeqOf(wish, wishes)));
+    for (const id of northLineStarted.keys()) {
+      if (!completed.some(group => group.id === id)) northLineStarted.delete(id);
+    }
+    for (const group of completed) {
+      if (!northLineStarted.has(group.id)) northLineStarted.set(group.id, time);
+      context.globalAlpha = reducedMotion ? 1 : Math.min(1, (time - northLineStarted.get(group.id)) / 900);
+      const points = group.stars.map((_, index) => projectNorthStar(group, index));
+      for (const path of group.paths) {
+        for (let i = 1; i < path.length; i++) {
+          const a = points[path[i - 1]], b = points[path[i]];
+          if (!a?.visible || !b?.visible) continue;
+          context.beginPath();
+          context.moveTo(a.x, a.y);
+          context.lineTo(b.x, b.y);
+          context.stroke();
+        }
+      }
+    }
+    context.restore();
+    stars.forEach(wish => {
+      const point = wishStarPosition(wish);
+      if (!point?.visible) return;
       // 応援の信号が届いた星ほど明るく光る
       const glow = Constellation.brightness(Constellation.signalsWhileWaiting(wish, signalTimes));
+      const magnitude = WishState.magnitude(wish);
+      const growth = magnitude == null ? 1 : .4 + (6 - magnitude) * .16;
       context.save();
       context.shadowColor = '#ffe4a6';
-      context.shadowBlur = 13 * glow;
-      context.fillStyle = '#fff1ce';
+      context.shadowBlur = 13 * glow * growth;
+      context.globalAlpha = growth;
+      context.fillStyle = '#ffdf91';
       context.beginPath();
-      context.arc(point.x, point.y, (2.2 + index % 3 * .45) * glow, 0, Math.PI * 2);
+      context.arc(point.x, point.y, 2.2 * glow * growth, 0, Math.PI * 2);
       context.fill();
       context.restore();
     });
@@ -1141,14 +1172,15 @@
 
   function drawFlight(time) {
     if (launchFlight) {
-      const progress = Math.min(1, (time - launchFlight.startedAt) / 1750);
-      const target = orbitPosition(launchFlight.wish, Math.max(0, orbiting().length - 1), time);
-      drawComet(width * .5, height + 8, target.x, target.y, progress);
+      const progress = Math.min(1, (time - launchFlight.startedAt) / (reducedMotion ? 60 : 1750));
+      const target = wishStarPosition(launchFlight.wish);
+      if (target?.visible) drawComet(width * .5, geometry().earthY, target.x, target.y, progress);
       if (progress >= 1) launchFlight = null;
     }
     if (returnFlight) {
       const progress = Math.min(1, (time - returnFlight.startedAt) / (reducedMotion ? 60 : 2600));
-      drawComet(returnFlight.from.x, returnFlight.from.y, width * .5, geometry().earthY, progress);
+      const from = wishStarPosition(returnFlight.wish);
+      if (from?.visible) drawComet(from.x, from.y, width * .5, geometry().earthY, progress);
     }
     if (landed) {
       const {earthY} = geometry();
@@ -1198,7 +1230,7 @@
     if (threeReady) context.clearRect(0, 0, width, height);
     else drawSpace(time);
     drawEarth();
-    drawOrbit(time);
+    drawWishStars(time);
     drawFlight(time);
     if (!threeReady) drawItokawa(time);
     requestAnimationFrame(render);
@@ -1377,17 +1409,17 @@
       return;
     }
     returningWish = candidates[Math.floor(Math.random() * candidates.length)];
+    if (launchFlight?.wish.id === returningWish.id) launchFlight = null;
     if (WishState.trialAvailable(wishes, trialUsed())) writeStorage(TRIAL_KEY, '1');
     returnFlight = {
       wish: returningWish,
       startedAt: performance.now(),
-      from: orbitPosition(returningWish, candidates.indexOf(returningWish), performance.now()),
     };
     playReturnWhoosh();
     setTimeout(() => finishReturn(returningWish), reducedMotion ? 60 : 2700);
     landed = false;
     sampleButton.hidden = true;
-    $('#mission-status').textContent = '2005 — イトカワ出発 / 願い星を地球へ';
+    $('#mission-status').textContent = '北の空から / 願い星を地球へ';
     $('#gesture-hint').textContent = '星はひとつだけ。はやぶさの帰還を見届けてください';
     setTimeout(() => {
       if (returnFlight) $('#mission-status').textContent = '2007 — イオンエンジンで地球帰還の航路へ';
@@ -1438,7 +1470,7 @@
       if (backToOrbit) launchFlight = {wish: updated, startedAt: performance.now()};
       closeCard({decided: true});
       setMissionStep(backToOrbit ? 'receive' : 'deposit');
-      // #17 何度も軌道へ戻した願いには、5回目に一度だけ「手放してもいい」と伝える（戻すことは止めない）
+      // #17 何度も星空へ戻した願いには、5回目に一度だけ「手放してもいい」と伝える（戻すことは止めない）
       const gentle = WishState.gentleMessage(updated);
       if (gentle) $('#mission-status').textContent = gentle;
       // #22 想いを受け取ったら、任意で「叶ったよ」のひとことを流せる
@@ -1972,7 +2004,7 @@
     $('#return-from').max = range.max;
     depositStatus.textContent = WishState.canDeposit(wishes)
       ? ''
-      : `軌道には${WishState.LIMITS.orbit}個まで預けられます。1つ受け取るか、手放してから預けてください。`;
+      : `北の空には${WishState.LIMITS.orbit}個まで預けられます。1つ受け取るか、手放してから預けてください。`;
     depositSheet.hidden = false;
     setTimeout(() => depositSheet.classList.add('sheet-open'), 20);
     setTimeout(() => {
@@ -1997,7 +2029,7 @@
     const now = Date.now();
     // #17 軌道に置ける願いは30個まで。いっぱいのときは預けず、入力は残す
     if (!WishState.canDeposit(wishes)) {
-      depositStatus.textContent = `軌道には${WishState.LIMITS.orbit}個まで預けられます。1つ受け取るか、手放してから預けてください。`;
+      depositStatus.textContent = `北の空には${WishState.LIMITS.orbit}個まで預けられます。1つ受け取るか、手放してから預けてください。`;
       return;
     }
     const returnFromInput = $('#return-from');
@@ -2027,14 +2059,14 @@
       publishCheckbox.checked = false;
       $('#wish-length').textContent = '0';
       depositStatus.textContent = wish.returnFrom
-        ? `送信完了。${WishState.returnFromLabel(wish.returnFrom)}まで、イトカワの軌道で預かります`
+        ? `送信完了。${WishState.returnFromLabel(wish.returnFrom)}まで、北の空で預かります`
         : '送信完了';
-      $('#mission-status').textContent = '2003 — 地球を出発 / 願いを軌道へ投入';
+      $('#mission-status').textContent = '地球を出発 / 願いを北の空へ';
         playLaunchTone();
         launchFlight = {wish, startedAt: performance.now()};
       closeDeposit();
       setTimeout(() => {
-        if (!returnFlight) $('#mission-status').textContent = '2005 — イトカワの軌道に願いの星を確認';
+        if (!returnFlight) $('#mission-status').textContent = '北の空に願いの星が灯りました';
       }, 1850);
       // 自分の願いは先に端末へ預け終えている。流すのが失敗しても、預けたことは取り消さない
       if (publish) {
@@ -2044,7 +2076,7 @@
           }, 2200);
         });
       }
-      // #27 はじめての人には、星が軌道に着いたところで「試しに1つ帰す」へ案内する
+      // #27 はじめての人には、星が灯ったところで「試しに1つ帰す」へ案内する
       if (firstWish) {
         setTimeout(() => {
           if (returnFlight || returningWish) return;
@@ -2096,7 +2128,7 @@
       setMissionStep(step);
       if (step === 'deposit') $('#deposit-open').focus({preventScroll: true});
       if (step === 'receive') {
-        if (!orbiting().length) $('#mission-status').textContent = '軌道に星はありません';
+        if (!orbiting().length) $('#mission-status').textContent = '北の空に待つ願いはありません';
         else if (!readyToReturn().length) $('#mission-status').textContent = waitingForStartMessage();
         else $('#fallback').focus({preventScroll: true});
       }
@@ -2236,7 +2268,7 @@
   });
   $('#archive-reset').addEventListener('click', async () => {
     const count = wishes.length;
-    if (!count || !window.confirm(`軌道上と回収記録の願い${count}件をすべて削除します。この操作は取り消せません。続けますか？`)) return;
+    if (!count || !window.confirm(`北の空と回収記録の願い${count}件をすべて削除します。この操作は取り消せません。続けますか？`)) return;
     const button = $('#archive-reset');
     button.disabled = true;
     try {
@@ -2418,7 +2450,7 @@
 
   async function shareSignalLink() {
     const url = `${location.origin}/signal?to=${orbitId()}`;
-    const text = 'イトカワの軌道で、私の願いの星が待っています。よければ信号を送ってください（名前も言葉も届きません）。';
+    const text = '北の空で、私の願いの星が待っています。よければ信号を送ってください（名前も言葉も届きません）。';
     const shareStatus = $('#signal-share-status');
     try {
       if (typeof navigator.share === 'function') {
@@ -2439,10 +2471,10 @@
     if (!list) return;
     const summary = WishState.summarize(wishes, readOpenDays(), Date.now());
     const rows = [
-      ['預けた願い', `${summary.deposited}個（軌道に${summary.orbiting}個）`],
+      ['預けた願い', `${summary.deposited}個（北の空に${summary.orbiting}個）`],
       ['受け取った', `${summary.received}個`],
       ['アーカイブに保存', `${summary.archived}個`],
-      ['軌道へ戻した', `${summary.backToOrbit}回`],
+      ['星空へ戻した', `${summary.backToOrbit}回`],
       ['開いた日', `${summary.openDays}日`],
     ];
     list.replaceChildren(...rows.flatMap(([label, value]) => {
@@ -2818,6 +2850,8 @@
   initializeThreeBackground().catch(() => {
     locationStatus.textContent = '3D星空を読み込めません。簡易表示で続けます。';
   });
+  // 同梱カタログの読み込み待ちでも、願いの星と飛行の座標は計算できる。
+  refreshSky();
   loadSkyData();
   setInterval(refreshSky, 60000);
   observerReading.textContent = '東京の、今の空';
