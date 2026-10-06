@@ -2,6 +2,7 @@
   // 状態遷移は wish-state.js に集め、テストで確かめる。ここは画面・保存・演出を担当する。
   // 部品が1つでも読めないと、この先の登録が何も動かない。スプラッシュが残ったまま固まらないよう、
   // 失敗したらスプラッシュを外して理由を出す（例：休憩室の遅い回線で、端末への保存も済んでいないとき）。
+  let Sky;
   let WishState;
   let Itokawa;
   let Constellation;
@@ -12,7 +13,8 @@
   let QrCode;
   try {
     let QrModule;
-    [WishState, Itokawa, Constellation, PublicStars, KeyedQueue, Receipt, QrModule] = await Promise.all([
+    [Sky, WishState, Itokawa, Constellation, PublicStars, KeyedQueue, Receipt, QrModule] = await Promise.all([
+      import('/sky.js'),
       import('/wish-state.js'),
       import('/itokawa.js'),
       import('/constellation.js'),
@@ -144,10 +146,36 @@
       // Haptics are optional and can be blocked by the browser or device.
     }
   }, true);
-  const stars = Array.from({length: 185}, () => ({
-    x: Math.random(), y: Math.random(), size: 0.25 + Math.random() * 1.15,
-    phase: Math.random() * Math.PI * 2, speed: 0.15 + Math.random() * 0.55,
-  }));
+  let catalog = null;
+  let radecTable = null;
+  let visibleSky = [];
+  let realItokawa = null;
+  let refreshThreeSky = () => {};
+  const skyDirectionLabel = document.createElement('div');
+  skyDirectionLabel.className = 'itokawa-label';
+  skyDirectionLabel.style.cssText = 'left:50%;top:22%;max-width:90%;text-align:center';
+  skyDirectionLabel.setAttribute('role', 'status');
+  app.append(skyDirectionLabel);
+  function refreshSky() {
+    const {lat, lon} = pendingLocation;
+    const now = Date.now();
+    visibleSky = catalog ? Sky.visibleStars(catalog.stars, now, lat, lon) : [];
+    const position = radecTable ? Sky.itokawaPosition(radecTable, now) : null;
+    realItokawa = position ? Sky.equatorialToHorizontal(position.raDeg, position.decDeg, now, lat, lon) : null;
+    skyDirectionLabel.textContent = !radecTable ? '25143 ITOKAWA · 位置データを読み込めません' : !realItokawa ? '25143 ITOKAWA · 暦の期間外です' : realItokawa.altitude <= 0 ? '25143 ITOKAWA · いまは地平線の下' : `25143 ITOKAWA · 方位 ${realItokawa.azimuth.toFixed(0)}° / 高度 ${realItokawa.altitude.toFixed(0)}°`;
+    refreshThreeSky();
+  }
+  async function loadSkyData() {
+    const results = await Promise.allSettled(['/sky-stars.json', '/itokawa-radec.json'].map(async path => {
+      const response = await fetch(path, {signal: AbortSignal.timeout(8000)});
+      if (!response.ok) throw new Error(`星空データ ${response.status}`);
+      return response.json();
+    }));
+    if (results[0].status === 'fulfilled' && Array.isArray(results[0].value.stars)) catalog = results[0].value;
+    if (results[1].status === 'fulfilled' && Array.isArray(results[1].value.days)) radecTable = results[1].value;
+    if (!catalog) observerReading.textContent = '恒星データを読み込めません。ネットにつながったときに再読み込みしてください';
+    refreshSky();
+  }
   let database;
   let wishes = [];
   const selectedArchiveIds = new Set();
@@ -179,8 +207,7 @@
   let itokawaMesh;
   let hayabusaOrbit;
   let hayabusaCraft;
-  let updateItokawaLabel = () => {};
-  let pendingLocation;
+  let pendingLocation = {lat: 35.68, lon: 139.76};
   let threeReady = false;
 
   function openDatabase() {
@@ -588,12 +615,8 @@
     pendingLocation = {lat, lon};
     const latitudeLabel = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'}`;
     const longitudeLabel = `${Math.abs(lon).toFixed(2)}°${lon >= 0 ? 'E' : 'W'}`;
-    observerReading.textContent = `OBSERVER: EARTH [ ${latitudeLabel}, ${longitudeLabel} ]`;
-    if (starfieldGroup) {
-      starfieldGroup.rotation.x = lat * Math.PI / 180 * 0.1;
-      starfieldGroup.rotation.y = -lon * Math.PI / 180 * 0.0045;
-      updateItokawaLabel();
-    }
+    observerReading.textContent = `現在地 ${latitudeLabel}, ${longitudeLabel} · 真北・高度45°（端末の向きとは連動しません）`;
+    refreshSky();
     locationStatus.textContent = `星空を現在地に合わせました（緯度 ${lat.toFixed(1)}°）。`;
     setTimeout(() => locationModal.classList.add('is-hidden'), 650);
   }
@@ -611,58 +634,37 @@
     starfieldGroup = new THREE.Group();
     skyGroup.add(starfieldGroup);
 
-    const starCount = 4600;
-    const positions = new Float32Array(starCount * 3);
-    const sizes = new Float32Array(starCount);
-    const phases = new Float32Array(starCount);
-    const rates = new Float32Array(starCount);
-    for (let index = 0; index < starCount; index++) {
-      const y = Math.random() * 2 - 1;
-      const angle = Math.random() * Math.PI * 2;
-      const radius = 95 + Math.random() * 65;
-      const ring = Math.sqrt(1 - y * y);
-      positions[index * 3] = Math.cos(angle) * ring * radius;
-      positions[index * 3 + 1] = y * radius;
-      positions[index * 3 + 2] = Math.sin(angle) * ring * radius;
-      sizes[index] = 0.65 + Math.pow(Math.random(), 3) * 2.7;
-      phases[index] = Math.random() * Math.PI * 2;
-      rates[index] = 0.3 + Math.random() * 1.2;
-    }
     const starGeometry = new THREE.BufferGeometry();
-    starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    starGeometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-    starGeometry.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1));
-    starGeometry.setAttribute('aRate', new THREE.BufferAttribute(rates, 1));
     starMaterial = new THREE.ShaderMaterial({
-      transparent: true,
-      depthWrite: false,
+      transparent: true, depthWrite: false,
       uniforms: {uTime: {value: 0}, uPixelRatio: {value: renderer.getPixelRatio()}},
-      vertexShader: `
-        attribute float aSize;
-        attribute float aPhase;
-        attribute float aRate;
-        uniform float uTime;
-        uniform float uPixelRatio;
-        varying float vAlpha;
-        void main() {
-          vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_Position = projectionMatrix * viewPosition;
-          float pulse = 0.7 + 0.3 * sin(uTime * aRate + aPhase);
-          vAlpha = pulse;
-          gl_PointSize = min(aSize * uPixelRatio * pulse * (220.0 / -viewPosition.z), 6.0);
-        }
-      `,
-      fragmentShader: `
-        varying float vAlpha;
-        void main() {
-          float radius = length(gl_PointCoord - vec2(0.5));
-          if (radius > 0.5) discard;
-          float glow = 1.0 - smoothstep(0.02, 0.5, radius);
-          gl_FragColor = vec4(vec3(0.76, 0.86, 0.98), glow * vAlpha * 0.9);
-        }
-      `,
+      vertexShader: `attribute float aSize; attribute float aBrightness;
+        uniform float uPixelRatio; varying float vAlpha;
+        void main() { gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          gl_PointSize = aSize * uPixelRatio; vAlpha = aBrightness; }`,
+      fragmentShader: `varying float vAlpha;
+        void main() { float r = length(gl_PointCoord - vec2(0.5)); if (r > 0.5) discard;
+          gl_FragColor = vec4(0.76, 0.86, 0.98, (1.0 - smoothstep(0.02, 0.5, r)) * vAlpha); }`,
     });
     starfieldGroup.add(new THREE.Points(starGeometry, starMaterial));
+    // 固定の視線：真北、高度45度。端末の向きを測る機能ではない。
+    starfieldGroup.rotation.x = Math.PI / 4;
+    const directionMarker = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshBasicMaterial({color: 0xa6e7ef}));
+    starfieldGroup.add(directionMarker);
+    function skyVector(point) {
+      const alt = point.altitude * Math.PI / 180, az = point.azimuth * Math.PI / 180;
+      return new THREE.Vector3(100 * Math.cos(alt) * Math.sin(az), 100 * Math.sin(alt), -100 * Math.cos(alt) * Math.cos(az));
+    }
+    refreshThreeSky = () => {
+      const positions = visibleSky.flatMap(point => skyVector(point).toArray());
+      starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      starGeometry.setAttribute('aSize', new THREE.Float32BufferAttribute(visibleSky.map(s => 1 + 3 * Math.pow(10, -0.15 * (s.magnitude + 1.46))), 1));
+      starGeometry.setAttribute('aBrightness', new THREE.Float32BufferAttribute(visibleSky.map(s => 0.2 + 0.8 * Math.pow(10, -0.16 * (s.magnitude + 1.46))), 1));
+      starGeometry.computeBoundingSphere();
+      directionMarker.visible = Boolean(realItokawa && realItokawa.altitude > 0);
+      if (directionMarker.visible) directionMarker.position.copy(skyVector(realItokawa));
+    };
+    refreshThreeSky();
 
     const peanutProfile = [
       [-7.4, 0.12], [-6.8, 1.05], [-5.7, 2.05], [-4.2, 2.65],
@@ -839,9 +841,7 @@
         itokawaLabel.style.top = `${(-projected.y * 0.5 + 0.5) * window.innerHeight - 12}px`;
       }
     }
-    updateItokawaLabel = updateLabel;
 
-    if (pendingLocation) applyLocation(pendingLocation.lat, pendingLocation.lon);
     updateSize();
     threeReady = true;
     window.addEventListener('resize', updateSize, {passive: true});
@@ -851,7 +851,7 @@
       const elapsed = clock.getElapsedTime();
       starMaterial.uniforms.uTime.value = reducedMotion ? 0 : elapsed;
       if (!reducedMotion) {
-        starfieldGroup.rotation.y += 0.000035;
+
         itokawaMesh.rotation.y += 0.0008;
         itokawaMesh.rotation.z += 0.00018;
         hayabusaOrbit.rotation.z += 0.00055;
@@ -859,13 +859,22 @@
       }
       renderer.render(threeScene, threeCamera);
       updateLabel();
+      if (directionMarker.visible) {
+        const projected = directionMarker.getWorldPosition(new THREE.Vector3()).project(threeCamera);
+        const inView = projected.z > -1 && projected.z < 1 && Math.abs(projected.x) < 0.9 && Math.abs(projected.y) < 0.9;
+        skyDirectionLabel.style.left = inView ? `${(projected.x * 0.5 + 0.5) * window.innerWidth}px` : '50%';
+        skyDirectionLabel.style.top = inView ? `${(-projected.y * 0.5 + 0.5) * window.innerHeight - 18}px` : '22%';
+      } else {
+        skyDirectionLabel.style.left = '50%';
+        skyDirectionLabel.style.top = '22%';
+      }
     }
     animate();
   }
 
   locationAllow.addEventListener('click', () => {
     if (!navigator.geolocation) {
-      locationStatus.textContent = '位置情報に対応していません。位置情報なしで続けられます。';
+      locationStatus.textContent = '位置情報に対応していません。東京の星空で続けられます。';
       return;
     }
     locationAllow.disabled = true;
@@ -876,15 +885,15 @@
         locationAllow.disabled = false;
       },
       () => {
-        locationStatus.textContent = '位置情報を取得できませんでした。位置情報なしで続けられます。';
+        locationStatus.textContent = '位置情報を取得できませんでした。東京の星空で続けられます。';
         locationAllow.disabled = false;
       },
       {enableHighAccuracy: false, timeout: 10000, maximumAge: 300000},
     );
   });
-  locationSkip.addEventListener('click', () => locationModal.classList.add('is-hidden'));
+  locationSkip.addEventListener('click', () => { applyLocation(35.68, 139.76); locationModal.classList.add('is-hidden'); });
 
-  function drawSpace(time) {
+  function drawSpace() {
     const sky = context.createLinearGradient(0, 0, width * 0.65, height);
     sky.addColorStop(0, '#050812');
     sky.addColorStop(0.54, '#091522');
@@ -899,15 +908,25 @@
     context.fillStyle = haze;
     context.fillRect(0, 0, width, height);
 
-    for (const star of stars) {
-      const alpha = 0.26 + (Math.sin(time * 0.001 * star.speed + star.phase) + 1) * 0.29;
+    for (const star of visibleSky) {
+      const alpha = 0.2 + 0.8 * Math.pow(10, -0.16 * (star.magnitude + 1.46));
       context.globalAlpha = alpha;
-      context.fillStyle = star.size > 1 ? '#f3dbac' : '#d9e7ed';
+      context.fillStyle = '#d9e7ed';
       context.beginPath();
-      context.arc(star.x * width, star.y * height, star.size, 0, Math.PI * 2);
+      const radius = (90 - star.altitude) / 90 * Math.min(width, height) * 0.48;
+      const az = star.azimuth * Math.PI / 180;
+      context.arc(width / 2 + radius * Math.sin(az), height / 2 - radius * Math.cos(az), 0.5 + Math.pow(10, -0.15 * (star.magnitude + 1.46)), 0, Math.PI * 2);
       context.fill();
     }
     context.globalAlpha = 1;
+    if (realItokawa?.altitude > 0) {
+      const radius = (90 - realItokawa.altitude) / 90 * Math.min(width, height) * 0.48;
+      const az = realItokawa.azimuth * Math.PI / 180;
+      context.fillStyle = '#a6e7ef';
+      context.beginPath();
+      context.arc(width / 2 + radius * Math.sin(az), height / 2 - radius * Math.cos(az), 2.5, 0, Math.PI * 2);
+      context.fill();
+    }
   }
 
   function drawEarth() {
@@ -2775,6 +2794,9 @@
   initializeThreeBackground().catch(() => {
     locationStatus.textContent = '3D星空を読み込めません。簡易表示で続けます。';
   });
+  loadSkyData();
+  setInterval(refreshSky, 60000);
+  observerReading.textContent = '東京の星空 · 真北・高度45°を表示（端末の向きとは連動しません）';
   loadItokawaDistance();
   recordOpenDay();
   await init();
@@ -2787,7 +2809,7 @@
   loadOtherStars();
   // 開いたまま「帰還が始まる日」を迎えたり、日付が変わったりしたときに、ボタンと案内を今の状態に合わせる
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) refreshInterface();
+    if (!document.hidden) { refreshInterface(); refreshSky(); }
   });
   setInterval(refreshInterface, 60 * 1000);
 })();
