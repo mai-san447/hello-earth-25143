@@ -7,7 +7,8 @@ export const metadata: Metadata = {
   description: "北の空で待っている誰かの願いの星に、名前も言葉もない信号を送る。",
 };
 
-// 応援する人が開くページ。願いの持ち主が X でシェアした投稿のリンク（/signal?to=軌道ID）から来る。
+// 応援する人が開くページ（/signal?to=軌道ID）。2026-10-07 にアプリからの入口（応援リンクを送る）は外したが、
+// すでに渡したリンクが動くように残している
 export default function SignalPage() {
   return (
     <main className="signal-page">

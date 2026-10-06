@@ -1914,9 +1914,9 @@
     if (!wish) return;
     const includeText = $('#receipt-include-text').checked;
     const message = [includeText ? `「${wish.text}」` : '', '星に預けていた願いを、やってみることにした。', '#MORUNE25143'].filter(Boolean).join('\n');
-    // リンクは、自分の星の応援ページ。見た人は振って応援でき、そのまま自分の願いも預けられる。
-    // 以前は「シェア」と「応援リンク」が別にあり、違いが分かりにくかったため1つにした（2026-10-07）
-    const url = signalsEnabled ? `${location.origin}/signal?to=${orbitId()}` : `${location.origin}/`;
+    // リンクはサービスのトップ（その人の星のリンクではなく）。見た人が自分の願いを預けられるように（2026-10-07、本人の判断）。
+    // 「応援リンクを送る」は、シェアとの違いが分かりにくかったので外した
+    const url = `${location.origin}/`;
     window.open(`https://x.com/intent/post?text=${encodeURIComponent(message)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer');
     button.disabled = true;
     status.textContent = 'X の投稿画面を開きました。画像を保存しています…';
@@ -2343,9 +2343,6 @@
       });
   }
 
-  // 応援の信号が使える環境か（使えるときだけ、シェアのリンクを自分の星の応援ページにする）
-  let signalsEnabled = false;
-
   function orbitId() {
     let id = readStorage(ORBIT_KEY);
     if (!id) {
@@ -2365,7 +2362,6 @@
       if (!data.enabled || !Array.isArray(data.times)) return;
       signalTimes = data.times.filter(Number.isFinite);
       writeStorage(SIGNAL_CACHE_KEY, JSON.stringify(signalTimes));
-      signalsEnabled = true;
       } catch {
       // 読めなければ、端末に控えた分で明るさを出す
     }
