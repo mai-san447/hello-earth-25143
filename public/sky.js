@@ -55,3 +55,17 @@ export function itokawaPosition(table, time) {
   const delta = wrap(b[1] - a[1] + 180) - 180;
   return {raDeg: wrap(a[1] + delta * fraction), decDeg: a[2] + (b[2] - a[2]) * fraction};
 }
+
+// 方位（北0°・東90°）を、ひと言の方角にする。画面では数字ではなく「東の空」のように言う
+const DIRECTIONS = ['北', '北東', '東', '南東', '南', '南西', '西', '北西'];
+export function compassJa(azimuth) {
+  const value = ((Number(azimuth) % 360) + 360) % 360;
+  return DIRECTIONS[Math.round(value / 45) % 8];
+}
+
+// 上の帯に出す、ひと言の空の説明。place は「東京」か「現在地」
+export function skySummary(place, itokawa) {
+  if (!itokawa) return `${place}の、今の空`;
+  if (itokawa.altitude <= 0) return `${place}の、今の空 · 25143 はいま地平線の下`;
+  return `${place}の、今の空 · 25143 は${compassJa(itokawa.azimuth)}の空`;
+}

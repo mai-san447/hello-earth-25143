@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {julianDay, greenwichSiderealTime, localSiderealTime, equatorialToHorizontal, visibleStars, itokawaPosition} from '../public/sky.js';
+import {compassJa, skySummary} from '../public/sky.js';
 import {readFileSync} from 'node:fs';
 const time = Date.parse('2000-01-01T12:00:00Z');
 const near = (a,b,tolerance=1e-6) => assert.ok(Math.abs(a-b)<tolerance, `${a} ≈ ${b}`);
@@ -47,4 +48,17 @@ test('星空の部品と同梱データをオフライン用に保存する', ()
   assert.match(sw, /const REQUIRED_SHELL = \[[^\]]*'\/sky.js'/);
   assert.match(sw, /const OPTIONAL_SHELL = \[[^\]]*'\/sky-stars.json'/);
   assert.match(sw, /const OPTIONAL_SHELL = \[[^\]]*'\/itokawa-radec.json'/);
+});
+
+test('方位は、ひと言の方角にする', () => {
+  assert.equal(compassJa(0), '北');
+  assert.equal(compassJa(81), '東');
+  assert.equal(compassJa(200), '南');
+  assert.equal(compassJa(-45), '北西');
+});
+
+test('上の帯は、ひと言で空を説明する', () => {
+  assert.equal(skySummary('東京', {azimuth: 81, altitude: 20}), '東京の、今の空 · 25143 は東の空');
+  assert.equal(skySummary('現在地', {azimuth: 81, altitude: -5}), '現在地の、今の空 · 25143 はいま地平線の下');
+  assert.equal(skySummary('東京', null), '東京の、今の空');
 });
