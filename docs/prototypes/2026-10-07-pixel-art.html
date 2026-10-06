@@ -1,0 +1,179 @@
+<title>MORUNE ドット絵の帰還票</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+/* Layout: 3つの場面（預ける・帰還・応援）のドット絵を、感熱紙の紙に載せて並べる。下に、描き方の決まり */
+:root {
+  color-scheme: dark;
+  --night: #11161c;
+  --line: #2b3440;
+  --text: #e2e7eb;
+  --muted: #98a3ad;
+  --gold: #e6c878;
+  --paper: #f7f6f2;
+  --ink: #161618;
+  --pixel: "DotGothic16", "Zen Kaku Gothic New", system-ui, sans-serif;
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+* { box-sizing: border-box; }
+body { background: var(--night); color: var(--text); font-family: var(--body); line-height: 1.7; }
+.page { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 64px; display: grid; gap: 28px; }
+header { display: grid; gap: 8px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; color: var(--gold); }
+h1 { margin: 0; font-family: var(--pixel); font-weight: 400; font-size: clamp(26px, 4.4vw, 40px); line-height: 1.35; text-wrap: balance; }
+.lead { margin: 0; color: var(--muted); font-size: 15px; max-width: 64ch; }
+.rail { display: flex; flex-wrap: wrap; gap: 26px; justify-content: center; align-items: flex-start; }
+figure { margin: 0; display: grid; gap: 10px; justify-items: center; }
+figcaption { font-size: 13px; color: var(--muted); text-align: center; max-width: 30ch; }
+figcaption b { display: block; color: var(--text); font-family: var(--pixel); font-weight: 400; font-size: 17px; }
+canvas { display: block; width: 302px; max-width: 100%; height: auto; background: var(--paper); box-shadow: 0 16px 40px rgba(0,0,0,.5); image-rendering: pixelated; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+.controls button { min-height: 40px; padding: 0 18px; border: 1px solid rgba(230,200,120,.6); border-radius: 999px; background: rgba(230,200,120,.1); color: var(--gold); font: 700 14px var(--body); cursor: pointer; }
+.controls button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.controls span { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; border-top: 1px solid var(--line); padding-top: 22px; }
+.rules div { min-width: 0; }
+.rules h3 { margin: 0 0 4px; font-size: 14px; color: var(--gold); }
+.rules p { margin: 0; font-size: 13.5px; color: var(--muted); }
+</style>
+
+<main class="page">
+  <header>
+    <div class="eyebrow">MORUNE 25143 · 1-BIT PIXEL ART</div>
+    <h1>白黒のドット絵で描く、願いの任務記録</h1>
+    <p class="lead">96×56 マスの白黒のドット絵を、1マス＝6ドットに拡大して 80mm の感熱紙（576 ドット）に印刷する見本です。網点を使わないので、印刷してもにじまず、くっきり出ます。応援のスタンプは「✦ 光」1つだけです。</p>
+  </header>
+
+  <div class="controls">
+    <button type="button" id="cheer">✦ 光を届ける（応援を1つ足す）</button>
+    <button type="button" id="invert" aria-pressed="false">白い空で見る（反転）</button>
+    <span id="cheer-count"></span>
+  </div>
+
+  <section class="rail" aria-label="3つの場面">
+    <figure><canvas id="c-deposit" width="576" height="900" role="img" aria-label="預かり票：丘の上から願いの星が空へのぼる"></canvas><figcaption><b>預かり票</b>丘の上から、願いの星が空へのぼっていく</figcaption></figure>
+    <figure><canvas id="c-return" width="576" height="900" role="img" aria-label="帰還票：パラシュートを開いたカプセルが降りてくる"></canvas><figcaption><b>帰還票</b>パラシュートを開いたサンプルカプセルが、地球に降りてくる</figcaption></figure>
+    <figure><canvas id="c-cheer" width="576" height="900" role="img" aria-label="応援：まわりに光が集まる"></canvas><figcaption><b>応援が届いたとき</b>届いた光の数だけ、星のまわりに小さな光が集まる</figcaption></figure>
+  </section>
+
+  <section class="rules" aria-label="描き方の決まり">
+    <div><h3>白と黒の2色だけ</h3><p>グレーも網点も使わない。感熱紙でいちばんくっきり出る描き方。暗いところは市松模様（チェック）で表す。</p></div>
+    <div><h3>96×56 マスで描く</h3><p>小さな画面に1マスずつ置く。人の手で置いた跡が見えるので、AI っぽくならない。1マスを6倍にして印刷する。</p></div>
+    <div><h3>物語の場面だけを描く</h3><p>預ける・帰還・応援の3場面＋キーワードごとの景色。探査機の名前や形は描かず、カプセルとパラシュートは一般的な形にする。</p></div>
+    <div><h3>ガチャとレア</h3><p>同じ場面でも、時間帯・星の並び・小さな落書き（猫、流れ星）が変わる。レアは流れ星や、ほかの便のカプセル。</p></div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const GW = 96, GH = 56, S = 6, W = GW * S;
+  const INK = '#161618', PAPER = '#f7f6f2';
+  let cheers = 7;
+
+  // ---- 96×56 のマス目に描く道具 ----
+  function grid() { return Array.from({length: GH}, () => new Uint8Array(GW)); }
+  const set = (g, x, y, v = 1) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < GW && y < GH) g[y][x] = v; };
+  function line(g, x0, y0, x1, y1, v = 1) {
+    x0 = Math.round(x0); y0 = Math.round(y0); x1 = Math.round(x1); y1 = Math.round(y1);
+    const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+    let err = dx + dy;
+    for (;;) { set(g, x0, y0, v); if (x0 === x1 && y0 === y1) break; const e2 = 2 * err; if (e2 >= dy) { err += dy; x0 += sx; } if (e2 <= dx) { err += dx; y0 += sy; } }
+  }
+  function disc(g, cx, cy, r, v = 1) { for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) if (x * x + y * y <= r * r + r * 0.4) set(g, cx + x, cy + y, v); }
+  function circle(g, cx, cy, r, v = 1) { for (let a = 0; a < 360; a += 3) set(g, cx + Math.cos(a * Math.PI / 180) * r, cy + Math.sin(a * Math.PI / 180) * r, v); }
+  function sprite(g, x, y, rows, v = 1) { rows.forEach((row, j) => [...row].forEach((c, i) => { if (c === '#') set(g, x + i, y + j, v); else if (c === 'o') set(g, x + i, y + j, 0); })); }
+  // 夜空：黒地に、白い星（決まった並び）
+  function nightSky(g, seed, until = GH) {
+    for (let y = 0; y < until; y++) for (let x = 0; x < GW; x++) g[y][x] = 1;
+    let s = seed; const r = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+    for (let i = 0; i < 46; i++) set(g, r() * GW, r() * until * 0.85, 0);
+    for (let i = 0; i < 5; i++) { const x = r() * GW, y = r() * until * 0.6; set(g, x, y, 0); set(g, x - 1, y, 0); set(g, x + 1, y, 0); set(g, x, y - 1, 0); set(g, x, y + 1, 0); }
+  }
+  // 地面：白い丘（夜の黒地に白）＋丘のふちの線
+  function hill(g, base, peak) {
+    for (let x = 0; x < GW; x++) {
+      const top = Math.round(base - Math.sin(x / GW * Math.PI) * peak);
+      for (let y = top; y < GH; y++) set(g, x, y, 0);
+      set(g, x, top, 1);
+    }
+  }
+  const PERSON = ['.##.', '.##.', '####', '.##.', '#..#'];
+  const STAR = ['..#..', '..#..', '#####', '..#..', '..#..'];
+  const BIGSTAR = ['....#....', '....#....', '...###...', '..#####..', '#########', '..#####..', '...###...', '....#....', '....#....'];
+  const CAT = ['#...#', '##.##', '#####', '#.#.#', '#####'];
+  const CAPSULE = ['..#####..', '.#ooooo#.', '#ooooooo#', '#ooooooo#', '#########', '.#######.', '..#####..'];
+
+  function sceneDeposit() {
+    const g = grid(); nightSky(g, 3, 44); hill(g, 50, 6);
+    sprite(g, 28, 46, PERSON, 1);
+    line(g, 31, 45, 34, 42, 1);  // 星へ手をのばす
+    // のぼっていく星と、軌跡（点線）
+    for (let i = 0; i < 9; i++) if (i % 2 === 0) set(g, 34 + i * 3, 38 - i * 2.6, 0);
+    sprite(g, 60, 8, BIGSTAR, 0);
+    sprite(g, 80, 45, CAT, 1);
+    return g;
+  }
+  function sceneReturn() {
+    const g = grid(); nightSky(g, 9, 46); hill(g, 52, 4);
+    // パラシュート（白い傘と線）
+    for (let x = -12; x <= 12; x++) { const y = 6 + Math.round(x * x / 24); for (let k = y; k < y + 3; k++) set(g, 48 + x, k, 0); }
+    for (let x = -12; x <= 12; x += 4) set(g, 48 + x, 6 + Math.round(x * x / 24) + 3, 1);
+    line(g, 36, 12, 46, 27, 0); line(g, 60, 12, 50, 27, 0); line(g, 48, 9, 48, 27, 0);
+    sprite(g, 44, 27, CAPSULE, 0);
+    // 落ちてきた軌跡のきらきら
+    set(g, 20, 14, 0); set(g, 24, 18, 0); set(g, 28, 22, 0);
+    sprite(g, 16, 45, PERSON, 1); line(g, 15, 44, 13, 41, 1);  // 手をふる
+    return g;
+  }
+  function sceneCheer() {
+    const g = grid(); nightSky(g, 15, 56);
+    sprite(g, 44, 22, BIGSTAR, 0);
+    // 届いた光の数だけ、まわりに小さな光
+    let s = 4; const r = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+    const n = Math.min(cheers, 40);
+    for (let i = 0; i < n; i++) { const a = r() * Math.PI * 2, d = 12 + r() * 16; sprite(g, 48 + Math.cos(a) * d * 1.6 - 2, 26 + Math.sin(a) * d - 2, STAR, 0); }
+    return g;
+  }
+
+  // 反転：白い空に黒い線。感熱紙は黒い面が広いとムラが出やすく、紙が熱で反りやすいので比べる
+  let inverted = false;
+  function drawGrid(ctx, g, top) {
+    ctx.fillStyle = PAPER; ctx.fillRect(0, top, W, GH * S);
+    ctx.fillStyle = INK;
+    for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) if (Boolean(g[y][x]) !== inverted) ctx.fillRect(x * S, top + y * S, S, S);
+    if (inverted) { ctx.lineWidth = 3; ctx.strokeStyle = INK; ctx.strokeRect(1.5, top + 1.5, W - 3, GH * S - 3); }
+  }
+  function receipt(canvas, kind, g, lines) {
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = PAPER; ctx.fillRect(0, 0, W, canvas.height);
+    ctx.fillStyle = INK; ctx.textBaseline = 'alphabetic';
+    ctx.font = '400 26px "DotGothic16", sans-serif'; ctx.textAlign = 'left'; ctx.fillText('MORUNE 25143', 20, 40);
+    ctx.textAlign = 'right'; ctx.fillText(kind, W - 20, 40);
+    drawGrid(ctx, g, 58);
+    let y = 58 + GH * S + 52;
+    ctx.textAlign = 'center';
+    lines.forEach(([text, size]) => { ctx.font = `400 ${size}px "DotGothic16", sans-serif`; ctx.fillText(text, W / 2, y); y += size + 18; });
+    // ドットの切り取り線
+    y += 6; for (let x = 0; x < W; x += 12) ctx.fillRect(x, y, 6, 3);
+    ctx.font = '400 18px "DotGothic16", sans-serif'; ctx.fillText('紙の文字は、いつか消えます。願いは、星が持っています。', W / 2, y + 40);
+    const h = y + 60; if (canvas.height !== h) { const img = ctx.getImageData(0, 0, W, Math.min(h, canvas.height)); canvas.height = h; ctx.putImageData(img, 0, 0); }
+  }
+  function render() {
+    receipt(document.getElementById('c-deposit'), '預かり票', sceneDeposit(), [['宇宙に行きたい', 40], ['25143-0000-03 · 周回中', 22], ['2026.10.07', 22]]);
+    receipt(document.getElementById('c-return'), '帰還票', sceneReturn(), [['おかえりなさい', 40], ['46日の旅 · 25143-0000-03', 22], [`✦ とどいた光 ×${cheers}`, 26]]);
+    receipt(document.getElementById('c-cheer'), '応援', sceneCheer(), [['この星に、光を', 40], [`✦ ×${cheers}`, 30], ['名前も言葉も届きません', 20]]);
+    document.getElementById('cheer-count').textContent = `いまの光：${cheers}`;
+  }
+  document.getElementById('cheer').addEventListener('click', () => { cheers += 1; render(); });
+  const invertButton = document.getElementById('invert');
+  invertButton.addEventListener('click', () => {
+    inverted = !inverted;
+    invertButton.setAttribute('aria-pressed', String(inverted));
+    invertButton.textContent = inverted ? '夜の空で見る' : '白い空で見る（反転）';
+    render();
+  });
+  (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(render);
+})();
+</script>
