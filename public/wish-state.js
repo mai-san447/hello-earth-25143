@@ -2,13 +2,13 @@
 // node --test で確かめられるようにする（設計図：docs/状態設計.md）。
 
 export const STATUS = Object.freeze({
-  WAITING: 'waiting',   // イトカワの軌道を周回中。帰還の候補になる
+  WAITING: 'waiting',   // 北の空で待つ。帰還の候補になる
   RETURNED: 'returned', // 地球に着地し、判断を待っている
   DOING: 'doing',       // やってみる
   DONE: 'done',         // 終えた
 });
 
-// 帰還カードの3つの選択肢。「戻す」は責めずに軌道へ戻すための選択肢。
+// 帰還カードの3つの選択肢。「戻す」は責めずに星空へ戻すための選択肢。
 export const CHOICES = Object.freeze({
   try: STATUS.DOING,
   later: STATUS.WAITING,
@@ -24,7 +24,7 @@ export const LIMITS = Object.freeze({
   orbit: 30,
   // 帰還が始まる日は、翌日から1年後まで。打ち間違いを防ぎ、端末の保存が消えるリスクも抑える
   returnFromMaxDays: 365,
-  // 軌道へ戻した回数がこの回数になったら、一度だけ「手放してもいい」と伝える。戻すこと自体は止めない
+  // 星空へ戻した回数がこの回数になったら、一度だけ「手放してもいい」と伝える。戻すこと自体は止めない
   gentleLaterCount: 5,
 });
 
@@ -96,6 +96,11 @@ export function gentleMessage(wish) {
 // 軌道を回っている願い（画面に星として描くもの）。帰還が始まる日の前でも描く。
 export function orbitingWishes(wishes) {
   return wishes.filter(wish => wish.status === STATUS.WAITING);
+}
+
+// 北の空に灯す願い。判断待ち・アーカイブは描かない。飛行中の除外は描画側で行う。
+export function skyWishes(wishes) {
+  return wishes.filter(wish => wish.status === STATUS.WAITING || wish.status === STATUS.DOING);
 }
 
 // 帰還の候補。#7：帰還が始まる日（returnFrom）が決まっている願いは、その日になるまで帰らない。
@@ -196,7 +201,7 @@ export function decide(wish, choice, now) {
   const status = CHOICES[choice];
   if (!status) throw new Error(`不明な選択肢です: ${choice}`);
   const decided = {...wish, status, updatedAt: now};
-  // 軌道へ戻した回数を数える（#17：5回目に一度だけ、やさしい一言を出すため）
+  // 星空へ戻した回数を数える（#17：5回目に一度だけ、やさしい一言を出すため）
   if (choice === 'later') decided.laterCount = (wish.laterCount ?? 0) + 1;
   return decided;
 }
@@ -213,7 +218,7 @@ export function daysWaited(wish, now) {
 }
 
 export function waitedMessage(days) {
-  return days === 0 ? '今日、預けた願いです。' : `${days}日間、イトカワの軌道であなたを待っていました。`;
+  return days === 0 ? '今日、預けた願いです。' : `${days}日間、北の空であなたを待っていました。`;
 }
 
 // 育つ願い。受け取った（doing）願いは、小さな一歩をふみ出すたびに明るくなる。
