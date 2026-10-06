@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<title>MORUNE 25143 企画書</title>
+<title>MORUNE 25143 企画書・プロダクト仕様書</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Klee+One:wght@600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -53,6 +53,7 @@ p { margin: 0; }
 table { width: 100%; border-collapse: collapse; font-size: 10pt; }
 th, td { border-bottom: 1px solid var(--line); padding: 2.4mm 3mm; text-align: left; vertical-align: top; line-height: 1.6; }
 th { font-weight: 700; background: #f2f1ec; }
+.compact th, .compact td { padding: 1.3mm 3mm; font-size: 9pt; line-height: 1.45; }
 td.yes { font-weight: 700; }
 .shot { display: grid; gap: 2mm; justify-items: center; align-content: start; }
 .shot img { height: 112mm; border-radius: 3mm; box-shadow: 0 2mm 5mm rgba(0,0,0,.18); display: block; }
@@ -388,6 +389,193 @@ td.yes { font-weight: 700; }
     </div>
   </div>
   <div class="foot"><span>GitHub: mai-san447/hello-earth-25143 · はやぶさとイトカワの物語をモチーフにした個人制作です。JAXA・IAU とは関係ありません</span><span>10</span></div>
+</section>
+
+
+<!-- 11 仕様書：はじめに -->
+<section class="sheet">
+  <div class="head">
+    <div class="eyebrow">HOW TO USE · 01</div>
+    <h2>プロダクト仕様書（取扱説明書）</h2>
+    <p class="lead">ここからは、MORUNE 25143 がどんなプロダクトで、どんな機能があり、どう使うのかの説明です。開発途中のものは、そのつど「開発途中」と書いています。</p>
+  </div>
+  <div class="body cols cols-2">
+    <div class="box">
+      <h3>使い始める</h3>
+      <table>
+        <tbody>
+          <tr><th style="width:30%">URL</th><td>https://morune-25143.morune-25143.workers.dev/</td></tr>
+          <tr><th>ログイン</th><td>不要（ID・パスワードはありません）</td></tr>
+          <tr><th>動く環境</th><td>スマホのブラウザ（iPhone の Safari、Android の Chrome）。パソコンのブラウザでも使える</td></tr>
+          <tr><th>保存</th><td>願いはその端末のブラウザの中に保存する。別の端末とは共有されない</td></tr>
+          <tr><th>ネットなし</th><td>一度開けば、ネットがなくても預ける・帰す・受け取るが動く。ホーム画面に追加できる</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="box accent">
+      <h3>2分で試す</h3>
+      <ol style="margin:0;padding-left:5mm;display:grid;gap:1.5mm;font-size:10.5pt;line-height:1.7">
+        <li>「願いを星に預ける」で、願いを1つ書いて送る</li>
+        <li>「02 帰還」の「タップで帰還」を押す（はじめての人は、預けてすぐ1回だけ帰せる）</li>
+        <li>「カプセルを開く」で、帰ってきた願いを読む</li>
+        <li>「帰還票を保存」で、レシートの画像を保存する</li>
+        <li>「想いを受け取る」を押す</li>
+        <li>「地球の回収記録」で「一歩ふみ出した」を押す（星が明るくなる）</li>
+      </ol>
+      <p style="font-size:9.5pt;color:var(--soft)">操作に応じて、願いの状態・星の明るさ・番号が変わる。番号の発行と応援の信号は、サーバーとの通信で動く。</p>
+    </div>
+  </div>
+  <div class="foot"><span>MORUNE 25143 プロダクト仕様書</span><span>11</span></div>
+</section>
+
+<!-- 12 預ける・帰す -->
+<section class="sheet">
+  <div class="head">
+    <div class="eyebrow">HOW TO USE · 02</div>
+    <h2>預ける・帰す</h2>
+  </div>
+  <div class="body flow">
+    <div class="step"><img src="img/h1-deposit.png" alt=""><b><span class="num">1</span> 願いを書く</b><p>60字まで。「帰還が始まる日」を選ぶと、その日まで帰ってこない（翌日〜1年後、空欄なら すぐ候補に）。</p></div>
+    <div class="step"><img src="img/s1-home.png" alt=""><b><span class="num">2</span> 星が軌道を回る</b><p>預けた願いは星になり、25143（イトカワ）の軌道を回る。30個まで置ける。</p></div>
+    <div class="step"><img src="img/h3-return-tab.png" alt=""><b><span class="num">3</span> 帰す</b><p>「02 帰還」で、スマホを振る（シグナルを探す）か「タップで帰還」。帰ってくるのは1つだけ。</p></div>
+    <div class="step"><img src="img/h4-landed.png" alt=""><b><span class="num">4</span> カプセルが着地</b><p>「カプセルを開く」を押す。開くまで、次の願いは帰ってこない。</p></div>
+  </div>
+  <div class="foot"><span>MORUNE 25143 プロダクト仕様書</span><span>12</span></div>
+</section>
+
+<!-- 13 カプセル・帰還票 -->
+<section class="sheet">
+  <div class="head">
+    <div class="eyebrow">HOW TO USE · 03</div>
+    <h2>カプセルを開く・帰還票を保存する</h2>
+  </div>
+  <div class="body cols" style="grid-template-columns: auto auto 1fr; align-items: start;">
+    <div class="shot"><img src="img/h5-capsule.png" alt="" style="height:118mm"><span>預けた日・待っていた日数・距離・願いの番号</span></div>
+    <div class="shot"><img src="img/h6-receipt.png" alt="" style="height:118mm;border-radius:0;box-shadow:0 1mm 3mm rgba(0,0,0,.25)"><span>帰還票（感熱紙80mm・白黒）</span></div>
+    <div style="display:grid;gap:4mm">
+      <div class="box">
+        <h3>選ぶ</h3>
+        <ul>
+          <li><b>想いを受け取る</b>：星座に加わり、「育つ」が始まる</li>
+          <li><b>軌道へ戻す</b>：今でなくていいなら、また預ける（何回でも）</li>
+          <li><b>アーカイブに保存</b>：記録として残す</li>
+          <li>選ばずに閉じても、次に開いたとき続きから選べる</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h3>帰還票を保存（印刷もできます）</h3>
+        <ul>
+          <li>幅576ドットの白黒画像を端末の中で作り、写真に保存する</li>
+          <li>QR を読み取ると、MORUNE のページ（自分の星）が開く</li>
+          <li>下は「最初の小さな一歩」をペンで書く欄</li>
+          <li>願いの言葉は「願いの言葉も入れる」を選んだときだけ</li>
+        </ul>
+        <p style="font-size:9.5pt;color:var(--soft)"><b>開発途中</b>：絵は仮の星の絵（キーワードの絵は制作中）。感熱プリンターへの直接印刷は未対応（画像を保存して印刷する）。</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>MORUNE 25143 プロダクト仕様書</span><span>13</span></div>
+</section>
+
+<!-- 14 回収記録・育つ・番号 -->
+<section class="sheet">
+  <div class="head">
+    <div class="eyebrow">HOW TO USE · 04</div>
+    <h2>回収記録・育つ・番号</h2>
+  </div>
+  <div class="body cols" style="grid-template-columns: auto auto 1fr; align-items: start;">
+    <div class="shot"><img src="img/h8-archive.png" alt="" style="height:118mm"><span>星座・あなたの番号</span></div>
+    <div class="shot"><img src="img/h9-grow.png" alt="" style="height:118mm"><span>一歩ふみ出すと明るくなる</span></div>
+    <div style="display:grid;gap:4mm">
+      <div class="box">
+        <h3>地球の回収記録</h3>
+        <ul>
+          <li>受け取った願いを、言葉の近さでつないだ星座</li>
+          <li>受け取った願いは<b>6等星</b>から。「一歩ふみ出した」（1日1回）で1等級ずつ明るくなり、1等星で止まる</li>
+          <li>「最初の小さな一歩」を書ける（任意）。「叶った」で叶った星（光の輪）</li>
+          <li>何もしなくても暗くならない。期限・連続日数はない</li>
+          <li>選んだ願いの削除、すべてのリセット</li>
+          <li>あなたの記録：使った数だけを端末で数える</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h3>番号：25143-人-願い</h3>
+        <p>最初に願いを預けたとき、人の番号（25143-0001 から順）がサーバーから届く。願いの番号（-01, -02…）は端末で数える。作品の中だけの番号で、本物の星の名前ではない。</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>MORUNE 25143 プロダクト仕様書</span><span>14</span></div>
+</section>
+
+<!-- 15 応援する -->
+<section class="sheet">
+  <div class="head">
+    <div class="eyebrow">HOW TO USE · 05</div>
+    <h2>応援する・応援してもらう</h2>
+  </div>
+  <div class="body cols" style="grid-template-columns: auto 1fr; align-items: start;">
+    <div class="shot"><img src="img/h10-signal.png" alt="" style="height:118mm"><span>応援する人の画面（/signal）</span></div>
+    <div style="display:grid;gap:4mm">
+      <div class="box">
+        <h3>応援リンクを送る（本人）</h3>
+        <p>「地球の回収記録」の「応援リンクを送る」で、自分の星への応援リンクを LINE などで送る。</p>
+      </div>
+      <div class="box">
+        <h3>信号を送る（応援する人）</h3>
+        <p>リンクを開いて「信号を送る」を押す（スマホを振っても送れる）。同じ星へは1台の端末から1日1回。名前も言葉も届かない。</p>
+      </div>
+      <div class="box accent">
+        <h3>本人に届くもの</h3>
+        <p>預けている間に届いた信号の分だけ、軌道の星が明るくなる。帰ってきた日に「預けているあいだに、N回の信号が届いていました」と伝える。</p>
+      </div>
+      <p style="font-size:9.5pt;color:var(--soft)"><b>開発途中（本番では停止）</b>：みんなの星（願いを匿名で星空に流し、他の人の星に応援を送る）。実装済みだが、投稿を見守る体制が整うまで本番では止めている。</p>
+    </div>
+  </div>
+  <div class="foot"><span>MORUNE 25143 プロダクト仕様書</span><span>15</span></div>
+</section>
+
+<!-- 16 機能一覧と通信 -->
+<section class="sheet">
+  <div class="head">
+    <div class="eyebrow">HOW TO USE · 06</div>
+    <h2>機能一覧と、サーバーとの通信</h2>
+  </div>
+  <div class="body cols" style="grid-template-columns: 1.35fr 1fr; align-items: start;">
+    <table class="compact">
+      <thead><tr><th>機能</th><th style="width:34%">状態</th></tr></thead>
+      <tbody>
+        <tr><td>願いを預ける・帰還が始まる日</td><td>本番で動作</td></tr>
+        <tr><td>振る／タップで1つ帰す・はじめての1回</td><td>本番で動作</td></tr>
+        <tr><td>受け取る／軌道へ戻す／保存</td><td>本番で動作</td></tr>
+        <tr><td>待っていた日数・25143までの実際の距離</td><td>本番で動作</td></tr>
+        <tr><td>帰還票（QR・印刷用の白黒画像）</td><td>本番で動作（絵は仮）</td></tr>
+        <tr><td>星座・育つ（等級）・叶った星</td><td>本番で動作</td></tr>
+        <tr><td>番号 25143-人-願い</td><td>本番で動作</td></tr>
+        <tr><td>応援の信号</td><td>本番で動作</td></tr>
+        <tr><td>ネットなしで動く（PWA）</td><td>本番で動作</td></tr>
+        <tr><td>みんなの星（匿名の公開・通報）</td><td><b>開発途中</b>（実装済み・本番停止）</td></tr>
+        <tr><td>キーワードの絵のガチャ</td><td><b>開発途中</b>（絵を制作中）</td></tr>
+        <tr><td>感熱プリンターへの直接印刷</td><td><b>開発途中</b>（未対応）</td></tr>
+        <tr><td>カレンダーに追加・AI で星団に</td><td><b>構想</b>（未着手）</td></tr>
+      </tbody>
+    </table>
+    <div style="display:grid;gap:4mm">
+      <div class="box">
+        <h3>サーバーとの通信（Cloudflare Workers ＋ D1）</h3>
+        <ul>
+          <li><b>POST /api/orbits</b>：人の番号を発行（軌道ID だけを受け取る）</li>
+          <li><b>POST /api/signals</b>：応援の信号を記録（軌道ID と時刻）</li>
+          <li><b>GET /api/signals</b>：本人の端末が、届いた信号の時刻を受け取る</li>
+        </ul>
+        <p style="font-size:9.5pt;color:var(--soft)">願いの中身・名前・IP アドレスはサーバーに送らない。</p>
+      </div>
+      <div class="box">
+        <h3>ソースコード</h3>
+        <p>GitHub：mai-san447/hello-earth-25143（公開。最初に表示されるブランチが提出版）。README に開発・テスト・公開の手順、docs に設計と作業記録。自動テスト 100件。</p>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span>MORUNE 25143 プロダクト仕様書</span><span>16</span></div>
 </section>
 
 </body>
