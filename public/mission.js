@@ -151,14 +151,16 @@
   let visibleSky = [];
   let realItokawa = null;
   let refreshThreeSky = () => {};
-  let projectThreeStar;
   const northSky = new Map();
   function refreshSky() {
     const {lat, lon} = pendingLocation;
     const now = Date.now();
-    visibleSky = catalog ? Sky.visibleStars(catalog.stars, now, lat, lon) : [];
+    if (width <= 0 || height <= 0) return;
+    visibleSky = catalog ? catalog.stars.filter(([, dec]) => dec >= 40).map(([raDeg, decDeg, magnitude]) => ({
+      ...Sky.projectPolarStar(raDeg, decDeg, now, lat, lon, width, height), raDeg, decDeg, magnitude,
+    })) : [];
     for (const group of Sky.NORTH_CONSTELLATIONS) {
-      northSky.set(group.id, group.stars.map(star => Sky.equatorialToHorizontal(star.raDeg, star.decDeg, now, lat, lon)));
+      northSky.set(group.id, group.stars.map(star => Sky.projectPolarStar(star.raDeg, star.decDeg, now, lat, lon, width, height)));
     }
     const position = radecTable ? Sky.itokawaPosition(radecTable, now) : null;
     realItokawa = position ? Sky.equatorialToHorizontal(position.raDeg, position.decDeg, now, lat, lon) : null;
@@ -575,6 +577,7 @@
     canvas.width = Math.round(width * pixelRatio);
     canvas.height = Math.round(height * pixelRatio);
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    refreshSky();
   }
 
   function syncVisualViewport() {
@@ -596,12 +599,7 @@
   }
 
   function projectNorthStar(group, index) {
-    const horizontal = northSky.get(group.id)?.[index];
-    if (!horizontal) return null;
-    if (threeReady) return projectThreeStar(horizontal);
-    const radius = (90 - horizontal.altitude) / 90 * Math.min(width, height) * .48;
-    const az = horizontal.azimuth * Math.PI / 180;
-    return {x: width / 2 + radius * Math.sin(az), y: height / 2 - radius * Math.cos(az), visible: horizontal.altitude > 0};
+    return northSky.get(group.id)?.[index] ?? null;
   }
 
   function wishStarPosition(wish) {
@@ -632,8 +630,7 @@
     starfieldGroup = new THREE.Group();
     skyGroup.add(starfieldGroup);
 
-    // 本物の星を、以前の星空と同じ見た目で描く（遠近で広げ、ゆっくりまたたく）。
-    // 色は星ごとに少しずつ変える（青白・白・淡い黄色）。小さすぎて見えなかったため、2026-10-07 に以前の描き方へ戻した
+    // 願いと同じ星図の画面座標を直接使う。小惑星用の透視カメラには依存しない。
     const starGeometry = new THREE.BufferGeometry();
     starMaterial = new THREE.ShaderMaterial({
       transparent: true,
@@ -649,12 +646,11 @@
         varying float vAlpha;
         varying vec3 vColor;
         void main() {
-          vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_Position = projectionMatrix * viewPosition;
+          gl_Position = vec4(position.xy, 0.9999, 1.0);
           float pulse = 0.72 + 0.28 * sin(uTime * (0.4 + aPhase * 0.25) + aPhase * 6.2831);
           vAlpha = aBrightness * pulse;
           vColor = aColor;
-          gl_PointSize = min(aSize * uPixelRatio * pulse * (220.0 / -viewPosition.z), 9.0);
+          gl_PointSize = min(aSize * uPixelRatio * pulse * 2.2, 9.0);
         }
       `,
       fragmentShader: `
@@ -668,9 +664,11 @@
         }
       `,
     });
-    starfieldGroup.add(new THREE.Points(starGeometry, starMaterial));
-    // 固定の視線：真北、高度45度。端末の向きを測る機能ではない。
-    // 北の空を高度45度で見上げる向き。+π/4 だと地平線の下を見下ろしてしまい、星が1つも入らなかった（2026-10-07）
+    const polarStars = new THREE.Points(starGeometry, starMaterial);
+    // 座標はクリップ空間なので、透視カメラによる領域外判定を使わない。
+    polarStars.frustumCulled = false;
+    starfieldGroup.add(polarStars);
+    // イトカワの実方向の印だけは従来の固定視線を保つ。
     starfieldGroup.rotation.x = -Math.PI / 4;
     const directionMarker = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshBasicMaterial({color: 0xa6e7ef}));
     starfieldGroup.add(directionMarker);
@@ -678,19 +676,13 @@
       const alt = point.altitude * Math.PI / 180, az = point.azimuth * Math.PI / 180;
       return new THREE.Vector3(100 * Math.cos(alt) * Math.sin(az), 100 * Math.sin(alt), -100 * Math.cos(alt) * Math.cos(az));
     }
-    projectThreeStar = horizontal => {
-      starfieldGroup.updateWorldMatrix(true, false);
-      threeCamera.updateMatrixWorld();
-      const point = starfieldGroup.localToWorld(skyVector(horizontal)).project(threeCamera);
-      return {x: (point.x * .5 + .5) * width, y: (-point.y * .5 + .5) * height,
-        visible: horizontal.altitude > 0 && point.z > -1 && point.z < 1};
-    };
     refreshThreeSky = () => {
-      const positions = visibleSky.flatMap(point => skyVector(point).toArray());
+      const positions = visibleSky.flatMap(point => [point.x / width * 2 - 1, 1 - point.y / height * 2, 0]);
       starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
       // 等級（明るいほど小さい数）から、大きさと明るさを決める。暗い星も、以前の星空くらいには見えるようにする
       starGeometry.setAttribute('aSize', new THREE.Float32BufferAttribute(visibleSky.map(s => 0.7 + 2.6 * Math.pow(10, -0.13 * (s.magnitude + 1.46))), 1));
-      starGeometry.setAttribute('aBrightness', new THREE.Float32BufferAttribute(visibleSky.map(s => 0.45 + 0.55 * Math.pow(10, -0.12 * (s.magnitude + 1.46))), 1));
+      starGeometry.setAttribute('aBrightness', new THREE.Float32BufferAttribute(visibleSky.map(s =>
+        (s.altitude < 0 ? .45 : 1) * (0.45 + 0.55 * Math.pow(10, -0.12 * (s.magnitude + 1.46)))), 1));
       // またたきの位相と色は、星の位置から決まった値にする（再計算のたびに変わらないように）
       const tints = [[0.76, 0.86, 0.98], [0.95, 0.96, 1.0], [1.0, 0.92, 0.78], [0.86, 0.9, 1.0]];
       const seedOf = s => Math.abs(Math.sin(s.raDeg * 12.9898 + s.decDeg * 78.233) * 43758.5453) % 1;
@@ -920,7 +912,7 @@
   });
   locationSkip.addEventListener('click', () => { applyLocation(35.68, 139.76); locationModal.classList.add('is-hidden'); });
 
-  function drawSpace() {
+  function drawSpace(time) {
     const sky = context.createLinearGradient(0, 0, width * 0.65, height);
     sky.addColorStop(0, '#050812');
     sky.addColorStop(0.54, '#091522');
@@ -936,13 +928,13 @@
     context.fillRect(0, 0, width, height);
 
     for (const star of visibleSky) {
-      const alpha = 0.2 + 0.8 * Math.pow(10, -0.16 * (star.magnitude + 1.46));
-      context.globalAlpha = alpha;
-      context.fillStyle = '#d9e7ed';
+      const phase = Math.abs(Math.sin(star.raDeg * 12.9898 + star.decDeg * 78.233) * 43758.5453) % 1;
+      const pulse = .72 + .28 * Math.sin((reducedMotion ? 0 : time / 1000) * (.4 + phase * .25) + phase * Math.PI * 2);
+      const alpha = .45 + .55 * Math.pow(10, -.12 * (star.magnitude + 1.46));
+      context.globalAlpha = alpha * pulse * (star.altitude < 0 ? .45 : 1);
+      context.fillStyle = ['#c2dbfa', '#f2f5ff', '#ffebc7', '#dbe6ff'][Math.floor(phase * 997) % 4];
       context.beginPath();
-      const radius = (90 - star.altitude) / 90 * Math.min(width, height) * 0.48;
-      const az = star.azimuth * Math.PI / 180;
-      context.arc(width / 2 + radius * Math.sin(az), height / 2 - radius * Math.cos(az), 0.5 + Math.pow(10, -0.15 * (star.magnitude + 1.46)), 0, Math.PI * 2);
+      context.arc(star.x, star.y, (.7 + 2.6 * Math.pow(10, -.13 * (star.magnitude + 1.46))) * pulse * 1.1, 0, Math.PI * 2);
       context.fill();
     }
     context.globalAlpha = 1;
@@ -1064,7 +1056,7 @@
       context.save();
       context.shadowColor = '#ffe4a6';
       context.shadowBlur = 13 * glow * growth;
-      context.globalAlpha = growth;
+      context.globalAlpha = growth * (point.altitude < 0 ? .65 : 1);
       context.fillStyle = '#ffdf91';
       context.beginPath();
       context.arc(point.x, point.y, 2.2 * glow * growth, 0, Math.PI * 2);

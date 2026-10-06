@@ -29,7 +29,7 @@ export function northStarForSeq(seq) {
     if (index < constellation.stars.length) {
       // 重なる願いを見分けるため、2巡目から数pxだけ離す。元の恒星の位置は変えない。
       const angle = cycle * 2.399963229728653;
-      const radius = cycle ? 5 * Math.sqrt(cycle) : 0;
+      const radius = cycle ? Math.min(8, 5 * Math.sqrt(cycle)) : 0;
       return {constellation, starIndex: index, star: constellation.stars[index], cycle,
         offsetX: Math.cos(angle) * radius, offsetY: Math.sin(angle) * radius};
     }
@@ -62,6 +62,19 @@ export function greenwichSiderealTime(time) {
 export function localSiderealTime(time, longitude) {
   finite(longitude);
   return wrap(greenwichSiderealTime(time) + longitude);
+}
+// 北の地平線を向いて見上げる正距方位図法。上側が上の南中、下側が下の南中。
+// 時角が増えると上→左→下へ進む（空を見上げる向きで反時計回り）。
+// 北極星そのものは天の北極から約0.74度離れているので、中心に固定しない。
+export function projectPolarStar(raDeg, decDeg, time, latitude, longitude, width, height) {
+  finite(raDeg, decDeg, latitude, longitude, width, height);
+  if (width <= 0 || height <= 0) throw new RangeError('星図の幅と高さは正の値です');
+  const horizontal = equatorialToHorizontal(raDeg, decDeg, time, latitude, longitude);
+  const hourAngle = (localSiderealTime(time, longitude) - raDeg) * RAD;
+  const radius = (90 - decDeg) / 50 * Math.min(width, height) * .45;
+  return {x: width / 2 - radius * Math.sin(hourAngle),
+    y: height / 2 - radius * Math.cos(hourAngle),
+    altitude: horizontal.altitude, visible: true};
 }
 export function equatorialToHorizontal(raDeg, decDeg, time, latitude, longitude) {
   finite(raDeg, decDeg, latitude, longitude);
