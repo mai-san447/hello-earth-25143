@@ -292,9 +292,9 @@ export function growthLabel(wish) {
 export function growthMessage(wish) {
   const value = magnitude(wish);
   if (value == null) return '';
-  if (Number.isFinite(wish.fulfilledAt)) return '叶いました。この星は、あなたの空でいちばん明るく光ります。';
+  if (Number.isFinite(wish.fulfilledAt)) return '叶いました。いちばん明るい星です。';
   const steps = wish.steps?.length ?? 0;
-  if (!steps) return '受け取ったばかりの、かすかな星です。小さな一歩をふみ出すと、明るくなります（書かなくても大丈夫）。';
+  if (!steps) return 'かすかな星です。一歩ふみ出すと、明るくなります。';
   if (value === GROWTH.brightest) return `${steps}歩ふみ出して、1等星になりました。`;
   return `${steps}歩ふみ出して、${value}等星になりました。`;
 }
