@@ -418,8 +418,7 @@ td.yes { font-weight: 700; }
         <li>「願いを星に預ける」で、願いを1つ書いて送る</li>
         <li>「02 帰還」の「タップで帰還」を押す（はじめての人は、預けてすぐ1回だけ帰せる）</li>
         <li>「カプセルを開く」で、帰ってきた願いを読む</li>
-        <li>「帰還票を保存」で、レシートの画像を保存する</li>
-        <li>「想いを受け取る」を押す</li>
+        <li>「想いを受け取る」を押す → 「帰還票をつくる」で最初の一歩を書き、「紙に印刷する・保存する」</li>
         <li>「地球の回収記録」で「一歩ふみ出した」を押す（星が明るくなる）</li>
       </ol>
       <p style="font-size:9.5pt;color:var(--soft)">操作に応じて、願いの状態・星の明るさ・番号が変わる。番号の発行と応援の信号は、サーバーとの通信で動く。</p>
@@ -447,30 +446,31 @@ td.yes { font-weight: 700; }
 <section class="sheet">
   <div class="head">
     <div class="eyebrow">HOW TO USE · 03</div>
-    <h2>カプセルを開く・帰還票を保存する</h2>
+    <h2>カプセルを開く・帰還票をつくる</h2>
   </div>
-  <div class="body cols" style="grid-template-columns: auto auto 1fr; align-items: start;">
-    <div class="shot"><img src="img/h5-capsule.png" alt="" style="height:118mm"><span>預けた日・待っていた日数・距離・願いの番号</span></div>
-    <div class="shot"><img src="img/h6-receipt.png" alt="" style="height:118mm;border-radius:0;box-shadow:0 1mm 3mm rgba(0,0,0,.25)"><span>帰還票（感熱紙80mm・白黒）</span></div>
-    <div style="display:grid;gap:4mm">
+  <div class="body cols" style="grid-template-columns: auto auto auto 1fr; gap: 5mm; align-items: start;">
+    <div class="shot"><img src="img/h5-capsule.png" alt="" style="height:108mm"><span>カプセル：受け取る／戻す／保存</span></div>
+    <div class="shot"><img src="img/h7-choices.png" alt="" style="height:108mm"><span>受け取ったあと：帰還票をつくる</span></div>
+    <div class="shot"><img src="img/h6-receipt.png" alt="" style="height:108mm;border-radius:0;box-shadow:0 1mm 3mm rgba(0,0,0,.25)"><span>帰還票（感熱紙80mm）</span></div>
+    <div style="display:grid;gap:3mm">
       <div class="box">
         <h3>選ぶ</h3>
         <ul>
-          <li><b>想いを受け取る</b>：星座に加わり、「育つ」が始まる</li>
-          <li><b>軌道へ戻す</b>：今でなくていいなら、また預ける（何回でも）</li>
+          <li><b>想いを受け取る</b>：星座に加わり、育ち始める</li>
+          <li><b>軌道へ戻す</b>：今でなくていいなら、また預ける</li>
           <li><b>アーカイブに保存</b>：記録として残す</li>
-          <li>選ばずに閉じても、次に開いたとき続きから選べる</li>
+          <li>選ばずに閉じても、続きから選べる</li>
         </ul>
       </div>
       <div class="box">
-        <h3>帰還票を保存（印刷もできます）</h3>
+        <h3>帰還票：アプリが正本、紙とシェアは出口</h3>
         <ul>
-          <li>幅576ドットの白黒画像を端末の中で作り、写真に保存する</li>
-          <li>QR を読み取ると、MORUNE のページ（自分の星）が開く</li>
-          <li>下は「最初の小さな一歩」をペンで書く欄</li>
-          <li>願いの言葉は「願いの言葉も入れる」を選んだときだけ</li>
+          <li>最初の一歩を書くとアプリに記録され、紙にも印刷</li>
+          <li><b>紙に印刷する・保存する</b>：白黒の画像</li>
+          <li><b>シェアする</b>：同じ画像の切り取り線より上</li>
+          <li>QR から自分の星へ戻れる。回収記録からも作り直せる</li>
         </ul>
-        <p style="font-size:9.5pt;color:var(--soft)"><b>開発途中</b>：絵は仮の星の絵（キーワードの絵は制作中）。感熱プリンターへの直接印刷は未対応（画像を保存して印刷する）。</p>
+        <p style="font-size:9pt;color:var(--soft)"><b>開発途中</b>：絵は仮の星の絵。感熱プリンターへの直接印刷は未対応。</p>
       </div>
     </div>
   </div>
@@ -548,7 +548,7 @@ td.yes { font-weight: 700; }
         <tr><td>振る／タップで1つ帰す・はじめての1回</td><td>本番で動作</td></tr>
         <tr><td>受け取る／軌道へ戻す／保存</td><td>本番で動作</td></tr>
         <tr><td>待っていた日数・25143までの実際の距離</td><td>本番で動作</td></tr>
-        <tr><td>帰還票（QR・印刷用の白黒画像）</td><td>本番で動作（絵は仮）</td></tr>
+        <tr><td>帰還票（紙に印刷・シェア・QR）</td><td>本番で動作（絵は仮）</td></tr>
         <tr><td>星座・育つ（等級）・叶った星</td><td>本番で動作</td></tr>
         <tr><td>番号 25143-人-願い</td><td>本番で動作</td></tr>
         <tr><td>応援の信号</td><td>本番で動作</td></tr>
