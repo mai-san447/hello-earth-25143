@@ -1914,7 +1914,9 @@
     if (!wish) return;
     const includeText = $('#receipt-include-text').checked;
     const message = [includeText ? `「${wish.text}」` : '', '星に預けていた願いを、やってみることにした。', '#MORUNE25143'].filter(Boolean).join('\n');
-    const url = `${location.origin}/`;
+    // リンクは、自分の星の応援ページ。見た人は振って応援でき、そのまま自分の願いも預けられる。
+    // 以前は「シェア」と「応援リンク」が別にあり、違いが分かりにくかったため1つにした（2026-10-07）
+    const url = signalsEnabled ? `${location.origin}/signal?to=${orbitId()}` : `${location.origin}/`;
     window.open(`https://x.com/intent/post?text=${encodeURIComponent(message)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer');
     button.disabled = true;
     status.textContent = 'X の投稿画面を開きました。画像を保存しています…';
@@ -2116,7 +2118,6 @@
   $('#archive-open').addEventListener('click', () => {
     $('#archive-sheet').hidden = false;
   });
-  $('#signal-share-button').addEventListener('click', shareSignalLink);
   publishCheckbox.addEventListener('change', async () => {
     if (!publishCheckbox.checked || promiseAgreed()) return;
     // 約束に同意するまでは選べない
@@ -2342,6 +2343,9 @@
       });
   }
 
+  // 応援の信号が使える環境か（使えるときだけ、シェアのリンクを自分の星の応援ページにする）
+  let signalsEnabled = false;
+
   function orbitId() {
     let id = readStorage(ORBIT_KEY);
     if (!id) {
@@ -2361,26 +2365,9 @@
       if (!data.enabled || !Array.isArray(data.times)) return;
       signalTimes = data.times.filter(Number.isFinite);
       writeStorage(SIGNAL_CACHE_KEY, JSON.stringify(signalTimes));
-      $('#signal-share').hidden = false;
+      signalsEnabled = true;
       } catch {
       // 読めなければ、端末に控えた分で明るさを出す
-    }
-  }
-
-  async function shareSignalLink() {
-    const url = `${location.origin}/signal?to=${orbitId()}`;
-    const text = '北の空で、私の願いの星が待っています。よければ信号を送ってください（名前も言葉も届きません）。';
-    const shareStatus = $('#signal-share-status');
-    try {
-      if (typeof navigator.share === 'function') {
-        await navigator.share({title: 'MORUNE 25143 — 星に信号を送る', text, url});
-        shareStatus.textContent = '共有シートを開きました';
-      } else {
-        await navigator.clipboard.writeText(`${text}\n${url}`);
-        shareStatus.textContent = '応援リンクをコピーしました';
-      }
-    } catch (error) {
-      if (error?.name !== 'AbortError') shareStatus.textContent = `応援リンク：${url}`;
     }
   }
 
