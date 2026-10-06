@@ -471,3 +471,16 @@ body:has(.mission-app){background:transparent}
 .orbit-number p{margin:0;color:#dce6f2;font-size:12px}
 .orbit-number b{color:#eaf3ff;font:600 14px "Inter",ui-monospace,monospace;letter-spacing:.06em}
 .orbit-number .orbit-number-note{color:#98a7a9;font-size:10.5px;line-height:1.7}
+
+/* 帰還票をつくるシート（受け取ったあと／回収記録から） */
+.receipt-panel{max-height:calc(100dvh - 36px);overflow:auto}
+.receipt-label{display:block;margin-top:10px;color:#c1cbc4;font-size:11px}
+#receipt-first-step{display:block;width:100%;min-height:42px;margin-top:6px;padding:8px 11px;border:1px solid rgba(230,200,120,.35);border-radius:10px;background:rgba(255,255,255,.05);color:#f4f1e8;font:400 16px/1.5 "Zen Kaku Gothic New",sans-serif}
+#receipt-first-step:focus-visible{outline:2px solid #edcb8c;outline-offset:2px}
+.receipt-panel .certificate-option{display:flex;gap:8px;align-items:center;margin-top:10px;color:#dfe5ea;font-size:12px}
+.receipt-preview{display:block;width:min(240px,100%);margin:12px auto 4px;background:#fff;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.receipt-preview:not([src]){display:none}
+.receipt-primary{border-color:#e6c878;background:linear-gradient(110deg,#efdcae,#d7b46c);color:#1c252b}
+.receipt-primary:focus-visible{outline-color:#edcb8c}
+.archive-growth-receipt{min-height:34px;border:1px dashed rgba(245,222,175,.4);border-radius:999px;background:transparent;color:#e8d4a8;font:500 10px/1.4 "Zen Kaku Gothic New",sans-serif;cursor:pointer}
+.archive-growth-receipt:focus-visible{outline:2px solid #e6ca91;outline-offset:2px}

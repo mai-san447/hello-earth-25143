@@ -51,3 +51,10 @@ test('QR は、渡したときだけ入れる（読み取ると自分の星へ�
   assert.equal(content.qrUrl, 'https://morune-25143.morune-25143.workers.dev/');
   assert.equal(content.qrLabel, 'あなたの星へ');
 });
+
+test('アプリで書いた最初の一歩があれば、紙に載せる', () => {
+  assert.equal(returnReceiptContent({wish, now, days: 1}).firstStep, '');
+  const content = returnReceiptContent({wish: {...wish, firstStep: ' 天文台の見学に申し込む '}, now, days: 1});
+  assert.equal(content.firstStep, '天文台の見学に申し込む');
+  assert.match(content.stubHint, /QR/);
+});

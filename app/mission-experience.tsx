@@ -114,18 +114,7 @@ export function MissionExperience({
           <p className="returned-distance" id="returned-distance" />
           <p className="returned-signals" id="returned-signals" />
           <p className="card-footnote">あの日のあなたから、今日のあなたへ。</p>
-          <div className="certificate">
-            <label className="certificate-option">
-              <input id="certificate-include-text" type="checkbox" />
-              願いの言葉も入れる
-            </label>
-            <button className="return-action-share" id="certificate-save" type="button">帰還票を保存（印刷もできます）</button>
-            <p className="share-status" id="certificate-status" role="status" aria-live="polite" />
-          </div>
-          <label className="share-comment-label" htmlFor="share-comment">コメントを添えてシェア</label>
-          <textarea id="share-comment" maxLength={120} placeholder="いまの気持ちを書く（任意）" />
-          <p className="share-status" id="share-status" role="status" aria-live="polite" />
-          <button className="return-action-share" id="share-wish" type="button">Xで願い星をシェア</button>
+          <p className="share-status">受け取ると、帰還票（紙に印刷・シェアできる1枚）をつくれます。</p>
           <div className="return-actions" aria-label="帰還した願いの扱い">
             <button className="return-action-primary" id="try-wish" type="button">想いを受け取る</button>
             <button id="return-to-orbit" type="button">軌道へ戻す</button>
@@ -253,6 +242,22 @@ export function MissionExperience({
           </div>
         </section>
         {/* #22 想いを受け取ったあとの「叶ったよ」（任意・24時間の流れ星） */}
+        <section className="stars-backdrop receipt-backdrop" id="receipt-sheet" role="dialog" aria-modal="true" aria-labelledby="receipt-title" hidden>
+          <div className="stars-panel receipt-panel">
+            <p className="sheet-kicker">RETURN RECEIPT / 25143</p>
+            <h2 id="receipt-title">帰還票をつくる</h2>
+            <label className="receipt-label" htmlFor="receipt-first-step">最初の小さな一歩（書かなくても大丈夫）</label>
+            <input id="receipt-first-step" type="text" placeholder="例：天文台の見学に申し込む" />
+            <label className="certificate-option" htmlFor="receipt-include-text"><input id="receipt-include-text" type="checkbox" /> 願いの言葉も入れる</label>
+            {/* eslint-disable-next-line @next/next/no-img-element -- 端末の中で描いた帰還票（data URL）を出すだけなので、画像の最適化は要らない */}
+            <img className="receipt-preview" id="receipt-preview" alt="帰還票のプレビュー" />
+            <button className="stars-primary receipt-primary" id="receipt-save" type="button">紙に印刷する・保存する</button>
+            <button className="stars-secondary" id="receipt-share" type="button">シェアする（X など）</button>
+            <button className="stars-secondary" id="receipt-close" type="button">あとで</button>
+            <p className="stars-status" id="receipt-status" role="status" aria-live="polite" />
+            <p className="stars-note">一歩の記録はアプリで（「地球の回収記録」の「一歩ふみ出した」）。紙は目に入る場所に置くメモ、シェアは切り取り線より上だけです。</p>
+          </div>
+        </section>
         <section className="stars-backdrop" id="fulfilled-sheet" role="dialog" aria-modal="true" aria-labelledby="fulfilled-title" hidden>
           <div className="stars-panel">
             <p className="sheet-kicker">SHOOTING STAR / 24H</p>

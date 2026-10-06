@@ -37,6 +37,7 @@ function formatDate(time) {
 
 // 願いの言葉を入れるかは本人が選ぶ（カプセルの「願いの言葉も入れる」。初期値は入れない）
 export function returnReceiptContent({wish, now, days, signals = 0, distanceText = '', number = null, includeText = false, qrUrl = ''}) {
+  const firstStep = typeof wish.firstStep === 'string' ? wish.firstStep.trim() : '';
   const variant = receiptVariant(wish.id);
   const meta = [formatDate(now)];
   if (signals > 0) meta.push(`信号 ${signals}回`);
@@ -54,7 +55,9 @@ export function returnReceiptContent({wish, now, days, signals = 0, distanceText
     qrLabel: 'あなたの星へ',
     qrHint: '読み取ると、また空を見に行けます。',
     stub: '最初の小さな一歩',
-    stubHint: 'ペンで書いて、見えるところに貼っておけます。',
+    // アプリで書いた一歩があれば印刷する。なければペンで書く線を残す（記録はアプリ、紙は目に入る場所に置くメモ）
+    firstStep,
+    stubHint: firstStep ? '見えるところに貼っておけます。ふみ出したら、QR からアプリで記録。' : 'ペンで書いて、見えるところに貼っておけます。',
     fine: [
       '紙の文字は、いつか消えます。願いは、星が持っています。',
       distanceText ? '距離：NASA/JPL Horizons ／ 本物の星や小惑星の名前ではありません。' : '本物の星や小惑星の名前ではありません。',

@@ -467,8 +467,16 @@
       saveFirstStepDraft(wish.id);
       updateGrowth(wish.id, current => WishState.markFulfilled(current, Date.now()), 'おめでとうございます。叶った星になりました。');
     });
+    const receipt = document.createElement('button');
+    receipt.type = 'button';
+    receipt.className = 'archive-growth-receipt';
+    receipt.textContent = '帰還票（紙・シェア）';
+    receipt.addEventListener('click', () => {
+      saveFirstStepDraft(wish.id);
+      openReceiptSheet(currentWish(wish.id) ?? wish);
+    });
     actions.append(step, fulfilled);
-    box.append(input, actions);
+    box.append(input, actions, receipt);
     return box;
   }
 
@@ -1368,10 +1376,6 @@
     $('#returned-number').textContent = currentWishNumber(returningWish) ?? 'WISH STAR';
     $('#returned-distance').textContent = Itokawa.distanceMessage(Itokawa.distanceKmOn(distanceTable, Date.now()));
     $('#returned-signals').textContent = Constellation.signalMessage(Constellation.signalsWhileWaiting(returningWish, signalTimes));
-    $('#share-comment').value = '';
-    $('#share-status').textContent = '';
-    $('#certificate-include-text').checked = false;
-    $('#certificate-status').textContent = '';
     returnCard.hidden = false;
     setTimeout(() => returnCard.classList.add('card-open'), 20);
     $('#mission-status').textContent = '2010 — 帰還カプセル / 願い星を回収';
@@ -1380,7 +1384,7 @@
 
   async function chooseDisposition(choice) {
     if (!returningWish || !landed) return;
-    const actions = [...document.querySelectorAll('#try-wish, #return-to-orbit, #finish-wish, #share-wish')];
+    const actions = [...document.querySelectorAll('#try-wish, #return-to-orbit, #finish-wish')];
     actions.forEach(button => { button.disabled = true; });
     let updated;
     try {
@@ -1404,7 +1408,8 @@
       const gentle = WishState.gentleMessage(updated);
       if (gentle) $('#mission-status').textContent = gentle;
       // #22 想いを受け取ったら、任意で「叶ったよ」のひとことを流せる
-      if (updated.status === WishState.STATUS.DOING && starsEnabled) openFulfilledSheet();
+      // 受け取ったら、帰還票（紙・シェア）をつくるシートを出す。みんなの星が開いている環境では、閉じたあと「叶ったよ」へ
+      if (updated.status === WishState.STATUS.DOING) openReceiptSheet(updated, {thenFulfilled: starsEnabled});
       if (!backToOrbit) {
         // 受け取った願いは星座に加わる。回収記録のボタンを一度だけ光らせて知らせる
         $('#mission-status').textContent = 'あなたの星座に、星がひとつ加わりました。回収記録で「一歩ふみ出した」を押すと、星が育ちます';
@@ -1575,7 +1580,54 @@
     return top + size + 4;
   }
 
-  function drawReceipt(content) {
+  // 切り取り線から下（最初の小さな一歩）。シェアの画像には入れない
+  function drawReceiptStub(context, content, top, margin, width, inner) {
+    let y = top + 40;
+    context.setLineDash([10, 8]);
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(width, y);
+    context.stroke();
+    context.setLineDash([]);
+    context.textAlign = 'left';
+    context.font = `400 22px ${RECEIPT_FONT}`;
+    context.fillText('✂', 8, y - 6);
+    y += 46;
+    context.font = `700 26px ${RECEIPT_FONT}`;
+    context.fillText(content.stub, margin, y);
+    context.font = `400 18px ${RECEIPT_FONT}`;
+    for (const line of wrapLines(context, content.stubHint, inner)) {
+      y += 28;
+      context.fillText(line, margin, y);
+    }
+    if (content.firstStep) {
+      context.font = `700 30px ${RECEIPT_FONT}`;
+      for (const line of wrapLines(context, content.firstStep, inner)) {
+        y += 50;
+        context.fillText(line, margin, y);
+      }
+      y += 16;
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(margin, y);
+      context.lineTo(width - margin, y);
+      context.stroke();
+    } else {
+      for (let index = 0; index < 2; index += 1) {
+        y += 56;
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(margin, y);
+        context.lineTo(width - margin, y);
+        context.stroke();
+      }
+    }
+    context.textAlign = 'center';
+    return y;
+  }
+
+  function drawReceipt(content, {withStub = true} = {}) {
     const width = Receipt.RECEIPT_WIDTH;
     const margin = 24;
     const inner = width - margin * 2;
@@ -1628,32 +1680,7 @@
     context.font = `500 19px ${RECEIPT_MONO}`;
     context.fillText(content.meta.join(' · '), width / 2, y);
     if (content.qrUrl) y = drawReceiptQr(context, content, y + 24, margin);
-    // 切り取り線
-    y += 40;
-    context.setLineDash([10, 8]);
-    context.lineWidth = 2;
-    context.beginPath();
-    context.moveTo(0, y);
-    context.lineTo(width, y);
-    context.stroke();
-    context.setLineDash([]);
-    context.textAlign = 'left';
-    context.font = `400 22px ${RECEIPT_FONT}`;
-    context.fillText('✂', 8, y - 6);
-    y += 46;
-    context.font = `700 26px ${RECEIPT_FONT}`;
-    context.fillText(content.stub, margin, y);
-    y += 30;
-    context.font = `400 18px ${RECEIPT_FONT}`;
-    context.fillText(content.stubHint, margin, y);
-    for (let index = 0; index < 2; index += 1) {
-      y += 56;
-      context.lineWidth = 2;
-      context.beginPath();
-      context.moveTo(margin, y);
-      context.lineTo(width - margin, y);
-      context.stroke();
-    }
+    if (withStub) y = drawReceiptStub(context, content, y, margin, width, inner);
     y += 40;
     context.textAlign = 'center';
     context.font = `400 16px ${RECEIPT_FONT}`;
@@ -1671,35 +1698,97 @@
     return trimmed;
   }
 
+  // ---- 帰還票をつくるシート。アプリが正本（一歩の記録）、紙とシェアは出口 ----
+  const receiptSheet = $('#receipt-sheet');
+  let receiptWishId = null;
+  let receiptThenFulfilled = false;
+  let receiptPreviewTimer = null;
+
+  function receiptWish() {
+    return wishes.find(wish => wish.id === receiptWishId) ?? null;
+  }
+
+  function openReceiptSheet(wish, {thenFulfilled = false} = {}) {
+    receiptWishId = wish.id;
+    receiptThenFulfilled = thenFulfilled;
+    $('#receipt-first-step').value = growthDrafts.get(wish.id) ?? wish.firstStep ?? '';
+    $('#receipt-include-text').checked = false;
+    $('#receipt-status').textContent = '';
+    $('#receipt-preview').removeAttribute('src');
+    receiptSheet.hidden = false;
+    renderReceiptPreview();
+    setTimeout(() => $('#receipt-first-step').focus({preventScroll: true}), 320);
+  }
+
+  function closeReceiptSheet() {
+    receiptSheet.hidden = true;
+    const wish = receiptWish();
+    receiptWishId = null;
+    if (receiptThenFulfilled && wish?.status === WishState.STATUS.DOING) openFulfilledSheet();
+    else $('#deposit-open').focus({preventScroll: true});
+  }
+
+  // 書いた一歩を、帰還票に使う前にアプリへ記録する（星を育てる記録の正本はアプリ）
+  async function commitReceiptFirstStep() {
+    const wish = receiptWish();
+    if (!wish) return null;
+    const value = $('#receipt-first-step').value;
+    if (value.trim() !== (wish.firstStep ?? '')) {
+      growthDrafts.set(wish.id, value);
+      await updateGrowth(wish.id, current => WishState.setFirstStep(current, value), next => (next.firstStep ? '最初の一歩を書きとめました。' : '最初の一歩を消しました。'), () => growthDrafts.delete(wish.id));
+      if (growthDrafts.get(wish.id) === value) growthDrafts.delete(wish.id);
+    }
+    return receiptWish();
+  }
+
+  function receiptContentFor(wish) {
+    const now = Date.now();
+    const km = Itokawa.distanceKmOn(distanceTable, now);
+    const draft = $('#receipt-first-step').value;
+    return Receipt.returnReceiptContent({
+      wish: {...wish, firstStep: draft},
+      now,
+      // 待っていた日数は、帰ってきた日（受け取った日）まで
+      days: WishState.daysWaited(wish, wish.updatedAt ?? now),
+      signals: Constellation.signalsWhileWaiting(wish, signalTimes),
+      distanceText: km == null ? '' : Itokawa.formatDistanceJa(km),
+      number: currentWishNumber(wish),
+      includeText: $('#receipt-include-text').checked,
+      qrUrl: `${location.origin}/`,
+    });
+  }
+
+  function renderReceiptPreview() {
+    clearTimeout(receiptPreviewTimer);
+    receiptPreviewTimer = setTimeout(async () => {
+      const wish = receiptWish();
+      if (!wish) return;
+      await document.fonts?.ready;
+      $('#receipt-preview').src = drawReceipt(receiptContentFor(wish)).toDataURL('image/png');
+    }, 200);
+  }
+
+  function canvasBlob(canvas) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(result => (result ? resolve(result) : reject(new Error('画像を作れませんでした'))), 'image/png');
+    });
+  }
+
   async function saveReceipt() {
-    if (!returningWish || !landed) return;
-    const status = $('#certificate-status');
-    const button = $('#certificate-save');
+    const status = $('#receipt-status');
+    const button = $('#receipt-save');
     button.disabled = true;
     status.textContent = '帰還票を描いています…';
     try {
-      const now = Date.now();
-      const km = Itokawa.distanceKmOn(distanceTable, now);
-      const content = Receipt.returnReceiptContent({
-        wish: returningWish,
-        now,
-        days: WishState.daysWaited(returningWish, now),
-        signals: Constellation.signalsWhileWaiting(returningWish, signalTimes),
-        distanceText: km == null ? '' : Itokawa.formatDistanceJa(km),
-        number: currentWishNumber(returningWish),
-        includeText: $('#certificate-include-text').checked,
-        qrUrl: `${location.origin}/`,
-      });
-      // 文字の形がそろうよう、画面のフォントを読み込んでから描く
+      const wish = await commitReceiptFirstStep();
+      if (!wish) return;
       await document.fonts?.ready;
-      const blob = await new Promise((resolve, reject) => {
-        drawReceipt(content).toBlob(result => (result ? resolve(result) : reject(new Error('画像を作れませんでした'))), 'image/png');
-      });
-      status.textContent = await saveImage(blob, content.fileName, 'MORUNE 25143 帰還票', '帰還票を保存しました');
+      const content = receiptContentFor(wish);
+      const blob = await canvasBlob(drawReceipt(content));
+      status.textContent = await saveImage(blob, content.fileName, 'MORUNE 25143 帰還票', '帰還票を保存しました。感熱プリンターなどで印刷できます');
     } catch (error) {
-      if (error?.name === 'AbortError') {
-        status.textContent = '';
-      } else {
+      if (error?.name === 'AbortError') status.textContent = '';
+      else {
         console.error('receipt', error);
         status.textContent = '帰還票を保存できませんでした。もう一度お試しください';
       }
@@ -1708,30 +1797,37 @@
     }
   }
 
-  async function shareWish() {
-    if (!returningWish || !landed) return;
-    const shareButton = $('#share-wish');
-    const shareStatus = $('#share-status');
-    const comment = $('#share-comment').value.trim();
-    const message = [`「${returningWish.text}」`, comment, 'イトカワから帰還した願い星 — MORUNE 25143'].filter(Boolean).join('\n');
-    const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(window.location.href)}`;
-    shareButton.disabled = true;
-    shareStatus.textContent = '';
+  // シェアは、紙と同じ帰還票の画像（切り取り線より上だけ）を付ける。画像を付けられない端末では、文とリンクを X へ
+  async function shareReceipt() {
+    const status = $('#receipt-status');
+    const button = $('#receipt-share');
+    button.disabled = true;
+    status.textContent = '';
     try {
-      const popup = window.open(xUrl, '_blank', 'noopener,noreferrer,width=640,height=520');
-      if (popup) {
-        shareStatus.textContent = 'Xの投稿画面を開きました';
-      } else if (typeof navigator.share === 'function') {
-        await navigator.share({title: 'MORUNE 25143 — 帰還した願い星', text: message, url: window.location.href});
-        shareStatus.textContent = '共有シートを開きました';
-      } else {
-        await navigator.clipboard.writeText(`${message}\n${window.location.href}`);
-        shareStatus.textContent = '共有文をコピーしました';
+      const wish = await commitReceiptFirstStep();
+      if (!wish) return;
+      await document.fonts?.ready;
+      const content = receiptContentFor(wish);
+      const includeText = $('#receipt-include-text').checked;
+      const message = [includeText ? `「${wish.text}」` : '', '25143 から、願い星が帰ってきました。', '#MORUNE25143'].filter(Boolean).join('\n');
+      const url = `${location.origin}/`;
+      const blob = await canvasBlob(drawReceipt(content, {withStub: false}));
+      const file = new File([blob], content.fileName.replace('receipt', 'share'), {type: 'image/png'});
+      if (typeof navigator.canShare === 'function' && navigator.canShare({files: [file]})) {
+        await navigator.share({files: [file], text: `${message}\n${url}`});
+        status.textContent = '共有シートを開きました。X などを選んでください';
+        return;
       }
+      // noopener を付けると、開けても null が返るので、開けたかどうかでは文を変えない
+      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer,width=640,height=520');
+      status.textContent = 'X の投稿画面を開きます。この端末では画像を付けられないので、「紙に印刷する・保存する」で保存して、投稿に添えてください';
     } catch (error) {
-      if (error?.name !== 'AbortError') shareStatus.textContent = '共有できませんでした。もう一度お試しください';
+      if (error?.name !== 'AbortError') {
+        console.error('share receipt', error);
+        status.textContent = '共有できませんでした。もう一度お試しください';
+      }
     } finally {
-      shareButton.disabled = false;
+      button.disabled = false;
     }
   }
 
@@ -1943,8 +2039,12 @@
   $('#try-wish').addEventListener('click', () => chooseDisposition('try'));
   $('#return-to-orbit').addEventListener('click', () => chooseDisposition('later'));
   $('#finish-wish').addEventListener('click', () => chooseDisposition('finish'));
-  $('#share-wish').addEventListener('click', shareWish);
-  $('#certificate-save').addEventListener('click', saveReceipt);
+  $('#receipt-save').addEventListener('click', saveReceipt);
+  $('#receipt-share').addEventListener('click', shareReceipt);
+  $('#receipt-close').addEventListener('click', closeReceiptSheet);
+  $('#receipt-first-step').addEventListener('input', event => { if (!event.isComposing) renderReceiptPreview(); });
+  $('#receipt-first-step').addEventListener('compositionend', renderReceiptPreview);
+  $('#receipt-include-text').addEventListener('change', renderReceiptPreview);
   $('#archive-open').addEventListener('click', () => {
     $('#archive-sheet').hidden = false;
     drawConstellation();
@@ -2043,6 +2143,11 @@
     openDeposit();
   });
   window.addEventListener('keydown', event => {
+    // 帰還票のシートが開いているときは、その中だけで操作する（スペースで帰還が始まらないように）
+    if (!receiptSheet.hidden) {
+      if (event.key === 'Escape') closeReceiptSheet();
+      return;
+    }
     // みんなの星の窓が開いているときは、その中だけで操作する（スペースで帰還が始まらないように）
     const starsDialog = openStarsDialog();
     if (starsDialog) {
