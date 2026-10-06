@@ -352,7 +352,6 @@
     if (editing || growthPointerActive) archiveListStale = true;
     else renderArchiveList(list, archiveItems);
     $('#archive-empty').hidden = archiveItems.length > 0;
-    drawConstellation();
     renderMyRecord();
     refreshArchiveControls(archiveItems);
   }
@@ -1411,8 +1410,8 @@
       // 受け取ったら、帰還票（紙・シェア）をつくるシートを出す。みんなの星が開いている環境では、閉じたあと「叶ったよ」へ
       if (updated.status === WishState.STATUS.DOING) openReceiptSheet(updated, {thenFulfilled: starsEnabled});
       if (!backToOrbit) {
-        // 受け取った願いは星座に加わる。回収記録のボタンを一度だけ光らせて知らせる
-        $('#mission-status').textContent = 'あなたの星座に、星がひとつ加わりました。回収記録で「一歩ふみ出した」を押すと、星が育ちます';
+        // 受け取った願いは回収記録に入る。回収記録のボタンを一度だけ光らせて知らせる
+        $('#mission-status').textContent = '願いを受け取りました。回収記録で「一歩ふみ出した」を押すと、星が育ちます';
         const archiveTrigger = $('#archive-open');
         archiveTrigger.classList.remove('constellation-grew');
         void archiveTrigger.offsetWidth;
@@ -2047,7 +2046,6 @@
   $('#receipt-include-text').addEventListener('change', renderReceiptPreview);
   $('#archive-open').addEventListener('click', () => {
     $('#archive-sheet').hidden = false;
-    drawConstellation();
   });
   $('#signal-share-button').addEventListener('click', shareSignalLink);
   publishCheckbox.addEventListener('change', async () => {
@@ -2300,8 +2298,7 @@
       signalTimes = data.times.filter(Number.isFinite);
       writeStorage(SIGNAL_CACHE_KEY, JSON.stringify(signalTimes));
       $('#signal-share').hidden = false;
-      drawConstellation();
-    } catch {
+      } catch {
       // 読めなければ、端末に控えた分で明るさを出す
     }
   }
@@ -2676,67 +2673,6 @@
       button.hidden = true;
       $('#fulfilled-skip').textContent = '閉じる';
       $('#fulfilled-skip').focus({preventScroll: true});
-    }
-  }
-
-  // 受け取った願いの星座。言葉の近さでつないだ最小全域木を、回収記録の中に描く。
-  function drawConstellation() {
-    const canvasElement = $('#constellation-canvas');
-    const caption = $('#constellation-caption');
-    if (!canvasElement || $('#archive-sheet').hidden) return;
-    const stars = Constellation.receivedWishes(wishes);
-    const edges = Constellation.constellationEdges(wishes);
-    const ratio = Math.min(devicePixelRatio || 1, 2);
-    const cssWidth = canvasElement.clientWidth || 560;
-    const cssHeight = Math.round(cssWidth * 0.43);
-    canvasElement.width = Math.round(cssWidth * ratio);
-    canvasElement.height = Math.round(cssHeight * ratio);
-    canvasElement.style.height = `${cssHeight}px`;
-    const draw = canvasElement.getContext('2d');
-    draw.setTransform(ratio, 0, 0, ratio, 0, 0);
-    draw.clearRect(0, 0, cssWidth, cssHeight);
-    caption.textContent = stars.length < 2
-      ? '願いを受け取るたびに、ここに星座が育っていきます。'
-      : `受け取った${stars.length}つの願いを、言葉の近さでつないだ星座です。`;
-    if (!stars.length) return;
-    // 置き場所は、預けた順に黄金角で渦を描くように決める（毎回同じ形になる）
-    const positions = new Map(stars.map((star, index) => {
-      const angle = index * 2.399963 + (hash(star.id) % 628) / 1000;
-      const radius = Math.sqrt((index + 0.5) / stars.length);
-      return [star.id, {x: cssWidth / 2 + Math.cos(angle) * radius * cssWidth * 0.42, y: cssHeight / 2 + Math.sin(angle) * radius * cssHeight * 0.4}];
-    }));
-    for (const edge of edges) {
-      const from = positions.get(edge.from);
-      const to = positions.get(edge.to);
-      draw.strokeStyle = `rgba(230, 200, 120, ${0.25 + edge.closeness * 0.6})`;
-      draw.lineWidth = 1 + edge.closeness * 1.5;
-      draw.beginPath();
-      draw.moveTo(from.x, from.y);
-      draw.lineTo(to.x, to.y);
-      draw.stroke();
-    }
-    for (const star of stars) {
-      const {x, y} = positions.get(star.id);
-      // 明るさ＝誰かの応援（信号）×自分の一歩（等級）。6等星が1、1等星で約2倍の大きさになる
-      const glow = Constellation.brightness(Constellation.signalsWhileWaiting(star, signalTimes));
-      const grown = 1 + (WishState.GROWTH.faintest - (WishState.magnitude(star) ?? WishState.GROWTH.faintest)) * 0.22;
-      draw.save();
-      draw.shadowColor = '#ffe4a6';
-      draw.shadowBlur = 12 * glow * grown;
-      draw.fillStyle = star.status === 'doing' ? '#fff1ce' : '#cfd8d6';
-      draw.beginPath();
-      draw.arc(x, y, 3 * glow * grown, 0, Math.PI * 2);
-      draw.fill();
-      if (Number.isFinite(star.fulfilledAt)) {
-        // 叶った星には、光の輪を添える
-        draw.shadowBlur = 0;
-        draw.strokeStyle = 'rgba(255, 228, 166, 0.7)';
-        draw.lineWidth = 1;
-        draw.beginPath();
-        draw.arc(x, y, 3 * glow * grown + 5, 0, Math.PI * 2);
-        draw.stroke();
-      }
-      draw.restore();
     }
   }
 

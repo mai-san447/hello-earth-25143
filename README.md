@@ -57,7 +57,6 @@ GS 卒業制作（**2026-10-07 提出**）の入口。ここから全部たど�
 - 振る／タップで、帰還の候補から1つだけ帰ってくる。判断せずに閉じても、次に開いたとき続きから選べる
 - 帰還カードに、預けた日・待っていた日数・今日のイトカワまでの実際の距離（NASA/JPL Horizons）
 - 帰還が始まる日を決めて預ける（その日までは振っても帰ってこない）
-- 受け取った願いを、言葉の近さでつないだ星座（最小全域木・Prim 法）
 - 応援の信号：応援リンクから誰かが振ると、軌道で待つ星が明るくなる（名前も言葉も届かない）。本番で動いている（2026-10-05〜、Issue #10）
 - 一度開けば、ネットがない場所でも開ける（Service Worker）。ホーム画面に追加できる
 - 願いが育つ：受け取った願いは6等星から始まり、小さな一歩をふみ出すたび（1日1回）明るくなって1等星へ。「叶った」で叶った星になる。暗くはならない（2026-10-05 本番公開）
@@ -90,7 +89,7 @@ npx wrangler d1 execute morune-25143 --remote --command "INSERT INTO orbits (id,
 | 願いの状態遷移 | `public/wish-state.js`（設計は `docs/状態設計.md`） |
 | オフライン | `public/sw.js`、`public/offline-routes.js`、`public/manifest.webmanifest` |
 | イトカワの距離 | `public/itokawa.js`、`public/itokawa-distance.json` |
-| 星座・信号の数え方 | `public/constellation.js` |
+| 応援の信号の数え方 | `public/constellation.js`（星座は 2026-10-07 にやめた。ファイル名はそのまま） |
 | 応援の信号 | `app/api/signals/`（Cloudflare D1 の `signals` 表、`drizzle/0001_signals.sql`）、応援ページ `app/signal/`・`public/signal.js` |
 | みんなの星 | `app/api/stars/`（数とルールは `rules.mjs`）、`public/public-stars.js`、D1 の `orbits`・`public_stars`・`star_reports` 表（`drizzle/0002_public_stars.sql`） |
 | ログイン同期（本番では停止） | `app/api/wishes/route.ts`、Supabase（`docs/SUPABASE-SETUP.md`） |
