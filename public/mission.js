@@ -1928,40 +1928,39 @@
     }
   }
 
-  // シェアは、紙と同じ帰還票の画像（切り取り線より上だけ）を付ける。画像を付けられない端末では、文とリンクを X へ
-  async function shareReceipt() {
+  // シェアは X だけにする（2026-10-07、本人の判断）。OS の共有シートは PC では X が出ず、
+  // 画像を描いてから（await のあと）開くと、ブラウザが「押した直後」と見なさず投稿画面が開かなかった。
+  // そのため投稿画面は押した瞬間に開き、画像（切り取り線より上だけ）は端末に保存して、投稿に添えてもらう
+  function shareReceipt() {
     const status = $('#receipt-status');
     const button = $('#receipt-share');
+    const wish = receiptWish();
+    if (!wish) return;
+    const includeText = $('#receipt-include-text').checked;
+    const message = [includeText ? `「${wish.text}」` : '', '25143 から、願い星が帰ってきました。', '#MORUNE25143'].filter(Boolean).join('
+');
+    const url = `${location.origin}/`;
+    window.open(`https://x.com/intent/post?text=${encodeURIComponent(message)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer');
     button.disabled = true;
-    status.textContent = '';
-    try {
-      const wish = await commitReceiptFirstStep();
-      if (!wish) return;
+    status.textContent = 'X の投稿画面を開きました。画像を保存しています…';
+    (async () => {
+      const saved = await commitReceiptFirstStep();
       await document.fonts?.ready;
-      const content = receiptContentFor(wish);
-      const includeText = $('#receipt-include-text').checked;
-      const message = [includeText ? `「${wish.text}」` : '', '25143 から、願い星が帰ってきました。', '#MORUNE25143'].filter(Boolean).join('\n');
-      const url = `${location.origin}/`;
+      const content = receiptContentFor(saved ?? wish);
       const artImage = content.art ? await loadImage(content.art).catch(() => null) : null;
       const blob = await canvasBlob(drawReceipt(content, {withStub: false, artImage}));
-      const file = new File([blob], content.fileName.replace('receipt', 'share'), {type: 'image/png'});
-      if (typeof navigator.canShare === 'function' && navigator.canShare({files: [file]})) {
-        await navigator.share({files: [file], text: `${message}\n${url}`});
-        status.textContent = '共有シートを開きました。X などを選んでください';
-        return;
-      }
-      // noopener を付けると、開けても null が返るので、開けたかどうかでは文を変えない
-      window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer,width=640,height=520');
-      status.textContent = 'X の投稿画面を開きます。この端末では画像を付けられないので、「紙に印刷する・保存する」で保存して、投稿に添えてください';
-    } catch (error) {
-      if (error?.name !== 'AbortError') {
-        console.error('share receipt', error);
-        status.textContent = '共有できませんでした。もう一度お試しください';
-      }
-    } finally {
-      button.disabled = false;
-    }
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = content.fileName.replace('receipt', 'share');
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+      status.textContent = '画像を保存しました。X の投稿に添えてください';
+    })().catch(error => {
+      console.error('share receipt', error?.name);
+      status.textContent = '画像を保存できませんでした。「紙に印刷する・保存する」から保存してください';
+    }).finally(() => { button.disabled = false; });
   }
+
 
   // 判断せずに閉じたときは、願いを判断待ちのまま手元に残す（以前はここが行き止まりだった）。
   // × ボタンからはクリックイベントが渡るので、decided は明示したときだけ true になる。

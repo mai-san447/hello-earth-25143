@@ -230,7 +230,7 @@ export function MissionExperience({
             <button className="stars-secondary receipt-art" id="receipt-art" type="button">AIで願いの絵をつくる</button>
             <p className="stars-note receipt-art-note">押すと、願いの言葉を AI（Cloudflare）に送って絵を1枚つくります。言葉と絵はサーバーに残しません。1日5回まで。</p>
             <button className="stars-primary receipt-primary" id="receipt-save" type="button">紙に印刷する・保存する</button>
-            <button className="stars-secondary" id="receipt-share" type="button">シェアする（X など）</button>
+            <button className="stars-secondary" id="receipt-share" type="button">X でシェアする</button>
             <button className="stars-secondary" id="receipt-close" type="button">あとで</button>
             <p className="stars-status" id="receipt-status" role="status" aria-live="polite" />
             <p className="stars-note">一歩の記録はアプリで（「地球の回収記録」の「一歩ふみ出した」）。紙は目に入る場所に置くメモ、シェアは切り取り線より上だけです。</p>
