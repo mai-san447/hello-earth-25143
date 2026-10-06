@@ -51,6 +51,8 @@
   const STARS_ENABLED_KEY = 'morune-25143-stars-enabled';
   const PROMISE_KEY = 'morune-25143-stars-promise';
   const NUMBER_KEY = 'morune-25143-orbit-number';
+  // 願いの番号（25143-0007-03 の「03」）を、これまでいくつまで出したか。消した番号を使い回さないため
+  const WISH_SEQ_KEY = 'morune-25143-wish-seq';
   const REPORTED_KEY = 'morune-25143-reported-stars';
   const STAR_SIGNALS_KEY = 'morune-25143-star-signals';
   const PUBLISH_QUEUE_KEY = 'morune-25143-publish-queue';
@@ -1353,6 +1355,7 @@
     $('#returned-date').textContent = `預けた日 ${new Intl.DateTimeFormat('ja-JP', {year: 'numeric', month: 'long', day: 'numeric'}).format(createdAt)}`;
     $('#returned-date').dateTime = createdAt.toISOString();
     $('#returned-wait').textContent = WishState.waitedMessage(WishState.daysWaited(returningWish, Date.now()));
+    $('#returned-number').textContent = currentWishNumber(returningWish) ?? 'WISH STAR';
     $('#returned-distance').textContent = Itokawa.distanceMessage(Itokawa.distanceKmOn(distanceTable, Date.now()));
     $('#returned-signals').textContent = Constellation.signalMessage(Constellation.signalsWhileWaiting(returningWish, signalTimes));
     $('#share-comment').value = '';
@@ -1492,7 +1495,7 @@
         now,
         includeText: $('#certificate-include-text').checked,
         distanceLine: Itokawa.distanceMessage(Itokawa.distanceKmOn(distanceTable, now)),
-        number: readStorage(NUMBER_KEY),
+        number: currentWishNumber(returningWish),
       });
       const blob = await new Promise((resolve, reject) => {
         drawCertificate(content).toBlob(result => (result ? resolve(result) : reject(new Error('画像を作れませんでした'))), 'image/png');
@@ -1619,13 +1622,17 @@
     unlockAudioFromGesture();
     launchButton.disabled = true;
     depositStatus.textContent = '星を送っています…';
-    const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time});
+    const seq = WishState.nextWishSeq(wishes, Number(readStorage(WISH_SEQ_KEY)) || 0);
+    const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time, seq});
     const firstWish = wishes.length === 0 && !trialUsed();
     // #22 「星空に流す」は願いごとに選ぶ（初期値は流さない）。約束に同意したときだけ選べる
     const publish = starsEnabled && publishCheckbox.checked && promiseAgreed();
     try {
       await store('readwrite', object => object.put(wish));
       wishes = [...wishes, wish];
+      writeStorage(WISH_SEQ_KEY, String(seq));
+      // 最初に預けたとき、人の番号を受け取る（ネットがなければ、つながったときに）
+      ensureNumber();
       refreshInterface();
       wishInput.value = '';
       returnFromInput.value = '';
@@ -2073,6 +2080,31 @@
     if (typeof number === 'string' && /^25143-\d{4,}$/.test(number)) writeStorage(NUMBER_KEY, number);
   }
 
+  // 願いの番号（25143-人-願い）。人の番号がまだなければ null
+  function currentWishNumber(wish) {
+    return WishState.wishNumber(readStorage(NUMBER_KEY), WishState.wishSeqOf(wish, wishes));
+  }
+
+  // 人の番号を受け取る。願いを1つでも預けていて、まだ番号がないときだけ。失敗しても預けることは止めない
+  let numbering = false;
+  async function ensureNumber() {
+    if (numbering || readStorage(NUMBER_KEY) || !wishes.length || !navigator.onLine) return;
+    numbering = true;
+    try {
+      const response = await fetch('/api/orbits', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({orbitId: orbitId()})});
+      if (!response.ok) return;
+      const data = await response.json();
+      if (data.enabled && data.number) {
+        saveNumber(data.number);
+        refreshStarsInterface();
+      }
+    } catch {
+      // ネットが切れたなど。次に開いたときや、つながったときにもう一度受け取る
+    } finally {
+      numbering = false;
+    }
+  }
+
   function visibleOtherStars() {
     const now = Date.now();
     return otherStars.filter(star => star.expiresAt > now);
@@ -2430,6 +2462,7 @@
     // 休憩室の Wi-Fi につながったら、届いた信号と他の人の星を取りに行き、控えていた言葉を流す
     loadSignals();
     loadOtherStars();
+    ensureNumber();
   });
 
   initializeThreeBackground().catch(() => {
@@ -2438,6 +2471,7 @@
   loadItokawaDistance();
   recordOpenDay();
   await init();
+  ensureNumber();
   showConnection();
   registerOfflineSupport();
   refreshStarsInterface();

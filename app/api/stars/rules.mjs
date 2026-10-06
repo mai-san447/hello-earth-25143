@@ -158,8 +158,9 @@ export function parseStarSignal(body) {
 }
 
 /** @param {number | null} number @returns {string | null} */
+// 番号は 25143-人-願い の「人」の部分。0 は作者（25143-0000）で、本人が SQL で登録する。参加した人は 1 から順に
 export function formatNumber(number) {
-  if (!Number.isInteger(number) || number < 1) return null;
+  if (!Number.isInteger(number) || number < 0) return null;
   return `${NUMBER_PREFIX}-${String(number).padStart(4, '0')}`;
 }
 

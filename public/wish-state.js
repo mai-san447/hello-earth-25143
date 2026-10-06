@@ -123,8 +123,30 @@ export function nextReturnFrom(wishes, now = Date.now()) {
   return upcoming.length ? Math.min(...upcoming) : null;
 }
 
-export function createWish({id, text, now, returnFrom = null}) {
+// 願いの番号（25143-0007-03 の「03」）。端末の中で 1 から数え、サーバーには送らない。
+// 消した願いの番号は使い回さない（counter に、これまでに出した最大の番号を覚えておく）
+export function nextWishSeq(wishes, counter = 0) {
+  const used = wishes.reduce((max, wish) => (Number.isInteger(wish.seq) && wish.seq > max ? wish.seq : max), 0);
+  return Math.max(used, Number.isInteger(counter) ? counter : 0) + 1;
+}
+
+// 番号を持たない前からの願いは、預けた順に数える（表示だけ。保存は変えない）
+export function wishSeqOf(wish, wishes) {
+  if (Number.isInteger(wish.seq)) return wish.seq;
+  const legacy = wishes.filter(item => !Number.isInteger(item.seq))
+    .sort((a, b) => a.createdAt - b.createdAt || String(a.id).localeCompare(String(b.id)));
+  return legacy.findIndex(item => item.id === wish.id) + 1;
+}
+
+// 25143-0007 と 3 から 25143-0007-03。人の番号がまだなければ null
+export function wishNumber(personNumber, seq) {
+  if (typeof personNumber !== 'string' || !/^25143-\d{4,}$/.test(personNumber) || !Number.isInteger(seq) || seq < 1) return null;
+  return `${personNumber}-${String(seq).padStart(2, '0')}`;
+}
+
+export function createWish({id, text, now, returnFrom = null, seq = null}) {
   const wish = {id, text, status: STATUS.WAITING, createdAt: now, updatedAt: now};
+  if (Number.isInteger(seq) && seq > 0) wish.seq = seq;
   // 今日より後の日付のときだけ持たせる。空欄や過去の日付は「すぐ帰還の候補」
   if (Number.isFinite(returnFrom) && returnFrom > now) wish.returnFrom = returnFrom;
   return wish;
