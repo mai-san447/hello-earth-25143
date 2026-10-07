@@ -31,7 +31,7 @@
   }
   let distanceTable = null;
 
-  // 軌道ID はこの端末で1度だけ作るランダムなUUID（番号と、AI の絵の回数の上限に使う）。
+  // 軌道ID はこの端末で1度だけ作るランダムなUUID（人の番号の発行に使う）。
   // スマホを振って他の人の星を明るくする「応援の信号」は 2026-10-07 に外した（応援は X の投稿へのいいねで受け取る）
   const ORBIT_KEY = 'morune-25143-orbit-id';
   function readStorage(key) {
@@ -488,7 +488,7 @@
     const receipt = document.createElement('button');
     receipt.type = 'button';
     receipt.className = 'archive-growth-receipt';
-    receipt.textContent = '帰還票（紙・シェア）';
+    receipt.textContent = '帰還票';
     receipt.addEventListener('click', () => {
       saveFirstStepDraft(wish.id);
       openReceiptSheet(currentWish(wish.id) ?? wish);
@@ -1410,7 +1410,7 @@
     $('#returned-date').textContent = `預けた日 ${new Intl.DateTimeFormat('ja-JP', {year: 'numeric', month: 'long', day: 'numeric'}).format(createdAt)}`;
     $('#returned-date').dateTime = createdAt.toISOString();
     $('#returned-wait').textContent = WishState.waitedMessage(WishState.daysWaited(returningWish, Date.now()));
-    $('#returned-number').textContent = currentWishNumber(returningWish) ?? 'WISH STAR';
+    $('#returned-number').textContent = currentWishNumber(returningWish) ?? '';
     returnCard.hidden = false;
     setTimeout(() => returnCard.classList.add('card-open'), 20);
     $('#mission-status').textContent = '';
@@ -1462,7 +1462,7 @@
     }
   }
 
-  // #26 帰還証明書。端末の中で画像を描いて保存する（願いの言葉はサーバーへ送らない）
+  // #26 帰還票。端末の中で画像を描いて保存する（願いの言葉はサーバーへ送らない）
   // スマホでは共有シートの「画像を保存」で写真に残せる。使えない端末ではダウンロードにする。返すのは画面に出す言葉
   async function saveImage(blob, fileName, title, savedMessage) {
     const file = new File([blob], fileName, {type: 'image/png'});
@@ -2026,6 +2026,22 @@
   $('#receipt-save').addEventListener('click', saveReceipt);
   $('#receipt-share').addEventListener('click', shareReceipt);
   $('#receipt-close').addEventListener('click', closeReceiptSheet);
+  $('#receipt-x').addEventListener('click', closeReceiptSheet);
+
+  // 窓の中だけで Tab を回す（窓の外の見えない操作へフォーカスが抜けないように）
+  function trapFocus(event, dialog) {
+    const focusable = [...dialog.querySelectorAll('button:not([disabled]), textarea, input:not([disabled])')].filter(element => element.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
   $('#receipt-first-step').addEventListener('input', event => { if (!event.isComposing) renderReceiptPreview(); });
   $('#receipt-first-step').addEventListener('compositionend', renderReceiptPreview);
   $('#receipt-include-text').addEventListener('change', renderReceiptPreview);
@@ -2137,6 +2153,7 @@
     // 帰還票のシートが開いているときは、その中だけで操作する（スペースで帰還が始まらないように）
     if (!receiptSheet.hidden) {
       if (event.key === 'Escape') closeReceiptSheet();
+      else if (event.key === 'Tab') trapFocus(event, receiptSheet);
       return;
     }
     // みんなの星の窓が開いているときは、その中だけで操作する（スペースで帰還が始まらないように）
@@ -2147,16 +2164,7 @@
         else if (starsDialog === starCard) closeStarCard();
         else closeFulfilledSheet();
       } else if (event.key === 'Tab') {
-        const focusable = [...starsDialog.querySelectorAll('button:not([disabled]), textarea')].filter(element => element.offsetParent !== null);
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (event.shiftKey && document.activeElement === first) {
-          event.preventDefault();
-          last.focus();
-        } else if (!event.shiftKey && document.activeElement === last) {
-          event.preventDefault();
-          first.focus();
-        }
+        trapFocus(event, starsDialog);
       }
       return;
     }
