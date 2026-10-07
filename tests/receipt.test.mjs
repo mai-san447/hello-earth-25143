@@ -29,15 +29,15 @@ test('願いの言葉は、選んだときだけ入れる', () => {
   assert.equal(returnReceiptContent({wish, now, days: 3, includeText: true}).wishText, '宇宙に行きたい');
 });
 
-test('信号・距離・番号を入れる。はやぶさ・イトカワの名前は入れない', () => {
-  const content = returnReceiptContent({wish, now, days: 46, signals: 12, distanceText: '約2.6億km', number: '25143-0000-03', includeText: true});
-  assert.deepEqual(content.meta, ['2026.08.22 → 2026.10.07', '信号 12回', '25143まで 約2.6億km']);
+test('距離・番号を入れる。はやぶさ・イトカワの名前は入れない', () => {
+  const content = returnReceiptContent({wish, now, days: 46, distanceText: '約2.6億km', number: '25143-0000-03', includeText: true});
+  assert.deepEqual(content.meta, ['2026.08.22 → 2026.10.07', '25143まで 約2.6億km']);
   assert.equal(content.number, '25143-0000-03');
   assert.equal(content.source, '距離：NASA/JPL Horizons');
   assert.doesNotMatch(JSON.stringify(content), /はやぶさ|HAYABUSA|イトカワ|ITOKAWA|JAXA/);
 });
 
-test('信号も距離もないときは書かない', () => {
+test('距離がないときは書かない', () => {
   const content = returnReceiptContent({wish: {...wish, createdAt: now - 3600000}, now, days: 0});
   assert.deepEqual(content.meta, ['2026.10.07']);
   assert.equal(content.source, '');

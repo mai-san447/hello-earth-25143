@@ -36,14 +36,13 @@ function formatDate(time) {
 }
 
 // 願いの言葉を入れるかは本人が選ぶ（「願いの言葉も入れる」。紙の主役なので初期値は入れる。2026-10-07 変更）
-export function returnReceiptContent({wish, now, signals = 0, distanceText = '', number = null, includeText = false, qrUrl = ''}) {
+export function returnReceiptContent({wish, now, distanceText = '', number = null, includeText = false, qrUrl = ''}) {
   const firstStep = typeof wish.firstStep === 'string' ? wish.firstStep.trim() : '';
   const art = typeof wish.art === 'string' ? wish.art : '';
   const variant = receiptVariant(wish.id);
   // 預けた日 → 帰ってきた日。同じ日なら1つだけ（旅の長さが、紙を見ただけで分かるように）
   const deposited = Number.isFinite(wish.createdAt) && wish.createdAt > 0 ? formatDate(wish.createdAt) : '';
   const meta = [deposited && deposited !== formatDate(now) ? `${deposited} → ${formatDate(now)}` : formatDate(now)];
-  if (signals > 0) meta.push(`信号 ${signals}回`);
   if (distanceText) meta.push(`25143まで ${distanceText}`);
   // 紙の文字は最小限にする（2026-10-07、本人の判断：文字が多くてごちゃごちゃする）。
   // 載せるのは、番号・絵・（選んだときだけ）願いの言葉・日付と距離・QR・最初の一歩だけ

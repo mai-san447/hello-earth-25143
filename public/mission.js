@@ -5,7 +5,6 @@
   let Sky;
   let WishState;
   let Itokawa;
-  let Constellation;
   let PublicStars;
   let KeyedQueue;
   let Receipt;
@@ -13,11 +12,10 @@
   let QrCode;
   try {
     let QrModule;
-    [Sky, WishState, Itokawa, Constellation, PublicStars, KeyedQueue, Receipt, QrModule] = await Promise.all([
+    [Sky, WishState, Itokawa, PublicStars, KeyedQueue, Receipt, QrModule] = await Promise.all([
       import('/sky.js'),
       import('/wish-state.js'),
       import('/itokawa.js'),
-      import('/constellation.js'),
       import('/public-stars.js'),
       import('/keyed-queue.js'),
       import('/receipt.js'),
@@ -33,24 +31,15 @@
   }
   let distanceTable = null;
 
-  // 応援の信号。軌道ID はこの端末で1度だけ作るランダムなUUID。届いた時刻は端末にも控え、病室でも明るさを出す。
+  // 軌道ID はこの端末で1度だけ作るランダムなUUID（番号と、AI の絵の回数の上限に使う）。
+  // スマホを振って他の人の星を明るくする「応援の信号」は 2026-10-07 に外した（応援は X の投稿へのいいねで受け取る）
   const ORBIT_KEY = 'morune-25143-orbit-id';
-  const SIGNAL_CACHE_KEY = 'morune-25143-signal-times';
   function readStorage(key) {
     try { return localStorage.getItem(key); } catch { return null; }
   }
   function writeStorage(key, value) {
     try { localStorage.setItem(key, value); } catch { /* 保存できなくても使い続けられる */ }
   }
-  function readSignalCache() {
-    try {
-      const times = JSON.parse(readStorage(SIGNAL_CACHE_KEY) || '[]');
-      return Array.isArray(times) ? times.filter(Number.isFinite) : [];
-    } catch {
-      return [];
-    }
-  }
-  let signalTimes = readSignalCache();
 
   // #22 みんなの星。他の人の星は、最後にネットにつながったときに受け取った分を端末に控え、病室でも見せる。
   // 自分の願いは今までどおり IndexedDB だけ。サーバーに出るのは「流す」を選んだ言葉と軌道IDだけ。
@@ -1049,8 +1038,7 @@
     stars.forEach(wish => {
       const point = wishStarPosition(wish);
       if (!point?.visible) return;
-      // 応援の信号が届いた星ほど明るく光る
-      const glow = Constellation.brightness(Constellation.signalsWhileWaiting(wish, signalTimes));
+      const glow = 1;
       const magnitude = WishState.magnitude(wish);
       const growth = magnitude == null ? 1 : .4 + (6 - magnitude) * .16;
       context.save();
@@ -1430,7 +1418,6 @@
     $('#returned-wait').textContent = WishState.waitedMessage(WishState.daysWaited(returningWish, Date.now()));
     $('#returned-number').textContent = currentWishNumber(returningWish) ?? 'WISH STAR';
     $('#returned-distance').textContent = Itokawa.distanceMessage(Itokawa.distanceKmOn(distanceTable, Date.now()));
-    $('#returned-signals').textContent = Constellation.signalMessage(Constellation.signalsWhileWaiting(returningWish, signalTimes));
     returnCard.hidden = false;
     setTimeout(() => returnCard.classList.add('card-open'), 20);
     $('#mission-status').textContent = '';
@@ -1818,7 +1805,6 @@
       now,
       // 待っていた日数は、帰ってきた日（受け取った日）まで
       days: WishState.daysWaited(wish, wish.updatedAt ?? now),
-      signals: Constellation.signalsWhileWaiting(wish, signalTimes),
       distanceText: km == null ? '' : Itokawa.formatDistanceJa(km),
       number: currentWishNumber(wish),
       includeText: $('#receipt-include-text').checked,
@@ -2352,21 +2338,6 @@
     return id;
   }
 
-  // 届いた信号の時刻を取りに行く。応援の信号が使えない環境（保存場所がない）では何も出さない。
-  async function loadSignals() {
-    if (!navigator.onLine) return;
-    try {
-      const response = await fetch(`/api/signals?orbit=${encodeURIComponent(orbitId())}`);
-      if (!response.ok) return;
-      const data = await response.json();
-      if (!data.enabled || !Array.isArray(data.times)) return;
-      signalTimes = data.times.filter(Number.isFinite);
-      writeStorage(SIGNAL_CACHE_KEY, JSON.stringify(signalTimes));
-      } catch {
-      // 読めなければ、端末に控えた分で明るさを出す
-    }
-  }
-
   // 回収記録の「あなたの記録」。数は wish-state.js の summarize で出す（テスト済み）
   function renderMyRecord() {
     const list = $('#my-record');
@@ -2743,8 +2714,7 @@
   window.addEventListener('offline', showConnection);
   window.addEventListener('online', () => {
     if ($('#mission-status').textContent.startsWith('ネットなし')) $('#mission-status').textContent = '';
-    // 休憩室の Wi-Fi につながったら、届いた信号と他の人の星を取りに行き、控えていた言葉を流す
-    loadSignals();
+    // 休憩室の Wi-Fi につながったら、他の人の星を取りに行き、控えていた言葉を流す
     loadOtherStars();
     ensureNumber();
   });
@@ -2765,7 +2735,6 @@
   showConnection();
   registerOfflineSupport();
   refreshStarsInterface();
-  loadSignals();
   loadOtherStars();
   // 開いたまま「帰還が始まる日」を迎えたり、日付が変わったりしたときに、ボタンと案内を今の状態に合わせる
   document.addEventListener('visibilitychange', () => {

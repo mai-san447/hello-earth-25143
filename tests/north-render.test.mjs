@@ -4,7 +4,6 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import * as Sky from '../public/sky.js';
 import * as WishState from '../public/wish-state.js';
-import * as Constellation from '../public/constellation.js';
 
 // 実際の描画関数をCanvasの記録先につなぎ、星・線・飛行の振る舞いを確かめる。
 const source = readFileSync(new URL('../public/mission.js', import.meta.url), 'utf8');
@@ -17,9 +16,9 @@ function functionSource(name) {
 function scene(seqs) {
   const calls = [];
   const context = Object.fromEntries(['save','restore','beginPath','moveTo','lineTo','stroke','arc','fill'].map(name => [name, (...args) => calls.push([name,...args])]));
-  const sandbox = {Sky, WishState, Constellation, context, width: 400, height: 800,
+  const sandbox = {Sky, WishState, context, width: 400, height: 800,
     wishes: seqs.map(seq => ({id: `w${seq}`, seq, status: 'waiting', createdAt: 0})),
-    signalTimes: [], launchFlight: null, returnFlight: null, landed: false, reducedMotion: true,
+    launchFlight: null, returnFlight: null, landed: false, reducedMotion: true,
     threeReady: true, northLineStarted: new Map(), northSky: new Map(Sky.NORTH_CONSTELLATIONS.map(g => [g.id,
       g.stars.map(star => Sky.projectPolarStar(star.raDeg, star.decDeg, Date.parse('2026-10-06T15:00Z'),35.68,139.76,400,800))])),
     geometry: () => ({centerX: 200, centerY: 300, orbitX: 100, orbitY: 50, earthY: 650}),
