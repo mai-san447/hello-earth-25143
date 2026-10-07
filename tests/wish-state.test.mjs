@@ -54,7 +54,7 @@ test('待っていた日数は時刻ではなく日付で数える', () => {
 
 test('待っていた日数の文言', () => {
   assert.equal(waitedMessage(0), '今日、預けた願いです。');
-  assert.equal(waitedMessage(37), '37日間、北の空であなたを待っていました。');
+  assert.equal(waitedMessage(37), '37日間、あなたを待っていました。');
 });
 
 // #7 帰還が始まる日

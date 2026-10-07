@@ -362,8 +362,8 @@
     $('#gesture-hint').textContent = landed
       ? 'カプセルが着地しています。「カプセルを開く」から、あの日の言葉を受け取ってください'
       : count ? 'シグナルを探すと、想いがひとつ地球へ帰還します'
-        : orbiting().length ? `星は北の空で待っています。${waitingForStartMessage()}`
-          : '願いを預けると、北の空に星がひとつ灯ります';
+        : orbiting().length ? `星が待っています。${waitingForStartMessage()}`
+          : '願いを預けると、星がひとつ灯ります';
     const list = $('#archive-list');
     // 「最初の一歩」を書いている途中（日本語の変換中を含む）は描き直さない。入力欄から出たときに描き直す
     const editing = list.contains(document.activeElement) && document.activeElement.matches('input[type="text"]');
@@ -1383,7 +1383,7 @@
     setTimeout(() => finishReturn(returningWish), reducedMotion ? 60 : 2700);
     landed = false;
     sampleButton.hidden = true;
-    $('#mission-status').textContent = '北の空から / 願い星を地球へ';
+    $('#mission-status').textContent = '';
     $('#gesture-hint').textContent = '星はひとつだけ。はやぶさの帰還を見届けてください';
     setTimeout(() => {
       if (returnFlight) $('#mission-status').textContent = '2007 — イオンエンジンで地球帰還の航路へ';
@@ -1403,7 +1403,6 @@
     $('#returned-date').dateTime = createdAt.toISOString();
     $('#returned-wait').textContent = WishState.waitedMessage(WishState.daysWaited(returningWish, Date.now()));
     $('#returned-number').textContent = currentWishNumber(returningWish) ?? 'WISH STAR';
-    $('#returned-distance').textContent = Itokawa.distanceMessage(Itokawa.distanceKmOn(distanceTable, Date.now()));
     returnCard.hidden = false;
     setTimeout(() => returnCard.classList.add('card-open'), 20);
     $('#mission-status').textContent = '';
@@ -1571,37 +1570,9 @@
     context.putImageData(image, 0, 0);
   }
 
-  // AI の絵を、帰還票の絵の枠に「全体が収まるように」置いて白黒にする（端末に保存する形）。
-  // 切り抜くと背の高い絵（ロケットなど）が切れるため。AI の絵は背景が白なので、余白も白で自然になる
-  function inkArtFromImage(image, width, height) {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d', {willReadFrequently: true});
-    context.fillStyle = '#fff';
-    context.fillRect(0, 0, width, height);
-    const scale = Math.min(width / image.width, height / image.height);
-    context.drawImage(image, (width - image.width * scale) / 2, (height - image.height * scale) / 2, image.width * scale, image.height * scale);
-    // AI の絵は線画なので、網点ではなく2色にくっきり分ける（網点だと細い線が薄くかすれた）
-    const pixels = context.getImageData(0, 0, width, height);
-    const data = pixels.data;
-    for (let index = 0; index < data.length; index += 4) {
-      const lum = (data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114) / 255;
-      data[index] = data[index + 1] = data[index + 2] = lum < 0.78 ? 0 : 255;
-      data[index + 3] = 255;
-    }
-    context.putImageData(pixels, 0, 0);
-    return canvas;
-  }
 
-  function loadImage(src) {
-    return new Promise((resolve, reject) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = () => reject(new Error('絵を読み込めませんでした'));
-      image.src = src;
-    });
-  }
+
+
 
   // 1行に収まるように折り返す（日本語は1文字ずつ測る）
   function wrapLines(context, text, maxWidth) {
@@ -1683,7 +1654,7 @@
     return y;
   }
 
-  function drawReceipt(content, {withStub = true, artImage = null} = {}) {
+  function drawReceipt(content, {withStub = true} = {}) {
     const width = Receipt.RECEIPT_WIDTH;
     const margin = 24;
     const inner = width - margin * 2;
@@ -1706,7 +1677,8 @@
     }
     y += 16;
     const artHeight = Math.round(inner * 0.58);
-    context.drawImage(artImage ?? drawReceiptArt(content.variant, inner, artHeight), margin, y, inner, artHeight);
+    // 絵は星のドット絵（ガチャ）だけ。AI の絵は、願いのイメージと違うことが多かったのでやめた（2026-10-07、本人の判断）
+    context.drawImage(drawReceiptArt(content.variant, inner, artHeight), margin, y, inner, artHeight);
     context.lineWidth = 3;
     context.strokeRect(margin, y, inner, artHeight);
     y += artHeight;
@@ -1805,8 +1777,7 @@
       if (!wish) return;
       await document.fonts?.ready;
       const content = receiptContentFor(wish);
-      const artImage = content.art ? await loadImage(content.art).catch(() => null) : null;
-      $('#receipt-preview').src = drawReceipt(content, {artImage}).toDataURL('image/png');
+      $('#receipt-preview').src = drawReceipt(content).toDataURL('image/png');
     }, 200);
   }
 
@@ -1814,41 +1785,6 @@
     return new Promise((resolve, reject) => {
       canvas.toBlob(result => (result ? resolve(result) : reject(new Error('画像を作れませんでした'))), 'image/png');
     });
-  }
-
-  // AI で願いの絵をつくる。押したときだけ、願いの言葉をサーバー（Cloudflare Workers AI）へ送る。言葉と絵はサーバーに残らない
-  async function makeReceiptArt() {
-    const wish = receiptWish();
-    const status = $('#receipt-status');
-    const button = $('#receipt-art');
-    if (!wish) return;
-    if (!navigator.onLine) {
-      status.textContent = '絵をつくるにはネットが必要です。つながったときに押してください';
-      return;
-    }
-    button.disabled = true;
-    status.textContent = '絵をつくっています…（10秒ほど）';
-    try {
-      const response = await fetch('/api/art', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({orbitId: orbitId(), text: wish.text})});
-      const data = await response.json().catch(() => ({}));
-      if (data.enabled === false) {
-        status.textContent = 'この環境では、絵をつくれません';
-        return;
-      }
-      if (!response.ok || !data.image) {
-        status.textContent = data.error || '絵をつくれませんでした。時間をおいて、もう一度お試しください';
-        return;
-      }
-      const image = await loadImage(`data:image/jpeg;base64,${data.image}`);
-      const ink = inkArtFromImage(image, Receipt.RECEIPT_WIDTH - 48, Math.round((Receipt.RECEIPT_WIDTH - 48) * 0.58)).toDataURL('image/png');
-      await updateGrowth(wish.id, current => WishState.setArt(current, ink), '願いの絵をつくりました。');
-      renderReceiptPreview();
-    } catch (error) {
-      console.error('receipt art', error?.name);
-      status.textContent = '絵をつくれませんでした。時間をおいて、もう一度お試しください';
-    } finally {
-      button.disabled = false;
-    }
   }
 
   async function saveReceipt() {
@@ -1861,8 +1797,7 @@
       if (!wish) return;
       await document.fonts?.ready;
       const content = receiptContentFor(wish);
-      const artImage = content.art ? await loadImage(content.art).catch(() => null) : null;
-      const blob = await canvasBlob(drawReceipt(content, {artImage}));
+      const blob = await canvasBlob(drawReceipt(content));
       status.textContent = await saveImage(blob, content.fileName, 'MORUNE 25143 帰還票', '帰還票を保存しました。感熱プリンターなどで印刷できます');
     } catch (error) {
       if (error?.name === 'AbortError') status.textContent = '';
@@ -1896,8 +1831,7 @@
       const saved = await commitReceiptFirstStep();
       await document.fonts?.ready;
       const content = receiptContentFor(saved ?? wish);
-      const artImage = content.art ? await loadImage(content.art).catch(() => null) : null;
-      const blob = await canvasBlob(drawReceipt(content, {withStub: false, artImage}));
+      const blob = await canvasBlob(drawReceipt(content, {withStub: false}));
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = content.fileName.replace('receipt', 'share');
@@ -1941,7 +1875,7 @@
     $('#return-from').max = range.max;
     depositStatus.textContent = WishState.canDeposit(wishes)
       ? ''
-      : `北の空には${WishState.LIMITS.orbit}個まで預けられます。1つ受け取るか、手放してから預けてください。`;
+      : `預けられるのは${WishState.LIMITS.orbit}個までです。1つ受け取るか、手放してから預けてください。`;
     depositSheet.hidden = false;
     setTimeout(() => depositSheet.classList.add('sheet-open'), 20);
     setTimeout(() => {
@@ -1966,7 +1900,7 @@
     const now = Date.now();
     // #17 軌道に置ける願いは30個まで。いっぱいのときは預けず、入力は残す
     if (!WishState.canDeposit(wishes)) {
-      depositStatus.textContent = `北の空には${WishState.LIMITS.orbit}個まで預けられます。1つ受け取るか、手放してから預けてください。`;
+      depositStatus.textContent = `預けられるのは${WishState.LIMITS.orbit}個までです。1つ受け取るか、手放してから預けてください。`;
       return;
     }
     const returnFromInput = $('#return-from');
@@ -1996,14 +1930,14 @@
       publishCheckbox.checked = false;
       $('#wish-length').textContent = '0';
       depositStatus.textContent = wish.returnFrom
-        ? `送信完了。${WishState.returnFromLabel(wish.returnFrom)}まで、北の空で預かります`
+        ? `送信完了。${WishState.returnFromLabel(wish.returnFrom)}まで預かります`
         : '送信完了';
-      $('#mission-status').textContent = '地球を出発 / 願いを北の空へ';
+      $('#mission-status').textContent = '';
         playLaunchTone();
         launchFlight = {wish, startedAt: performance.now()};
       closeDeposit();
       setTimeout(() => {
-        if (!returnFlight) $('#mission-status').textContent = '北の空に願いの星が灯りました';
+        if (!returnFlight) $('#mission-status').textContent = '願いの星が灯りました';
       }, 1850);
       // 自分の願いは先に端末へ預け終えている。流すのが失敗しても、預けたことは取り消さない
       if (publish) {
@@ -2080,7 +2014,6 @@
   $('#card-close').addEventListener('click', closeCard);
   $('#try-wish').addEventListener('click', () => chooseDisposition('try'));
   $('#return-to-orbit').addEventListener('click', () => chooseDisposition('later'));
-  $('#receipt-art').addEventListener('click', makeReceiptArt);
   $('#receipt-save').addEventListener('click', saveReceipt);
   $('#receipt-share').addEventListener('click', shareReceipt);
   $('#receipt-close').addEventListener('click', closeReceiptSheet);
@@ -2165,7 +2098,7 @@
   });
   $('#archive-reset').addEventListener('click', async () => {
     const count = wishes.length;
-    if (!count || !window.confirm(`北の空と回収記録の願い${count}件をすべて削除します。この操作は取り消せません。続けますか？`)) return;
+    if (!count || !window.confirm(`預けている願いと回収記録の願い${count}件をすべて削除します。この操作は取り消せません。続けますか？`)) return;
     const button = $('#archive-reset');
     button.disabled = true;
     try {
@@ -2330,7 +2263,7 @@
     if (!list) return;
     const summary = WishState.summarize(wishes, readOpenDays(), Date.now());
     const rows = [
-      ['預けた願い', `${summary.deposited}個（北の空に${summary.orbiting}個）`],
+      ['預けた願い', `${summary.deposited}個（待っている星 ${summary.orbiting}個）`],
       ['受け取った', `${summary.received}個`],
       ['アーカイブに保存', `${summary.archived}個`],
       ['星空へ戻した', `${summary.backToOrbit}回`],
