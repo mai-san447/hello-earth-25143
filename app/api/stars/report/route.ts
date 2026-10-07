@@ -1,3 +1,4 @@
+import { errorKind } from "../../error-kind.mjs";
 import { env } from "cloudflare:workers";
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
     }
     return Response.json({ ok: true });
   } catch (error) {
-    console.error("stars report", error);
+    console.error("stars report", errorKind(error));
     return Response.json({ error: "通報を送れませんでした。" }, { status: 503 });
   }
 }

@@ -520,7 +520,7 @@
     try {
       outcome = await growthQueue.run(id, async () => {
         const current = currentWish(id);
-        if (!current) return {skipped: true};
+        if (!current) return {failed: true};
         let next;
         try {
           next = change(current);
@@ -545,6 +545,7 @@
     else if (outcome.failed) status.textContent = growthDrafts.has(id)
       ? '保存できませんでした。書いた一歩は残してあります。もう一度お試しください'
       : '保存できませんでした。もう一度お試しください';
+    return {ok: Boolean(outcome.next || outcome.skipped), error: outcome.rule || (outcome.failed ? status.textContent : '')};
   }
 
   function geometry() {
@@ -1213,8 +1214,11 @@
     if (!returnFlight || returnFlight.wish.id !== wish.id) return;
     returnFlight = null;
     const returned = WishState.markReturned(wish, Date.now());
+    const wasTrial = WishState.trialAvailable(wishes, trialUsed());
     try {
       await store('readwrite', object => object.put(returned));
+      // 着地前の再読み込みや保存失敗で、試しの帰還だけが使えなくなるのを防ぐ。
+      if (wasTrial) writeStorage(TRIAL_KEY, '1');
       wishes = wishes.map(item => item.id === wish.id ? returned : item);
       returningWish = returned;
       landed = true;
@@ -1383,7 +1387,6 @@
     }
     returningWish = candidates[Math.floor(Math.random() * candidates.length)];
     if (launchFlight?.wish.id === returningWish.id) launchFlight = null;
-    if (WishState.trialAvailable(wishes, trialUsed())) writeStorage(TRIAL_KEY, '1');
     returnFlight = {
       wish: returningWish,
       startedAt: performance.now(),
@@ -1756,7 +1759,12 @@
     const value = $('#receipt-first-step').value;
     if (value.trim() !== (wish.firstStep ?? '')) {
       growthDrafts.set(wish.id, value);
-      await updateGrowth(wish.id, current => WishState.setFirstStep(current, value), next => (next.firstStep ? '最初の一歩を書きとめました。' : '最初の一歩を消しました。'), () => growthDrafts.delete(wish.id));
+      const result = await updateGrowth(wish.id, current => WishState.setFirstStep(current, value), next => (next.firstStep ? '最初の一歩を書きとめました。' : '最初の一歩を消しました。'), () => growthDrafts.delete(wish.id));
+      // 保存できなかった下書きを画像だけに載せると、アプリの記録と食い違うためここで止める。
+      if (!result.ok) {
+        $('#receipt-status').textContent = result.error;
+        return null;
+      }
       if (growthDrafts.get(wish.id) === value) growthDrafts.delete(wish.id);
     }
     return receiptWish();
@@ -1837,8 +1845,9 @@
     status.textContent = 'X の投稿画面を開きました。画像を保存しています…';
     (async () => {
       const saved = await commitReceiptFirstStep();
+      if (!saved) return;
       await document.fonts?.ready;
-      const content = receiptContentFor(saved ?? wish);
+      const content = receiptContentFor(saved);
       const blob = await canvasBlob(drawReceipt(content, {withStub: false}));
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);

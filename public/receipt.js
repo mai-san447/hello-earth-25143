@@ -41,7 +41,10 @@ export function returnReceiptContent({wish, now, distanceText = '', number = nul
   const variant = receiptVariant(wish.id);
   // 預けた日 → 帰ってきた日。同じ日なら1つだけ（旅の長さが、紙を見ただけで分かるように）
   const deposited = Number.isFinite(wish.createdAt) && wish.createdAt > 0 ? formatDate(wish.createdAt) : '';
-  const meta = [deposited && deposited !== formatDate(now) ? `${deposited} → ${formatDate(now)}` : formatDate(now)];
+  // 印刷し直した日ではなく帰還した日を使う。時刻のない古い願いは、最後に判断した日で代用する。
+  const returnedAt = Number.isFinite(wish.returnedAt) ? wish.returnedAt : Number.isFinite(wish.updatedAt) ? wish.updatedAt : now;
+  const returned = formatDate(returnedAt);
+  const meta = [deposited && deposited !== returned ? `${deposited} → ${returned}` : returned];
   if (distanceText) meta.push(`25143まで ${distanceText}`);
   // 紙の文字は最小限にする（2026-10-07、本人の判断：文字が多くてごちゃごちゃする）。
   // 載せるのは、番号・絵・（選んだときだけ）願いの言葉・日付と距離・QR・最初の一歩だけ
