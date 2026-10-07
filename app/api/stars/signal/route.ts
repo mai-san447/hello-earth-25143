@@ -1,3 +1,4 @@
+import { errorKind } from "../../error-kind.mjs";
 import { env } from "cloudflare:workers";
 import { eq } from "drizzle-orm";
 import { getDb } from "../../../../db";
@@ -20,7 +21,7 @@ export async function POST(request: Request) {
     if (!verdict.ok) return Response.json({ error: verdict.error }, { status: verdict.status });
     return Response.json({ ok: true });
   } catch (error) {
-    console.error("stars signal", error);
+    console.error("stars signal", errorKind(error));
     return Response.json({ error: "信号を送れませんでした。" }, { status: 503 });
   }
 }

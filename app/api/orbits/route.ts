@@ -1,3 +1,4 @@
+import { errorKind } from "../error-kind.mjs";
 import { env } from "cloudflare:workers";
 import { count, eq, gt, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
     return Response.json({ enabled: true, number });
   } catch (error) {
     // 表がまだない環境もここに来る。番号は後で取り直せるので、預けることは止めない（画面側）
-    console.error("orbits POST", error);
+    console.error("orbits POST", errorKind(error));
     return Response.json({ error: "番号を発行できませんでした。" }, { status: 503 });
   }
 }
