@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {GROWTH, STATUS, ART_MAX_LENGTH, setArt, canStep, growthLabel, growthMessage, magnitude, markFulfilled, recordStep, setFirstStep} from '../public/wish-state.js';
+import {GROWTH, STATUS, canStep, growthLabel, growthMessage, magnitude, markFulfilled, recordStep, setFirstStep} from '../public/wish-state.js';
 
 const day = (date, hour = 10) => new Date(2026, 9, date, hour).getTime();
 const received = (extra = {}) => ({id: 'a', text: '海の近くに住む', status: STATUS.DOING, createdAt: day(1), updatedAt: day(3), ...extra});
@@ -83,9 +83,3 @@ test('最初の一歩の文字数は、絵文字も1字として数える', () =
   assert.throws(() => setFirstStep(received(), emoji + '🌊'));
 });
 
-test('願いの絵は、白黒の PNG だけを保存する', () => {
-  const png = 'data:image/png;base64,iVBORw0KGgo=';
-  assert.equal(setArt(received(), png).art, png);
-  assert.throws(() => setArt(received(), 'data:image/jpeg;base64,abc'));
-  assert.throws(() => setArt(received(), 'data:image/png;base64,' + 'a'.repeat(ART_MAX_LENGTH)));
-});

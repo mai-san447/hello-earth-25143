@@ -2,7 +2,7 @@
 // node --test で確かめられるようにする（設計図：docs/状態設計.md）。
 
 export const STATUS = Object.freeze({
-  WAITING: 'waiting',   // 北の空で待つ。帰還の候補になる
+  WAITING: 'waiting',   // 星空で待つ。帰還の候補になる
   RETURNED: 'returned', // 地球に着地し、判断を待っている
   DOING: 'doing',       // やってみる
   DONE: 'done',         // 終えた
@@ -100,7 +100,7 @@ export function orbitingWishes(wishes) {
   return wishes.filter(wish => wish.status === STATUS.WAITING);
 }
 
-// 北の空に灯す願い。判断待ち・アーカイブは描かない。飛行中の除外は描画側で行う。
+// 星空に灯す願い。判断待ち・アーカイブは描かない。飛行中の除外は描画側で行う。
 export function skyWishes(wishes) {
   return wishes.filter(wish => wish.status === STATUS.WAITING || wish.status === STATUS.DOING);
 }
@@ -244,7 +244,7 @@ export function canStep(wish, now) {
   return !steps.length || DAY_KEY(steps[steps.length - 1]) !== DAY_KEY(now);
 }
 
-// updatedAt は変えない（応援の信号を「判断した時点まで」で数えるのに使っているため）
+// updatedAt は変えない（判断した時点の記録として残すため。応援の信号は 2026-10-07 に廃止）
 export function recordStep(wish, now) {
   if (wish.status !== STATUS.DOING) throw new Error(`受け取った願いだけが育ちます: ${wish.status}`);
   if (!canStep(wish, now)) throw new Error('今日の一歩は、もう記録しています');
@@ -262,14 +262,6 @@ export function setFirstStep(wish, text) {
   if (value) next.firstStep = value;
   else delete next.firstStep;
   return next;
-}
-
-// 願いの絵（AI でつくって白黒にした PNG）。端末の中だけに保存し、次からはネットなしでも同じ絵で印刷する
-export const ART_MAX_LENGTH = 600000;
-export function setArt(wish, dataUrl) {
-  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/png;base64,')) throw new Error('絵の形が正しくありません');
-  if (dataUrl.length > ART_MAX_LENGTH) throw new Error('絵が大きすぎます');
-  return {...wish, art: dataUrl};
 }
 
 // 叶った。状態（status）は doing のまま、叶った日だけを持たせる（状態遷移を増やさない）
