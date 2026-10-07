@@ -1007,48 +1007,34 @@
     context.fillText('25143 ITOKAWA', centerX, centerY + asteroid + 23);
   }
 
-  const northLineStarted = new Map();
   function drawWishStars(time) {
     const {centerX, centerY, orbitX, orbitY} = geometry();
     if (!threeReady) drawHayabusa(centerX - orbitX * .48, centerY - orbitY * .82, -.22, 1);
     const stars = WishState.skyWishes(wishes).filter(wish => wish.id !== returnFlight?.wish.id && wish.id !== launchFlight?.wish.id);
-    context.save();
-    context.strokeStyle = 'rgba(255, 226, 166, .22)';
-    context.lineWidth = .6;
-    const completed = Sky.completedNorthConstellations(stars.map(wish => WishState.wishSeqOf(wish, wishes)));
-    for (const id of northLineStarted.keys()) {
-      if (!completed.some(group => group.id === id)) northLineStarted.delete(id);
-    }
-    for (const group of completed) {
-      if (!northLineStarted.has(group.id)) northLineStarted.set(group.id, time);
-      context.globalAlpha = reducedMotion ? 1 : Math.min(1, (time - northLineStarted.get(group.id)) / 900);
-      const points = group.stars.map((_, index) => projectNorthStar(group, index));
-      for (const path of group.paths) {
-        for (let i = 1; i < path.length; i++) {
-          const a = points[path[i - 1]], b = points[path[i]];
-          if (!a?.visible || !b?.visible) continue;
-          context.beginPath();
-          context.moveTo(a.x, a.y);
-          context.lineTo(b.x, b.y);
-          context.stroke();
-        }
-      }
-    }
-    context.restore();
+    // 星座の線は引かない（2026-10-07、本人の判断：文字なしの線は意味が伝わらなかった）
     stars.forEach(wish => {
       const point = wishStarPosition(wish);
       if (!point?.visible) return;
-      const glow = 1;
+      // 自分の願いの星は、背景の本物の星とひと目で分かるよう、金色で大きめに描き、ゆっくり脈打つ光の輪を付ける
+      // （小さな点だけでは、どれが自分の星か分からなかったため。2026-10-07）
       const magnitude = WishState.magnitude(wish);
-      const growth = magnitude == null ? 1 : .4 + (6 - magnitude) * .16;
+      const growth = magnitude == null ? 1 : .7 + (6 - magnitude) * .1;
+      const pulse = reducedMotion ? 0 : (Math.sin(time * .002 + WishState.wishSeqOf(wish, wishes)) + 1) / 2;
       context.save();
       context.shadowColor = '#ffe4a6';
-      context.shadowBlur = 13 * glow * growth;
-      context.globalAlpha = growth * (point.altitude < 0 ? .65 : 1);
-      context.fillStyle = '#ffdf91';
+      context.shadowBlur = 16 * growth;
+      context.globalAlpha = point.altitude < 0 ? .7 : 1;
+      context.fillStyle = '#ffe3a0';
       context.beginPath();
-      context.arc(point.x, point.y, 2.2 * glow * growth, 0, Math.PI * 2);
+      context.arc(point.x, point.y, 3.6 * growth, 0, Math.PI * 2);
       context.fill();
+      context.shadowBlur = 0;
+      context.strokeStyle = 'rgba(255, 223, 145, .55)';
+      context.globalAlpha *= .45 + pulse * .4;
+      context.lineWidth = 1.2;
+      context.beginPath();
+      context.arc(point.x, point.y, (9 + pulse * 3) * growth, 0, Math.PI * 2);
+      context.stroke();
       context.restore();
     });
     drawOtherStars(time);

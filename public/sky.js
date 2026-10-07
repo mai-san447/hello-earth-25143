@@ -134,5 +134,6 @@ export function coordinatesLabel(latitude, longitude) {
 export function skyCaption(latitude, longitude, time) {
   const date = new Date(time);
   const clock = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-  return ['北の空', coordinatesLabel(latitude, longitude), clock].filter(Boolean).join('　');
+  // 「北の空」は書かない（星座早見盤の形で、北だけを見せているわけではないため。2026-10-07）
+  return [coordinatesLabel(latitude, longitude), clock].filter(Boolean).join('　');
 }
