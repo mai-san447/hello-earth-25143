@@ -1015,26 +1015,35 @@
     stars.forEach(wish => {
       const point = wishStarPosition(wish);
       if (!point?.visible) return;
-      // 自分の願いの星は、背景の本物の星とひと目で分かるよう、金色で大きめに描き、ゆっくり脈打つ光の輪を付ける
-      // （小さな点だけでは、どれが自分の星か分からなかったため。2026-10-07）
+      // 自分の願いの星は、背景の本物の星とひと目で分かるよう、金色のにじむ光と細い十字の光で描く。
+      // 丸い線の輪は「印」に見えて星らしくなかったのでやめた（2026-10-07）。明るさはゆっくりまたたく
       const magnitude = WishState.magnitude(wish);
       const growth = magnitude == null ? 1 : .7 + (6 - magnitude) * .1;
-      const pulse = reducedMotion ? 0 : (Math.sin(time * .002 + WishState.wishSeqOf(wish, wishes)) + 1) / 2;
+      const twinkle = reducedMotion ? 1 : .82 + Math.sin(time * .0018 + WishState.wishSeqOf(wish, wishes)) * .18;
+      const halo = 13 * growth * twinkle;
       context.save();
-      context.shadowColor = '#ffe4a6';
-      context.shadowBlur = 16 * growth;
       context.globalAlpha = point.altitude < 0 ? .7 : 1;
-      context.fillStyle = '#ffe3a0';
+      const glow = context.createRadialGradient(point.x, point.y, 0, point.x, point.y, halo);
+      glow.addColorStop(0, 'rgba(255, 236, 190, .9)');
+      glow.addColorStop(.25, 'rgba(255, 214, 140, .35)');
+      glow.addColorStop(1, 'rgba(255, 200, 120, 0)');
+      context.fillStyle = glow;
       context.beginPath();
-      context.arc(point.x, point.y, 3.6 * growth, 0, Math.PI * 2);
+      context.arc(point.x, point.y, halo, 0, Math.PI * 2);
       context.fill();
-      context.shadowBlur = 0;
-      context.strokeStyle = 'rgba(255, 223, 145, .55)';
-      context.globalAlpha *= .45 + pulse * .4;
-      context.lineWidth = 1.2;
+      const spike = 11 * growth * twinkle;
+      context.strokeStyle = 'rgba(255, 232, 180, .55)';
+      context.lineWidth = .8;
       context.beginPath();
-      context.arc(point.x, point.y, (9 + pulse * 3) * growth, 0, Math.PI * 2);
+      context.moveTo(point.x - spike, point.y);
+      context.lineTo(point.x + spike, point.y);
+      context.moveTo(point.x, point.y - spike);
+      context.lineTo(point.x, point.y + spike);
       context.stroke();
+      context.fillStyle = '#fff6dc';
+      context.beginPath();
+      context.arc(point.x, point.y, 1.9 * growth, 0, Math.PI * 2);
+      context.fill();
       context.restore();
     });
     drawOtherStars(time);
