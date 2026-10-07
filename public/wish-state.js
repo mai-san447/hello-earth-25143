@@ -28,8 +28,10 @@ export const LIMITS = Object.freeze({
   gentleLaterCount: 5,
 });
 
+// 判断を待っている願い（着地したカプセル）も「もう少し預ける」で星空へ戻りうるので、枠に数える。
+// 数えないと、30個のときに1つ帰して新しく預け、戻すと31個になっていた（2026-10-07 レビュー）
 export function canDeposit(wishes) {
-  return orbitingWishes(wishes).length < LIMITS.orbit;
+  return wishes.filter(wish => wish.status === STATUS.WAITING || wish.status === STATUS.RETURNED).length < LIMITS.orbit;
 }
 
 // 帰還が始まる日の入力を確かめる。空欄は「すぐ帰還の候補」でよい
@@ -89,7 +91,7 @@ export function summarize(wishes, openDays = [], now = Date.now()) {
 
 export function gentleMessage(wish) {
   return wish.laterCount === LIMITS.gentleLaterCount
-    ? `この願いを${LIMITS.gentleLaterCount}回、軌道へ戻しました。いつでも戻せますし、手放しても大丈夫です。`
+    ? `この願いを${LIMITS.gentleLaterCount}回、もう少し預けました。急がなくて大丈夫です。`
     : '';
 }
 

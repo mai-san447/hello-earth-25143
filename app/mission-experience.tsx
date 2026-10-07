@@ -34,12 +34,12 @@ export function MissionExperience({
           <span id="mission-status" />
         </div>
         <section className="mission-dock" id="mission-dock" data-step="deposit" aria-label="ミッション操作">
-          <div className="mission-step-panel" id="step-panel-deposit" role="tabpanel" aria-labelledby="step-deposit" data-step-panel="deposit">
+          <div className="mission-step-panel" id="step-panel-deposit" data-step-panel="deposit">
             <div className="mission-controls">
               <button className="primary-control" id="deposit-open" type="button"><span className="control-icon" aria-hidden="true">＋</span>願いを星に預ける</button>
             </div>
           </div>
-          <div className="mission-step-panel" id="step-panel-receive" role="tabpanel" aria-labelledby="step-receive" data-step-panel="receive" hidden>
+          <div className="mission-step-panel" id="step-panel-receive" data-step-panel="receive" hidden>
             <div className="mission-controls">
               <div className="mission-secondary-actions">
                 <button className="shake-control" id="shake" type="button"><span className="shake-glyph" aria-hidden="true"><i /><Smartphone size={18} strokeWidth={1.8} /></span><span>シグナルを探す</span></button>
@@ -47,7 +47,7 @@ export function MissionExperience({
               </div>
             </div>
           </div>
-          <div className="mission-step-panel mission-choose-panel" id="step-panel-choose" role="tabpanel" aria-labelledby="step-choose" data-step-panel="choose" hidden>
+          <div className="mission-step-panel mission-choose-panel" id="step-panel-choose" data-step-panel="choose" hidden>
             <p className="choose-status" id="choose-status" role="status">カプセルの帰還を待っています</p>
             <button className="sample-trigger" id="sample-trigger" type="button" hidden>カプセルを開く <span aria-hidden="true">↗</span></button>
           </div>
@@ -144,22 +144,24 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>このサービスについて</h3>
-                <p>本サービスは、想いを短いテキストとして端末に預け、はやぶさとイトカワをモチーフにした演出で見返す個人制作の試験公開版です。「SIGNAL: はやぶさ、地球を撮って。」は演出上のコピーで、実際の交信記録やJAXAの公式発表からの引用ではありません。JAXAその他の機関が運営・承認するサービスではありません。</p>
+                <p>本サービスは、想いを短いテキストとして端末に預け、はやぶさとイトカワをモチーフにした演出で見返す個人制作の試験公開版です。JAXAその他の機関が運営・承認するサービスではありません。</p>
               </section>
               <section>
                 <h3>入力内容と保存</h3>
-                <p>願いは60文字以内で入力できます。預けられる願いは30個まで、帰還が始まる日は翌日から1年後までです。現在のCloudflare版では、願いと回収記録はこのブラウザーのIndexedDBに保存され、アプリのサーバーやクラウドへ送信されません（「星空に流す」を選んだ言葉だけは例外です。下の「みんなの星」をご覧ください）。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。</p>
-                <p>願いはこの端末の中にだけ保存され、運営者やサーバーには送られません。ほかの人に見られたくない内容を書くときは、端末の画面ロックをお使いください。パスワードや、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
+                <p>願いは60文字以内で入力できます。預けられる願いは30個まで、帰還が始まる日は翌日から1年後までです。願いと回収記録はこのブラウザーのIndexedDBにだけ保存され、運営者やサーバーには送られません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。</p>
+                <p>ほかの人に見られたくない内容を書くときは、端末の画面ロックをお使いください。パスワードや、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
               </section>
               <section>
                 <h3>端末への保存（オフライン）</h3>
                 <p>ネットのない場所でも開けるよう、画面と部品（描画ライブラリーやフォントを含む）をこのブラウザーに保存します。願いの内容はこの保存には含まれません。ブラウザーのサイトデータを消すと、保存も消えます。</p>
               </section>
               <section>
-                <h3>みんなの星（匿名の公開）</h3>
-                <p>願いを預けるときに「星空に流す」を選んだ場合と、「叶ったよ」のひとことを流した場合に限り、その言葉（願いは60文字、叶ったよは40文字まで）と軌道IDをサーバーに保存し、名前を出さずにほかの利用者の星空に表示します。初期値は「流さない」です。名前・メールアドレス・IPアドレスは保存しません。公開した言葉は、願いは30日、「叶ったよ」は24時間で表示されなくなります。</p>
-                <p>URL、メールアドレス、電話番号らしい数字、病院名らしい言葉、登録した注意語が入った言葉は、すぐには表示せず、運営者が確認してから表示するか決めます。ほかの利用者から通報が3件あった言葉は非表示になり、運営者が確認します。運営者は、公開された言葉を確認・非表示・削除できます。</p>
-                <p>はじめて願いを預けた端末には「25143-0001」のような番号を付け、願いごとに「25143-0001-03」のような番号を付けます。端末の番号を付けるときだけ、軌道IDと番号を付けた時刻をサーバーに保存します（願いの内容・名前・IPアドレスは保存しません）。願いごとの番号は端末の中で数え、送信しません。これはこの作品の中だけの番号で、本物の星や小惑星の名前ではありません。国際天文学連合（IAU）やJAXAとは関係ありません。</p>
+                <h3>番号</h3>
+                <p>はじめて願いを預けた端末には「25143-0001」のような番号を付け、願いごとに「25143-0001-03」のような番号を付けます。端末の番号を付けるときだけ、この端末で作ったランダムな識別子（軌道ID）と番号を付けた時刻を運営者のデータベースに保存します（願いの内容・名前・IPアドレスは保存しません）。願いごとの番号は端末の中で数え、送信しません。これはこの作品の中だけの番号で、本物の星や小惑星の名前ではありません。国際天文学連合（IAU）やJAXAとは関係ありません。</p>
+              </section>
+              <section>
+                <h3>X でのシェア</h3>
+                <p>「X でシェアする」を押すと、X の投稿画面が開き、帰還票の画像がこの端末に保存されます。投稿する文（「願いの言葉も入れる」を選んだ場合は願いの言葉を含みます）と画像は、あなたが X に投稿したときだけ X に送られ、X の規約とポリシーに従います。運営者のサーバーには送られません。</p>
               </section>
               <section>
                 <h3>位置情報</h3>
@@ -167,10 +169,10 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>通信と外部サービス</h3>
-                <p>ページ配信にはCloudflareを利用し、フォントや描画ライブラリーの読み込みにGoogle Fonts、jsDelivrなど外部配信元を利用します。ページ表示時には、各サービスへIPアドレスやブラウザー情報など通信に通常必要な情報が送られる場合があります。これらの情報の取り扱いは各提供者のポリシーにも従います。</p>
+                <p>ページ配信にはCloudflareを利用し、フォントや描画ライブラリーの読み込みにGoogle Fonts、jsDelivrなど外部配信元を利用します。ページ表示時には、各サービスへIPアドレスやブラウザー情報など通信に通常必要な情報が送られる場合があります。配信基盤のCloudflareは、障害の調査のため通信の記録（ログ）を一定期間保持する場合があります。これらの情報の取り扱いは各提供者のポリシーにも従います。</p>
               </section>
               <section>
-                <h3>星空のデータと出典</h3><p>恒星は Yale Bright Star Catalogue（Hoffleit &amp; Warren 1991）、VizieR V/50 の6等級まで（肉眼で見える星ほぼすべて）を使用しています。VizieR catalogue access tool, CDS, Strasbourg, France（DOI: 10.26093/cds/vizier）に謝意を表します。イトカワの方向は NASA/JPL Horizons の地心赤経・赤緯（2026年10月1日〜2027年12月31日）を日ごとに補間した概算です。位置は端末内だけで計算に使います。大気差・歳差・地形や昼の明るさは再現しません。真北・高度45度の固定視線で、端末の向きとは連動しません。大きなイトカワと軌道は演出で、小さな水色の印が実際の方向です。</p></section><section><h3>利用上の注意</h3>
+                <h3>星空のデータと出典</h3><p>恒星は Yale Bright Star Catalogue（Hoffleit &amp; Warren 1991）、VizieR V/50 の6等級まで（肉眼で見える星ほぼすべて）を使用しています。VizieR catalogue access tool, CDS, Strasbourg, France（DOI: 10.26093/cds/vizier）に謝意を表します。イトカワの方向は NASA/JPL Horizons の地心赤経・赤緯（2026年10月1日〜2027年12月31日）を日ごとに補間した概算です。位置は端末内だけで計算に使います。大気差・歳差・地形や昼の明るさは再現しません。天の北極を中心にした星図で、端末の向きとは連動しません。大きなイトカワと探査機の表現は演出です。</p></section><section><h3>利用上の注意</h3>
                 <p>画面内のイトカワ・探査機表現は創作上の演出で、公式の科学資料ではありません。イトカワまでの距離は、NASA/JPL Horizons の暦（小惑星 25143 Itokawa、地球中心から見た距離、1日ごとの値）をもとにした概算で、アプリに同梱した表から表示しています。サービスは試験公開中のため、予告なく変更・停止する場合があります。データの永続性、特定目的への適合性、常時利用可能であることは保証しません。大切な記録の保管には使わないでください。</p>
               </section>
               <p className="policy-contact-note">個人制作の試験公開版です。お問い合わせは、MORUNE のサイトの<a href="https://morune.store/contact" target="_blank" rel="noopener noreferrer">問い合わせフォーム</a>からお願いします。</p>

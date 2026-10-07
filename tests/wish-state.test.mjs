@@ -109,6 +109,11 @@ test('軌道に置ける願いは30件まで。受け取った願いは数えな
   assert.equal(canDeposit([...orbit.slice(0, LIMITS.orbit - 1), wish({id: 'r', status: STATUS.DONE})]), true);
 });
 
+test('判断を待っているカプセルも枠に数える（もう少し預けたときに31個にならない）', () => {
+  const orbit = Array.from({length: LIMITS.orbit - 1}, (_, index) => wish({id: `o${index}`}));
+  assert.equal(canDeposit([...orbit, wish({id: 'p', status: STATUS.RETURNED})]), false);
+});
+
 test('帰還が始まる日は翌日から1年後まで。空欄はすぐ帰還の候補', () => {
   const now = at(2026, 10, 1, 15);
   assert.deepEqual(checkReturnFrom('', now), {ok: true, time: null});
