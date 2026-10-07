@@ -1,8 +1,8 @@
 name: Deploy Cloudflare Worker
 
+# 本番の公開は、作者の PC から手動で行っている（npm run build → npx wrangler deploy）。
+# リポジトリに Cloudflare の鍵を登録していないため、main への push では動かさず、手動で起動したときだけ動かす（Issue #9）
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
