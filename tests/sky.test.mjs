@@ -61,6 +61,6 @@ test('上の帯は、方角・緯度経度（1けたに丸める）・時刻だ�
   assert.equal(coordinatesLabel(35.6812, 139.7671), '35.7°N 139.8°E');
   assert.equal(coordinatesLabel(-33.86, -70.65), '33.9°S 70.7°W');
   const time = new Date(2026, 9, 7, 22, 4).getTime();
-  assert.equal(skyCaption(35.68, 139.76, time), '北の空　35.7°N 139.8°E　22:04');
+  assert.equal(skyCaption(35.68, 139.76, time), '35.7°N 139.8°E　22:04');
   assert.doesNotMatch(skyCaption(35.68, 139.76, time), /の、|今の空|25143/);
 });

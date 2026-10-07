@@ -19,7 +19,7 @@ function scene(seqs) {
   const sandbox = {Sky, WishState, context, width: 400, height: 800,
     wishes: seqs.map(seq => ({id: `w${seq}`, seq, status: 'waiting', createdAt: 0})),
     launchFlight: null, returnFlight: null, landed: false, reducedMotion: true,
-    threeReady: true, northLineStarted: new Map(), northSky: new Map(Sky.NORTH_CONSTELLATIONS.map(g => [g.id,
+    threeReady: true, northSky: new Map(Sky.NORTH_CONSTELLATIONS.map(g => [g.id,
       g.stars.map(star => Sky.projectPolarStar(star.raDeg, star.decDeg, Date.parse('2026-10-06T15:00Z'),35.68,139.76,400,800))])),
     geometry: () => ({centerX: 200, centerY: 300, orbitX: 100, orbitY: 50, earthY: 650}),
     drawHayabusa: () => {}, drawOtherStars: () => {},
@@ -30,19 +30,16 @@ function scene(seqs) {
   return {sandbox, calls};
 }
 
-test('6つでは線なし、7つで北斗七星の7本だけ。文字を描くAPIを必要としない', () => {
-  const incomplete = scene([1,2,3,4,5,6]);
-  incomplete.sandbox.drawWishStars(1000);
-  assert.equal(incomplete.calls.filter(c => c[0] === 'stroke').length, 0);
+test('星座の線は引かず、願いの星ごとに金色の星と光の輪を1つずつ描く。文字を描くAPIを必要としない', () => {
   const complete = scene([1,2,3,4,5,6,7]);
   complete.sandbox.drawWishStars(1000);
+  assert.equal(complete.calls.filter(c => c[0] === 'lineTo').length, 0);
+  assert.equal(complete.calls.filter(c => c[0] === 'fill').length, 7);
   assert.equal(complete.calls.filter(c => c[0] === 'stroke').length, 7);
-  assert.equal(complete.calls.filter(c => c[0] === 'arc').length, 7);
   complete.calls.length = 0;
   complete.sandbox.returnFlight = {wish: complete.sandbox.wishes[0], startedAt: 0};
   complete.sandbox.drawWishStars(1000);
-  assert.equal(complete.calls.filter(c => c[0] === 'stroke').length, 0);
-  assert.equal(complete.calls.filter(c => c[0] === 'arc').length, 6);
+  assert.equal(complete.calls.filter(c => c[0] === 'fill').length, 6);
 });
 
 test('上昇と帰還は同じ星の投影座標を使い、地球との間を飛ぶ', () => {
@@ -58,7 +55,7 @@ test('上昇と帰還は同じ星の投影座標を使い、地球との間を�
   assert.deepEqual(calls[0], ['comet',point.x,point.y,200,650,.5]);
 });
 
-test('3Dの有無によらず同じ投影位置に描き、地平線下でも星と完成した線が残る', () => {
+test('3Dの有無によらず同じ投影位置に描き、地平線下でも星が残る', () => {
   const {sandbox, calls} = scene([1]);
   sandbox.drawWishStars(1000);
   const threePoint = calls.find(c => c[0] === 'arc').slice(1,3);
@@ -69,13 +66,8 @@ test('3Dの有無によらず同じ投影位置に描き、地平線下でも星
   calls.length = 0;
   sandbox.northSky.get('big-dipper')[0].altitude = -1;
   sandbox.drawWishStars(1000);
-  assert.equal(calls.filter(c => c[0] === 'arc').length, 1);
+  assert.equal(calls.filter(c => c[0] === 'fill').length, 1);
   assert.deepEqual(calls.find(c => c[0] === 'arc').slice(1,3), threePoint);
-  const complete = scene([1,2,3,4,5,6,7]);
-  complete.sandbox.northSky.get('big-dipper').forEach(point => { point.altitude = -10; });
-  complete.sandbox.drawWishStars(1000);
-  assert.equal(complete.calls.filter(c => c[0] === 'stroke').length, 7);
-  assert.equal(complete.calls.filter(c => c[0] === 'arc').length, 7);
 });
 
 test('背景と願いは同じ投影を使い、サイズ変更と時刻更新で一緒に動く', () => {
