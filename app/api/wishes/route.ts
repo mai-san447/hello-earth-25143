@@ -1,3 +1,4 @@
+import { errorKind } from "../error-kind.mjs";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import { getSupabaseAdmin } from "../../supabase";
 
@@ -20,7 +21,7 @@ export async function GET() {
       createdAt: Number(row.created_at),
       updatedAt: Number(row.updated_at),
     })));
-  } catch (error) { console.error("wishes GET",error); return Response.json({error:"願いを読み込めません。"},{status:503}); }
+  } catch (error) { console.error("wishes GET", errorKind(error)); return Response.json({error:"願いを読み込めません。"},{status:503}); }
 }
 export async function POST(request:Request) {
   const user = await getChatGPTUser();
@@ -41,7 +42,7 @@ export async function POST(request:Request) {
     }, { onConflict: "user_id,id" });
     if (error) throw error;
     return Response.json({ok:true});
-  } catch (error) { console.error("wishes POST",error); return Response.json({error:"保存できませんでした。"},{status:503}); }
+  } catch (error) { console.error("wishes POST", errorKind(error)); return Response.json({error:"保存できませんでした。"},{status:503}); }
 }
 
 export async function DELETE(request:Request) {
@@ -61,5 +62,5 @@ export async function DELETE(request:Request) {
       : await query.in("id", selectedIds);
     if (error) throw error;
     return Response.json({ok:true,deleted:deleteAll?"all":selectedIds.length});
-  } catch (error) { console.error("wishes DELETE",error); return Response.json({error:"削除できませんでした。"},{status:503}); }
+  } catch (error) { console.error("wishes DELETE", errorKind(error)); return Response.json({error:"削除できませんでした。"},{status:503}); }
 }
