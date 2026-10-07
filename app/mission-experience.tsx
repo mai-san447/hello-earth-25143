@@ -94,7 +94,6 @@ export function MissionExperience({
           <time id="returned-date" />
           <p className="returned-wait" id="returned-wait" />
           <p className="returned-distance" id="returned-distance" />
-          <p className="returned-signals" id="returned-signals" />
           <div className="return-actions" aria-label="帰還した願いの扱い">
             <button className="return-action-primary" id="try-wish" type="button">想いを受け取る</button>
             <button id="return-to-orbit" type="button">もう少し預ける</button>
@@ -104,7 +103,7 @@ export function MissionExperience({
           <button className="sheet-close" id="archive-close" type="button" aria-label="閉じる">×</button>
           <h2 id="archive-title">地球へ帰還した願い</h2>
           <p className="archive-empty" id="archive-empty">まだ帰還した願いはありません。</p>
-          {/* 回収記録は「帰ってきた願い」が主役。一覧を先に置き、応援・番号・記録の数はその下へ（2026-10-07） */}
+          {/* 回収記録は「帰ってきた願い」が主役。一覧を先に置き、番号・記録の数はその下へ（2026-10-07） */}
           <ul id="archive-list" />
           <div className="archive-management">
             <button id="archive-next" className="archive-next" type="button">次の願いを預ける <span aria-hidden="true">↗</span></button>
@@ -150,16 +149,12 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>入力内容と保存</h3>
-                <p>願いは60文字以内で入力できます。北の空に預けられる願いは30個まで、帰還が始まる日は翌日から1年後までです。応援の信号は、同じ星へは1台の端末から1日1回まで送れます。現在のCloudflare版では、願いと回収記録はこのブラウザーのIndexedDBに保存され、アプリのサーバーやクラウドへ送信されません（「星空に流す」を選んだ言葉だけは例外です。下の「みんなの星」をご覧ください）。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。</p>
+                <p>願いは60文字以内で入力できます。北の空に預けられる願いは30個まで、帰還が始まる日は翌日から1年後までです。現在のCloudflare版では、願いと回収記録はこのブラウザーのIndexedDBに保存され、アプリのサーバーやクラウドへ送信されません（「星空に流す」を選んだ言葉だけは例外です。下の「みんなの星」をご覧ください）。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。</p>
                 <p>願いはこの端末の中にだけ保存され、「星空に流す」を選ぶか「AIで願いの絵をつくる」を押さない限り、運営者やサーバーには送られません。「AIで願いの絵をつくる」を押すと、その願いの言葉を Cloudflare（Workers AI）に送り、絵を1枚つくります。言葉と絵はサーバーに保存しません（回数の上限のため、軌道IDと時刻だけを記録します）。1日5回までです。ほかの人に見られたくない内容を書くときは、端末の画面ロックをお使いください。パスワードや、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
               </section>
               <section>
                 <h3>端末への保存（オフライン）</h3>
                 <p>ネットのない場所でも開けるよう、画面と部品（描画ライブラリーやフォントを含む）をこのブラウザーに保存します。願いの内容はこの保存には含まれません。ブラウザーのサイトデータを消すと、保存も消えます。</p>
-              </section>
-              <section>
-                <h3>応援の信号</h3>
-                <p>応援ページ（/signal）から信号が送られると、サーバーにはこの端末で作ったランダムな識別子（軌道ID）と、信号が届いた時刻だけを保存します。送った人の名前・言葉、願いの内容は保存しません。応援ページのリンクを知っている人は誰でも信号を送れます。</p>
               </section>
               <section>
                 <h3>みんなの星（匿名の公開）</h3>

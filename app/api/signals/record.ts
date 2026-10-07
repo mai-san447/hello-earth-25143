@@ -5,7 +5,7 @@ import { BURST_WINDOW_MS, DAILY_WINDOW_MS, RETENTION_MS, acceptSignal } from "./
 
 type Verdict = { ok: true } | { ok: false; status: number; error: string };
 
-// 1つの軌道に信号を1回記録する。応援リンク（/api/signals）と、みんなの星（/api/stars/signal）の両方から使う。
+// 1つの軌道に信号を1回記録する。みんなの星（/api/stars/signal）から使う（応援リンクの /api/signals は 2026-10-07 に外した）。
 // 受け付けの上限はどちらから来ても同じにする（同じ星への連打をどちらの入口でも止めるため）。
 export async function recordSignal(orbitId: string): Promise<Verdict> {
   const now = Date.now();
