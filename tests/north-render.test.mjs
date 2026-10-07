@@ -16,6 +16,7 @@ function functionSource(name) {
 function scene(seqs) {
   const calls = [];
   const context = Object.fromEntries(['save','restore','beginPath','moveTo','lineTo','stroke','arc','fill'].map(name => [name, (...args) => calls.push([name,...args])]));
+  context.createRadialGradient = () => ({addColorStop: () => {}});
   const sandbox = {Sky, WishState, context, width: 400, height: 800,
     wishes: seqs.map(seq => ({id: `w${seq}`, seq, status: 'waiting', createdAt: 0})),
     launchFlight: null, returnFlight: null, landed: false, reducedMotion: true,
@@ -30,16 +31,20 @@ function scene(seqs) {
   return {sandbox, calls};
 }
 
-test('星座の線は引かず、願いの星ごとに金色の星と光の輪を1つずつ描く。文字を描くAPIを必要としない', () => {
+test('星座の線は引かず、願いの星ごとに、にじむ光・十字の光・芯を描く。文字を描くAPIを必要としない', () => {
   const complete = scene([1,2,3,4,5,6,7]);
   complete.sandbox.drawWishStars(1000);
-  assert.equal(complete.calls.filter(c => c[0] === 'lineTo').length, 0);
-  assert.equal(complete.calls.filter(c => c[0] === 'fill').length, 7);
+  const arcs = complete.calls.filter(c => c[0] === 'arc');
+  assert.equal(arcs.length, 14);
   assert.equal(complete.calls.filter(c => c[0] === 'stroke').length, 7);
+  // 線は十字の光だけ（星の近くで終わる）。星どうしをつなぐ線はない
+  for (const [, x, y] of complete.calls.filter(c => c[0] === 'lineTo')) {
+    assert.ok(arcs.some(([, ax, ay]) => Math.hypot(ax - x, ay - y) < 20));
+  }
   complete.calls.length = 0;
   complete.sandbox.returnFlight = {wish: complete.sandbox.wishes[0], startedAt: 0};
   complete.sandbox.drawWishStars(1000);
-  assert.equal(complete.calls.filter(c => c[0] === 'fill').length, 6);
+  assert.equal(complete.calls.filter(c => c[0] === 'arc').length, 12);
 });
 
 test('上昇と帰還は同じ星の投影座標を使い、地球との間を飛ぶ', () => {
@@ -66,7 +71,7 @@ test('3Dの有無によらず同じ投影位置に描き、地平線下でも星
   calls.length = 0;
   sandbox.northSky.get('big-dipper')[0].altitude = -1;
   sandbox.drawWishStars(1000);
-  assert.equal(calls.filter(c => c[0] === 'fill').length, 1);
+  assert.equal(calls.filter(c => c[0] === 'arc').length, 2);
   assert.deepEqual(calls.find(c => c[0] === 'arc').slice(1,3), threePoint);
 });
 
