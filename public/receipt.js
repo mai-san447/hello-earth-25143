@@ -6,7 +6,7 @@
 // 80mm ロールの印字幅 72mm、203dpi で 576 ドット
 export const RECEIPT_WIDTH = 576;
 
-// 絵はガチャで決まる。キーワードの絵ができるまでは星の絵。ふつう3種類＋レア1種類（およそ10回に1回）
+// 絵は星のドット絵のガチャで決まる。ふつう3種類＋レア1種類（およそ10回に1回）
 export const RECEIPT_VARIANTS = Object.freeze([
   {id: 'dusk', name: '夕方の一番星', rare: false},
   {id: 'night', name: '満天の星', rare: false},

@@ -1,12 +1,10 @@
 import { MissionRuntime } from "./mission-runtime";
 import { Smartphone } from "lucide-react";
 
-// アカウント（ログイン同期）の入口は 2026-10-07 に外した（本番では同期を使っていない）。accountLabel は呼び出し側の互換のため受け取るだけ
 export function MissionExperience({
   syncMode,
 }: {
   syncMode: "cloud" | "local";
-  accountLabel?: React.ReactNode;
 }) {
   return (
     <>
@@ -17,14 +15,13 @@ export function MissionExperience({
       <canvas id="starfield-canvas" aria-hidden="true" />
       <main className="mission-app" id="mission-app">
         <MissionRuntime />
-        <canvas id="orbit-canvas" aria-label="数を数えずに眺める、願いの星がイトカワを周回する宇宙" />
+        <canvas id="orbit-canvas" aria-label="願いの星が灯る、今いる場所の本物の星空" />
         <header className="mission-header">
           <span className="mission-brand">MORUNE <b>25143</b></span>
-          <span className="mission-phase">25143 SAMPLE RETURN</span>
         </header>
         <div className="observer-pill" aria-label="観測位置">
           <span className="observer-dot" aria-hidden="true" />
-          <span id="observer-reading">OBSERVER: TOKYO, EARTH [ 35.68°N, 139.76°E ]</span>
+          <span id="observer-reading">35.7°N 139.8°E</span>
         </div>
         <section className="mission-title" aria-labelledby="mission-title">
           <h1 id="mission-title">願いを星に、<br /><span>想いを地球へ。</span></h1>
@@ -54,19 +51,19 @@ export function MissionExperience({
           <div className="mission-dock-meta">
             <p className="gesture-hint" id="gesture-hint">願いを預けると、星がひとつ灯ります</p>
             <button className="others-trigger" id="others-open" type="button" hidden>みんなの星 <span id="others-count">0</span></button>
-            <button className="archive-trigger" id="archive-open" type="button">地球の回収記録 <span id="archive-count">0</span></button>
+            <button className="archive-trigger" id="archive-open" type="button">回収記録 <span id="archive-count">0</span></button>
           </div>
         </section>
         <section className="sheet deposit-sheet" id="deposit-sheet" aria-label="願いを星に預ける" hidden>
           <div className="sheet-grip" aria-hidden="true" />
           <button className="sheet-close" id="deposit-close" type="button" aria-label="閉じる">×</button>
-          <p className="sheet-kicker">01 / SAMPLE TO ORBIT</p>
-          <textarea id="wish" aria-label="願い" maxLength={60} />
-          <div className="input-meta"><span>MESSAGE TO ITOKAWA</span><span><b id="wish-length">0</b> / 60</span></div>
+          <label className="wish-label" htmlFor="wish">願い（60字まで）</label>
+          <textarea id="wish" maxLength={60} placeholder="例：天文台に行く" />
+          <div className="input-meta"><span /><span><b id="wish-length">0</b> / 60</span></div>
           <div className="return-from-field">
             <label htmlFor="return-from">帰還が始まる日（任意）</label>
             <input id="return-from" type="date" aria-describedby="return-from-hint" />
-            <p id="return-from-hint">療養や休職など、しばらく手放しておきたいときに。この日までは振っても帰ってきません。空欄なら、すぐ帰還の候補になります。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないと保存が消えることがあります）。</p>
+            <p id="return-from-hint">この日までは帰ってきません。空欄なら、すぐ帰還の候補になります。</p>
           </div>
           {/* #22 みんなの星。サーバーの準備ができた環境でだけ出す（初期値は「流さない」） */}
           <div className="publish-field" id="publish-field" hidden>
@@ -88,7 +85,7 @@ export function MissionExperience({
             <span className="sample-particle-aura" aria-hidden="true">
               <span className="sample-particle-core" />
             </span>
-            <span className="sample-name" id="returned-number">WISH STAR</span>
+            <span className="sample-name" id="returned-number" />
           </div>
           <h2 id="returned-text" />
           <time id="returned-date" />
@@ -100,7 +97,7 @@ export function MissionExperience({
         </section>
         <section className="archive-sheet" id="archive-sheet" aria-labelledby="archive-title" hidden>
           <button className="sheet-close" id="archive-close" type="button" aria-label="閉じる">×</button>
-          <h2 id="archive-title">地球へ帰還した願い</h2>
+          <h2 id="archive-title">回収記録</h2>
           <p className="archive-empty" id="archive-empty">まだ帰還した願いはありません。</p>
           {/* 回収記録は「帰ってきた願い」が主役。一覧を先に置き、番号・記録の数はその下へ（2026-10-07） */}
           <ul id="archive-list" />
@@ -134,7 +131,6 @@ export function MissionExperience({
         <section className="policy-backdrop" id="policy-sheet" role="dialog" aria-modal="true" aria-labelledby="policy-title" hidden>
           <div className="policy-panel">
             <button className="policy-close" id="policy-close" type="button" aria-label="利用規約を閉じる">×</button>
-            <p className="sheet-kicker">TERMS / PRIVACY</p>
             <h2 id="policy-title">利用規約・プライバシー</h2>
             <p className="policy-updated">内容更新日：2026年10月7日</p>
             <div className="policy-content" id="policy-content" tabIndex={0}>
@@ -148,7 +144,7 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>入力内容と保存</h3>
-                <p>願いは60文字以内で入力できます。預けられる願いは30個まで、帰還が始まる日は翌日から1年後までです。願いと回収記録はこのブラウザーのIndexedDBにだけ保存され、運営者やサーバーには送られません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。</p>
+                <p>願いは60文字以内で入力できます。預けられる願いは30個まで、帰還が始まる日は翌日から1年後までです。願いと回収記録はこのブラウザーのIndexedDBにだけ保存され、運営者やサーバーには送られません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないとサイトの保存が消えることがあります）。</p>
                 <p>ほかの人に見られたくない内容を書くときは、端末の画面ロックをお使いください。パスワードや、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
               </section>
               <section>
@@ -216,6 +212,7 @@ export function MissionExperience({
         {/* #22 想いを受け取ったあとの「叶ったよ」（任意・24時間の流れ星） */}
         <section className="stars-backdrop receipt-backdrop" id="receipt-sheet" role="dialog" aria-modal="true" aria-labelledby="receipt-title" hidden>
           <div className="stars-panel receipt-panel">
+            <button className="sheet-close" id="receipt-x" type="button" aria-label="閉じる">×</button>
             <h2 id="receipt-title">帰還票をつくる</h2>
             <label className="receipt-label" htmlFor="receipt-first-step">最初の小さな一歩（書かなくても大丈夫）</label>
             <input id="receipt-first-step" type="text" placeholder="例：天文台の見学に申し込む" />
@@ -243,7 +240,6 @@ export function MissionExperience({
         <div className="itokawa-label" id="itokawa-label" aria-hidden="true" hidden>25143 ITOKAWA</div>
         <section className="location-backdrop" id="location-modal" role="dialog" aria-modal="true" aria-labelledby="location-title" aria-describedby="location-description">
           <div className="location-panel">
-            <p className="sheet-kicker">25143 / ITOKAWA</p>
             <h2 id="location-title">あなたのいる場所の、今の本物の星空を表示します</h2>
             <p id="location-description">位置は端末の中だけで使い、送信しません。許可しなくても東京の星空で使えます。昼間も星を表示します。</p>
             <button className="location-allow" id="location-allow" type="button">現在地の星空を見る</button>

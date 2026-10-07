@@ -491,3 +491,10 @@ body:has(.mission-app){background:transparent}
 /* 回収記録を開いている間は、下の操作バーを隠す（透けて重なり、読みにくかったため） */
 body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:none}
 .archive-sheet{background:rgba(12,19,32,.96)}
+/* 小さく薄かった文字を読める大きさにそろえる（2026-10-07 レビュー。本文は 12px 以上、薄くしすぎない） */
+.observer-pill{font-size:12px;color:rgba(226,235,243,.86)}
+.telemetry,.telemetry #mission-status{font-size:12px}
+.gesture-hint{font-size:12px;color:rgba(226,235,243,.82)}
+.archive-trigger{font-size:12px}
+.wish-label{display:block;margin:0 40px 6px 0;color:#e4e8df;font-size:13px;font-weight:600}
+.receipt-panel{position:relative}
