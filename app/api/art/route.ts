@@ -1,3 +1,4 @@
+import { errorKind } from "../error-kind.mjs";
 import { env } from "cloudflare:workers";
 import { and, count, eq, gt } from "drizzle-orm";
 import { getDb } from "../../../db";
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
       const line = scene?.response?.split(/\r?\n/).map(part => part.trim()).find(Boolean);
       if (line) english = line.replace(/^["'「]|["'」]$/g, "");
     } catch (error) {
-      console.error("art scene failed", (error as Error)?.name);
+      console.error("art scene failed", errorKind(error));
     }
     // 絵の AI はときどき一時的に失敗するので、1回だけやり直す
     let result: { image?: string } | null = null;
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
     return Response.json({ enabled: true, image: result.image, scene: english });
   } catch (error) {
     // 願いの言葉はログに出さない
-    console.error("art POST failed", (error as Error)?.name, (error as Error)?.message?.slice(0, 120));
+    console.error("art POST failed", errorKind(error));
     return Response.json({ error: "絵をつくれませんでした。時間をおいて、もう一度お試しください。" }, { status: 503 });
   }
 }

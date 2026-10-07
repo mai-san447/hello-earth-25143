@@ -195,7 +195,7 @@ export function pendingReturn(wishes) {
 
 export function markReturned(wish, now) {
   if (wish.status !== STATUS.WAITING) throw new Error(`軌道上にない願いは帰還できません: ${wish.status}`);
-  return {...wish, status: STATUS.RETURNED, updatedAt: now};
+  return {...wish, status: STATUS.RETURNED, updatedAt: now, returnedAt: now};
 }
 
 export function decide(wish, choice, now) {
@@ -203,6 +203,8 @@ export function decide(wish, choice, now) {
   const status = CHOICES[choice];
   if (!status) throw new Error(`不明な選択肢です: ${choice}`);
   const decided = {...wish, status, updatedAt: now};
+  // 古い願いにも帰還した時刻を残し、後日つくる帰還票の日付が動かないようにする。
+  if (status !== STATUS.WAITING && !Number.isFinite(decided.returnedAt)) decided.returnedAt = Number.isFinite(wish.updatedAt) ? wish.updatedAt : now;
   // 星空へ戻した回数を数える（#17：5回目に一度だけ、やさしい一言を出すため）
   if (choice === 'later') decided.laterCount = (wish.laterCount ?? 0) + 1;
   return decided;

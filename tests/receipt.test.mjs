@@ -1,9 +1,35 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {RECEIPT_VARIANTS, RECEIPT_WIDTH, receiptVariant, returnReceiptContent} from '../public/receipt.js';
+import {createWish, markReturned, decide, setFirstStep, recordStep, markFulfilled} from '../public/wish-state.js';
 
 const wish = {id: '6f1c2a0e-1111-4222-8333-444455556666', text: '宇宙に行きたい', createdAt: new Date(2026, 7, 22, 21).getTime()};
 const now = new Date(2026, 9, 7, 10).getTime();
+
+test('後日つくり直しても帰還日が変わらない（一歩・叶ったの記録後も同じ）', () => {
+  const later = now + 7 * 86400000;
+  const returned = markReturned(createWish({id: wish.id, text: wish.text, now: wish.createdAt}), now);
+  const received = decide(returned, 'try', later);
+  const grown = markFulfilled(recordStep(setFirstStep(received, '見学する'), later), later);
+  assert.equal(received.returnedAt, now);
+  assert.equal(grown.returnedAt, now);
+  for (const item of [returned, received, grown]) {
+    assert.deepEqual(returnReceiptContent({wish: item, now: later}).meta, ['2026.08.22 → 2026.10.07']);
+  }
+});
+
+test('古い願いの帰還日は updatedAt で代用し、時刻がなければ今日を使う', () => {
+  assert.deepEqual(returnReceiptContent({wish: {...wish, updatedAt: now}, now: now + 86400000}).meta, ['2026.08.22 → 2026.10.07']);
+  const received = decide({...wish, status: 'returned', updatedAt: now}, 'try', now + 86400000);
+  assert.equal(received.returnedAt, now);
+  assert.deepEqual(returnReceiptContent({wish: {...wish, returnedAt: NaN, updatedAt: null}, now}).meta, ['2026.08.22 → 2026.10.07']);
+});
+
+test('もう少し預けて再帰還した場合は、その帰還日時を保存する', () => {
+  const returned = markReturned(createWish({id: wish.id, text: wish.text, now: wish.createdAt}), now);
+  const again = markReturned(decide(returned, 'later', now), now + 86400000);
+  assert.deepEqual(returnReceiptContent({wish: again, now: now + 7 * 86400000}).meta, ['2026.08.22 → 2026.10.08']);
+});
 
 test('印字幅は 80mm ロールの 576 ドット', () => {
   assert.equal(RECEIPT_WIDTH, 576);

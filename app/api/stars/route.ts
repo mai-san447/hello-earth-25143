@@ -1,3 +1,4 @@
+import { errorKind } from "../error-kind.mjs";
 import { env } from "cloudflare:workers";
 import { and, count, eq, gt, gte, inArray, lt, ne, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
       number: orbitId ? await orbitNumber(orbitId) : null,
     });
   } catch (error) {
-    console.error("stars GET", error);
+    console.error("stars GET", errorKind(error));
     return Response.json({ error: "みんなの星を読み込めません。" }, { status: 503 });
   }
 }
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
     // 保留（held）になったことは本人に伝える。理由の種類は返さない（どう書けば通るかの手がかりにしないため）
     return Response.json({ ok: true, id, status: screened.status, number, expiresAt: expires });
   } catch (error) {
-    console.error("stars POST", error);
+    console.error("stars POST", errorKind(error));
     return Response.json({ error: "星空に流せませんでした。" }, { status: 503 });
   }
 }
