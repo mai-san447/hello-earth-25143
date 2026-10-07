@@ -1395,7 +1395,6 @@
     $('#mission-status').textContent = '';
     $('#gesture-hint').textContent = '星はひとつだけ。はやぶさの帰還を見届けてください';
     setTimeout(() => {
-      if (returnFlight) $('#mission-status').textContent = '2007 — イオンエンジンで地球帰還の航路へ';
     }, 1150);
     setTimeout(() => {
     }, 2050);
@@ -1884,7 +1883,7 @@
     $('#return-from').max = range.max;
     depositStatus.textContent = WishState.canDeposit(wishes)
       ? ''
-      : `預けられるのは${WishState.LIMITS.orbit}個までです。1つ受け取るか、手放してから預けてください。`;
+      : `預けられるのは${WishState.LIMITS.orbit}個までです。1つ受け取ると、また預けられます。`;
     depositSheet.hidden = false;
     setTimeout(() => depositSheet.classList.add('sheet-open'), 20);
     setTimeout(() => {
@@ -1909,7 +1908,7 @@
     const now = Date.now();
     // #17 軌道に置ける願いは30個まで。いっぱいのときは預けず、入力は残す
     if (!WishState.canDeposit(wishes)) {
-      depositStatus.textContent = `預けられるのは${WishState.LIMITS.orbit}個までです。1つ受け取るか、手放してから預けてください。`;
+      depositStatus.textContent = `預けられるのは${WishState.LIMITS.orbit}個までです。1つ受け取ると、また預けられます。`;
       return;
     }
     const returnFromInput = $('#return-from');
@@ -1921,7 +1920,7 @@
     }
     unlockAudioFromGesture();
     launchButton.disabled = true;
-    depositStatus.textContent = '星を送っています…';
+    depositStatus.textContent = '預けています…';
     const seq = WishState.nextWishSeq(wishes, Number(readStorage(WISH_SEQ_KEY)) || 0);
     const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time, seq});
     const firstWish = wishes.length === 0 && !trialUsed();
@@ -1939,8 +1938,8 @@
       publishCheckbox.checked = false;
       $('#wish-length').textContent = '0';
       depositStatus.textContent = wish.returnFrom
-        ? `送信完了。${WishState.returnFromLabel(wish.returnFrom)}まで預かります`
-        : '送信完了';
+        ? `預けました。${WishState.returnFromLabel(wish.returnFrom)}まで帰ってきません`
+        : '預けました';
       $('#mission-status').textContent = '';
         playLaunchTone();
         launchFlight = {wish, startedAt: performance.now()};
@@ -1961,11 +1960,12 @@
         setTimeout(() => {
           if (returnFlight || returningWish) return;
           setMissionStep('receive');
-          $('#mission-status').textContent = '試しに1つ、帰してみましょう。スマホを振るか、カプセルのボタンを押してください';
+          $('#mission-status').textContent = '試しに1つ、帰してみましょう。スマホを振るか「タップで帰還」を押してください';
         }, 2600);
       }
     } catch (error) {
-      depositStatus.textContent = `送信に失敗しました。入力は残しています。${error.message || ''}`;
+      // 願いは端末に保存するだけで送信しない。失敗は端末の保存の失敗
+      depositStatus.textContent = `保存できませんでした。入力は残しています。${error.message || ''}`;
     } finally {
       launchButton.disabled = false;
     }
@@ -2029,9 +2029,18 @@
   $('#receipt-first-step').addEventListener('input', event => { if (!event.isComposing) renderReceiptPreview(); });
   $('#receipt-first-step').addEventListener('compositionend', renderReceiptPreview);
   $('#receipt-include-text').addEventListener('change', renderReceiptPreview);
-  $('#archive-open').addEventListener('click', () => {
+  // 回収記録を開いている間は、下の操作バー（見えなくしている）をキーボードでも選べないようにし、閉じたら元の場所へ戻す
+  function openArchive() {
     $('#archive-sheet').hidden = false;
-  });
+    missionDock.inert = true;
+    $('#archive-close').focus({preventScroll: true});
+  }
+  function closeArchive({restoreFocus = true} = {}) {
+    $('#archive-sheet').hidden = true;
+    missionDock.inert = false;
+    if (restoreFocus) $('#archive-open').focus({preventScroll: true});
+  }
+  $('#archive-open').addEventListener('click', openArchive);
   publishCheckbox.addEventListener('change', async () => {
     if (!publishCheckbox.checked || promiseAgreed()) return;
     // 約束に同意するまでは選べない
@@ -2072,7 +2081,7 @@
   $('#fulfilled-send').addEventListener('click', sendFulfilled);
   $('#fulfilled-skip').addEventListener('click', closeFulfilledSheet);
   $('#my-record-copy').addEventListener('click', copyMyRecord);
-  $('#archive-close').addEventListener('click', () => { $('#archive-sheet').hidden = true; });
+  $('#archive-close').addEventListener('click', () => closeArchive());
   $('#archive-list').addEventListener('pointerdown', () => { growthPointerActive = true; });
   const releaseGrowthPointer = () => {
     // click の処理より後に解除する
@@ -2120,7 +2129,7 @@
     }
   });
   $('#archive-next').addEventListener('click', () => {
-    $('#archive-sheet').hidden = true;
+    closeArchive({restoreFocus: false});
     setMissionStep('deposit');
     openDeposit();
   });
@@ -2185,7 +2194,7 @@
       if (!returnCard.hidden) closeCard();
       else if (!depositSheet.hidden) closeDeposit();
       else if (!policySheet.hidden) closePolicy();
-      else $('#archive-sheet').hidden = true;
+      else closeArchive();
     }
   });
   window.addEventListener('resize', syncVisualViewport);
@@ -2274,8 +2283,7 @@
     const rows = [
       ['預けた願い', `${summary.deposited}個（待っている星 ${summary.orbiting}個）`],
       ['受け取った', `${summary.received}個`],
-      ['アーカイブに保存', `${summary.archived}個`],
-      ['星空へ戻した', `${summary.backToOrbit}回`],
+      ['もう少し預けた', `${summary.backToOrbit}回`],
       ['開いた日', `${summary.openDays}日`],
     ];
     list.replaceChildren(...rows.flatMap(([label, value]) => {
@@ -2391,7 +2399,15 @@
   }
 
   // 他の人の星を受け取る。読めないとき（ネットなし・一時的な失敗）は、端末に控えた星をそのまま見せる
+  // みんなの星は次期バージョンまで止めている。止めている間はサーバーに問い合わせない（軌道ID を送らないため。2026-10-07 レビュー）
+  const PUBLIC_STARS_CLIENT_ENABLED = false;
   async function loadOtherStars() {
+    if (!PUBLIC_STARS_CLIENT_ENABLED) {
+      starsEnabled = false;
+      otherStars = [];
+      refreshStarsInterface();
+      return;
+    }
     if (!navigator.onLine) return;
     try {
       const response = await fetch(`/api/stars?orbit=${encodeURIComponent(orbitId())}`);
