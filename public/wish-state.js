@@ -218,7 +218,7 @@ export function daysWaited(wish, now) {
 }
 
 export function waitedMessage(days) {
-  return days === 0 ? '今日、預けた願いです。' : `${days}日間、北の空であなたを待っていました。`;
+  return days === 0 ? '今日、預けた願いです。' : `${days}日間、あなたを待っていました。`;
 }
 
 // 育つ願い。受け取った（doing）願いは、小さな一歩をふみ出すたびに明るくなる。

@@ -55,10 +55,10 @@ test('アプリで書いた最初の一歩があれば、紙に載せる', () =>
   assert.equal(content.firstStep, '天文台の見学に申し込む');
 });
 
-test('AI でつくった願いの絵があれば、星の絵のかわりに使う', () => {
-  assert.equal(returnReceiptContent({wish, now, days: 1}).art, '');
+test('絵は星のドット絵だけ（AI の絵が保存されていても使わない）', () => {
   const content = returnReceiptContent({wish: {...wish, art: 'data:image/png;base64,AAA'}, now, days: 1});
-  assert.equal(content.art, 'data:image/png;base64,AAA');
+  assert.equal('art' in content, false);
+  assert.ok(RECEIPT_VARIANTS.includes(content.variant));
 });
 
 test('紙の文字は最小限（あいさつ・説明の文は入れない）', () => {
