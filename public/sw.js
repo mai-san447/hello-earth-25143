@@ -5,13 +5,13 @@ importScripts('/offline-routes.js');
 
 // 保存の形を変えたときに上げる。古い保存は activate で消す。
 // 自前の部品はネット優先なので、ふつうの公開では上げなくてよい。
-const CACHE_VERSION = '2026-09-29-2';
+const CACHE_VERSION = '2026-10-07-7';
 const CACHE_NAME = `morune-25143-${CACHE_VERSION}`;
 // これがないと病室で画面が動かない部品。1つでも取れなければ入れ替えを失敗させ、次に開いたときにやり直す
 // （失敗を無視すると「オフラインで開けない状態」に誰も気づけないため）
-const REQUIRED_SHELL = ['/mission.js', '/wish-state.js', '/itokawa.js', '/constellation.js', '/offline-routes.js', '/style.css'];
+const REQUIRED_SHELL = ['/sky.js', '/mission.js', '/wish-state.js', '/itokawa.js', '/public-stars.js', '/keyed-queue.js', '/receipt.js', '/vendor/qrcode.mjs', '/offline-routes.js', '/style.css'];
 // なくても画面は動く部品
-const OPTIONAL_SHELL = ['/itokawa-distance.json', '/manifest.webmanifest', '/icons/icon-192.png'];
+const OPTIONAL_SHELL = ['/sky-stars.json', '/itokawa-radec.json', '/itokawa-distance.json', '/manifest.webmanifest', '/icons/icon-192.png'];
 // 病室の弱い電波で待ち続けないよう、ページの取得はこの時間で諦めて保存した版を出す
 const PAGE_TIMEOUT_MS = 4000;
 
@@ -44,7 +44,8 @@ self.addEventListener('activate', event => {
 
 // ページは「?nfc=1」のような付け足しが違っても同じ画面なので、パスだけで保存する
 function pageKey(url) {
-  const target = new URL(url);
+  // '/' のような相対の URL もあるので、このサイトの origin を基準に解決する（無いとインストールが失敗していた。2026-10-07 レビュー）
+  const target = new URL(url, self.location.origin);
   return new Request(target.origin + target.pathname);
 }
 
@@ -65,6 +66,8 @@ async function serveFresh(request) {
   try {
     const response = await fetchWithTimeout(request);
     if (response.ok) await cache.put(request, response.clone());
+    // サーバーが一時的にエラー（5xx）を返したときは、保存した版があればそちらを出す
+    if (response.status >= 500) return (await cache.match(request)) || response;
     return response;
   } catch {
     return (await cache.match(request)) || Response.error();
@@ -76,6 +79,7 @@ async function servePage(request) {
   try {
     const response = await fetchWithTimeout(request);
     if (response.ok && !(await isCloudPage(response))) await cache.put(pageKey(request.url), response.clone());
+    if (response.status >= 500) return (await cache.match(pageKey(request.url))) || response;
     return response;
   } catch {
     // そのページの保存だけを探す。保存がない応援ページの代わりにミッション画面を出すと戸惑うため、トップで代用しない

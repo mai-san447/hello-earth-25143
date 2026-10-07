@@ -1,0 +1,174 @@
+<title>本物の星にあずける</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700&family=Zen+Old+Mincho:wght@400;700&display=swap">
+<style>
+  /* 作品と同じ夜空の色。提案書なので、読む文章が主役の1列 */
+  :root {
+    color-scheme: dark;
+    --sky: #0a0f1e;
+    --panel: #111830;
+    --gold: #f2d08d;
+    --text: #ebe7dc;
+    --muted: #9aa5b8;
+    --line: rgba(199, 213, 207, .16);
+    --mincho: "Zen Old Mincho", "Yu Mincho", "Hiragino Mincho ProN", serif;
+    --gothic: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
+  }
+  html, body { background: var(--sky); }
+  body { color: var(--text); font-family: var(--gothic); line-height: 1.85; font-size: 15px; padding-inline: 16px; padding-block: 32px 80px; }
+  main { max-width: 720px; margin: 0 auto; display: grid; gap: 40px; }
+  section { display: grid; gap: 14px; }
+  .kicker { margin: 0; font-size: 11px; letter-spacing: .16em; color: var(--gold); }
+  h1 { margin: 0; font: 700 clamp(26px, 7vw, 38px)/1.35 var(--mincho); text-wrap: balance; }
+  h2 { margin: 0; font: 700 21px/1.45 var(--mincho); text-wrap: balance; }
+  h3 { margin: 0; font: 700 16px/1.5 var(--mincho); }
+  p { margin: 0; max-width: 65ch; }
+  .lead { font-size: 17px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .thesis { padding: 20px; border-radius: 16px; background: var(--panel); border: 1px solid rgba(242, 208, 141, .3); display: grid; gap: 10px; }
+  .thesis p { font: 700 18px/1.7 var(--mincho); }
+  ol.flow { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; counter-reset: s; }
+  ol.flow li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; counter-increment: s; }
+  ol.flow li::before { content: counter(s); display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--gold); color: var(--gold); font-size: 13px; }
+  ol.flow b { font-family: var(--mincho); }
+  ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+  .finds { display: grid; gap: 12px; }
+  .find { display: grid; gap: 6px; padding-left: 14px; border-left: 2px solid var(--line); }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 13px; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 400; font-size: 12px; }
+  td:first-child { font-family: var(--mincho); white-space: nowrap; }
+  .scope { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .box { padding: 16px; border-radius: 14px; border: 1px solid var(--line); display: grid; gap: 8px; align-content: start; }
+  .box.in { border-color: rgba(242, 208, 141, .4); }
+  a { color: var(--gold); text-underline-offset: 3px; overflow-wrap: anywhere; }
+  .sources li { font-size: 12px; color: var(--muted); }
+</style>
+
+<main>
+  <header style="display:grid;gap:12px">
+    <p class="kicker">MORUNE 25143 / 設計の提案 / 2026-10-03</p>
+    <h1>願いを、本物の星にあずける</h1>
+    <p class="lead">論文・類似サービス・宇宙の作品を調べました。v3〜v6 でリアリティが出なかったのは、星が「たとえ」だったからです。星を、今夜あなたの頭の上に実際にある、本物の星にします。</p>
+  </header>
+
+  <section>
+    <h2>調べてわかった3つのこと</h2>
+    <div class="finds">
+      <div class="find">
+        <h3>1. リアリティは「見た目」ではなく「本当に起きていること」から生まれる</h3>
+        <p>はやぶさの時代、88万人の名前が実際にイトカワの表面に置かれました（2005年）。はやぶさ2では、名前とメッセージを積んだカプセルが実際に地球へ帰ってきました（2020年）。Lunar Codex は、5万人の作品を本当に月面に置きました。逆に「記録が星座になる」アプリはすでに多く、見分けがつきません。作り物の星座に願いを当てはめた v3〜v6 は、こちらの側にいました。</p>
+      </div>
+      <div class="find">
+        <h3>2. 「預けて、時間がたって帰ってくる」は、封をすることと、本物の時間で強くなる</h3>
+        <p>Future Library（Katie Paterson）は、作家の原稿を封印して2114年まで誰にも読ませず、そのあいだ森の木が育つのを見せます。旅かえる（3,800万DL）は、送り出したら何もできず、いつ帰るかもわからないのに、帰ってくると毎回ちがう写真を持ってきます。Slowly は、手紙が届くまでの遅さを「距離」で説明しています。どれも、待つことに筋の通った理由があります。</p>
+      </div>
+      <div class="find">
+        <h3>3. 研究が言う「待ち方」の条件</h3>
+        <p>やりたいことは、具体的な計画を立てるだけで頭から離れ、決めた時点で戻ってきます（Masicampo &amp; Baumeister 2011）。完全にランダムに戻ってくると、はじめは苛立ちます（Photobox、Odom 2014）。つらいものが不意に出てくると傷つきます（Facebook の思い出機能、Lustig 2022）。いっぽうで、少しの不確かさは喜びを長くします（Wilson 2005）。手放せることも、幸福と健康につながります（Wrosch 2003・2007）。天体のたとえを使う UI がうまくいくと示した研究は、見つかりませんでした。</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="thesis">
+      <p class="kicker">提案</p>
+      <p>預けた願いは封をされ、本物の星を1つ受け持ちます。その星は、今夜も実際の空にあります。星座が夜空に昇ってくる季節になると、願いは「預けた日のあなたからの手紙」として帰ってきます。</p>
+    </div>
+    <p>はじめに描いていただいた「預けたものが夜空の星になり、季節の星座の一部になる」をそのまま使います。v4 との違いは、星を<b>本物の空にある本物の星</b>として扱う点と、<b>封・証書・空を見上げる</b>を足した点です。</p>
+  </section>
+
+  <section>
+    <h2>体験の流れ</h2>
+    <ol class="flow">
+      <li><div><b>書いて、封をする。</b>やりたいことを書き、「また会いたい季節」を選びます（再会の条件を1つだけ決める）。本文はここで封をされ、帰ってくるまで自分でも読めません。見えるのは、自分でつけた短い呼び名だけです。</div></li>
+      <li><div><b>本物の星を1つ受け持つ。</b>たとえば冬を選ぶと、オリオン座のベテルギウス（約550光年）になります。<b>あずかり証</b>が出ます。あずけた日、受け持った星、その星の光が出発した年、帰ってくる季節が書かれています。はやぶさ2の「乗車証」や Future Library の証書にあたるものです。</div></li>
+      <li><div><b>星は、いまも空にある。</b>メインの画面は、いまこの時刻の本物の空です（星表の実際の星、地平線、方角）。自分の星が地平線の上にあるか下にあるか、どの方角にあるかがわかります。外に出れば、本当に見えます。数字ではなく、自分の目で確かめられるのがリアリティの元です。</div></li>
+      <li><div><b>季節がめぐり、星座が昇ってくる。</b>その星座が夜9時の東の空に昇ってくる時期に、帰ってくる窓が開きます。正確な日は「12月中旬のどこかの夜」までにして、日付までは伏せます。</div></li>
+      <li><div><b>帰ってくる。</b>封が開き、<b>預けた日のあなたからの手紙</b>として願いが戻ります。添えられるのは、何日あずけていたか、あずけた日に書いた一言、「今夜、南東の空のこの星にあずけていました」の3つです。</div></li>
+      <li><div><b>決める。</b>やる／手放す／もう少しあずける（次の季節の星座へうつる）。手放すことも、ひとつの結末として静かに祝います。今は向き合いたくない願いは、見ないまましまえます。</div></li>
+    </ol>
+    <p class="muted">位置情報は使わず、東京で計算します（国内ならほぼ同じ向き）。計算は端末の中だけで行うので、オフラインでも動きます。データは今と同じく端末に保存します。</p>
+  </section>
+
+  <section>
+    <h2>なぜこの形か</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>決めたこと</th><th>根拠</th></tr></thead>
+        <tbody>
+          <tr><td>本物の空の、本物の星</td><td>本物のモノ・場所が最も強いリアリティになる（ミリオンキャンペーン、Lunar Codex、Spot the Station、Stellarium）。たとえの星座はすでに多く、見分けがつかない</td></tr>
+          <tr><td>封をする</td><td>Future Library。中身が見えないことで、待つ時間に意味が出る</td></tr>
+          <tr><td>季節を本人が選ぶ</td><td>再会の条件を決めると、頭から離れて決めた時点で戻る（Masicampo &amp; Baumeister 2011、Gollwitzer）</td></tr>
+          <tr><td>日付は少し伏せる</td><td>完全ランダムは苛立つ（Photobox）。少しの不確かさは喜びを長くする（Wilson 2005）</td></tr>
+          <tr><td>帰る理由が星の動き</td><td>待つことに筋の通った理由があると、不満が楽しみに変わる（Slowly、旅かえる）</td></tr>
+          <tr><td>預けた日の自分からの手紙</td><td>未来の自分とのやりとりは気分と計画を整える（Chishima &amp; Wilson 2021）。何気ない記録の再発見は、思ったより楽しい（Zhang 2014）</td></tr>
+          <tr><td>あずかり証</td><td>戻った証拠を手渡すと信頼が生まれる（はやぶさ2の乗車証、デジタル絵馬の奉納写真）</td></tr>
+          <tr><td>手放す・見ないでしまう</td><td>手放せることは幸福と健康につながる（Wrosch）。つらいものが不意に出るのは避ける（Lustig 2022、Pensieve）</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>25143 の物語との関係</h2>
+    <p>発表の入口で、2005年に88万人の名前が実際にイトカワの表面に置かれた史実を話します。「人は昔から、自分の一部を宇宙にあずけてきた」。MORUNE では、それを今夜の空の星で、誰でもできるようにします。作品名の 25143 はそのまま残します。JAXA の名前・ロゴ・画像は使わず、史実として出典を示すだけにします（<code>docs/権利の確認.md</code> の方針どおり）。</p>
+  </section>
+
+  <section>
+    <h2>10/7 の提出に入れる範囲</h2>
+    <div class="scope">
+      <div class="box in">
+        <h3>入れる（目安2日）</h3>
+        <ul>
+          <li>封をして預ける、呼び名だけ見える</li>
+          <li>4季節の星座と本物の星（星表の値）</li>
+          <li>いまの本物の空（明るい星約300個、地平線と方角）と、自分の星の場所</li>
+          <li>帰ってくる窓の計算、手紙として帰る画面、3つの決め方</li>
+          <li>あずかり証（画像で保存）。今の帰還証明書（#26）を作り替える</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h3>GGA に回す</h3>
+        <ul>
+          <li>スマホを空にかざすと自分の星の方向がわかる</li>
+          <li>帰ってくる夜に ISS が通るなら知らせる（satellite.js）</li>
+          <li>手紙に返事を書ける往復の形</li>
+          <li>みんなの星（今日あずけた人の数だけ、匿名で）</li>
+        </ul>
+      </div>
+    </div>
+    <p class="muted">今のアプリの状態の仕組み（waiting／doing／expired、帰りはじめる日）はそのまま使えます。作り直すのは主に画面です。発表の準備（2日）と合わせると予備日がなくなるので、提出は今の形のまま出し、GGA セレクション（10/14〜）までに入れる道も残しておきます。</p>
+  </section>
+
+  <section>
+    <h2>決めてほしいこと</h2>
+    <ol class="flow">
+      <li><div>この方向（本物の空・封・あずかり証）でよいか。よければ、触れる試作を作ります。</div></li>
+      <li><div>帰ってきたときの選択肢を、やる／手放す／もう少しあずける の3つにするか。</div></li>
+      <li><div>10/7 の提出に入れるか、GGA までに入れるか。</div></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>出典</h2>
+    <ul class="sources">
+      <li>JAXA「星の王子さまに会いに行きませんか ミリオンキャンペーン」 <a href="https://www.jaxa.jp/article/special/hayabusa/sawai_j.html">jaxa.jp</a></li>
+      <li>はやぶさ2 メッセージ検索・乗車証 <a href="https://www.hayabusa2.jaxa.jp/topics/20210630_MsgSearch/">hayabusa2.jaxa.jp</a></li>
+      <li>Lunar Codex <a href="https://www.lunarcodex.com/">lunarcodex.com</a></li>
+      <li>Katie Paterson, Future Library <a href="https://www.futurelibrary.no/">futurelibrary.no</a> / Earth–Moon–Earth <a href="https://katiepaterson.org/artwork/earth-moon-earth/">katiepaterson.org</a></li>
+      <li>旅かえる（4Gamer） <a href="https://www.4gamer.net/games/405/G040590/20180509101/">4gamer.net</a></li>
+      <li>Slowly <a href="https://en.wikipedia.org/wiki/Slowly_(app)">Wikipedia</a></li>
+      <li>NASA Spot the Station <a href="https://www.nasa.gov/spot-the-station/">nasa.gov</a> / Stellarium Web <a href="https://stellarium-web.org/">stellarium-web.org</a></li>
+      <li>Masicampo &amp; Baumeister (2011) Consider it done! JPSP <a href="https://users.wfu.edu/masicaej/MasicampoBaumeister2011JPSP.pdf">PDF</a></li>
+      <li>Odom et al. (2014) Photobox, CHI <a href="https://www.microsoft.com/en-us/research/publication/designing-for-slowness-anticipation-and-re-visitation-a-long-term-field-study-of-the-photobox-2/">Microsoft Research</a></li>
+      <li>Lustig, Konrad, Brubaker (2022) Designing for the Bittersweet, CHI <a href="https://caitie.io/wp-content/uploads/2024/11/lustig-et-al_facebook-memories_2022.pdf">PDF</a></li>
+      <li>Peesapati, Cosley et al. (2010) Pensieve, CHI <a href="https://www.cs.cornell.edu/~danco/research/papers/peesapati-pensieve-chi2010.pdf">PDF</a></li>
+      <li>Rutchick, Hershfield et al. (2018) Future self-continuity, JEP: Applied <a href="https://anderson-review.ucla.edu/wp-content/uploads/2021/03/2018_Rutchick-Slepian-Reyes-Pleskus-Hershfield_JEPA.pdf">PDF</a></li>
+      <li>Bryant (2021) Savoring, Frontiers in Psychology <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC8712667/">PMC</a></li>
+      <li>本文を確認できず書誌のみ：Wilson et al. (2005) The pleasures of uncertainty, JPSP／Wrosch et al. (2003, 2007) PSPB／Chishima &amp; Wilson (2021) J. Adolescence／Zhang et al. (2014) Psychological Science／Gollwitzer &amp; Sheeran (2006)</li>
+    </ul>
+  </section>
+</main>

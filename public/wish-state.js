@@ -2,13 +2,13 @@
 // node --test で確かめられるようにする（設計図：docs/状態設計.md）。
 
 export const STATUS = Object.freeze({
-  WAITING: 'waiting',   // イトカワの軌道を周回中。帰還の候補になる
+  WAITING: 'waiting',   // 星空で待つ。帰還の候補になる
   RETURNED: 'returned', // 地球に着地し、判断を待っている
   DOING: 'doing',       // やってみる
   DONE: 'done',         // 終えた
 });
 
-// 帰還カードの3つの選択肢。「戻す」は責めずに軌道へ戻すための選択肢。
+// 帰還カードの3つの選択肢。「戻す」は責めずに星空へ戻すための選択肢。
 export const CHOICES = Object.freeze({
   try: STATUS.DOING,
   later: STATUS.WAITING,
@@ -24,12 +24,14 @@ export const LIMITS = Object.freeze({
   orbit: 30,
   // 帰還が始まる日は、翌日から1年後まで。打ち間違いを防ぎ、端末の保存が消えるリスクも抑える
   returnFromMaxDays: 365,
-  // 軌道へ戻した回数がこの回数になったら、一度だけ「手放してもいい」と伝える。戻すこと自体は止めない
+  // 星空へ戻した回数がこの回数になったら、一度だけ「手放してもいい」と伝える。戻すこと自体は止めない
   gentleLaterCount: 5,
 });
 
+// 判断を待っている願い（着地したカプセル）も「もう少し預ける」で星空へ戻りうるので、枠に数える。
+// 数えないと、30個のときに1つ帰して新しく預け、戻すと31個になっていた（2026-10-07 レビュー）
 export function canDeposit(wishes) {
-  return orbitingWishes(wishes).length < LIMITS.orbit;
+  return wishes.filter(wish => wish.status === STATUS.WAITING || wish.status === STATUS.RETURNED).length < LIMITS.orbit;
 }
 
 // 帰還が始まる日の入力を確かめる。空欄は「すぐ帰還の候補」でよい
@@ -57,9 +59,39 @@ export function returnFromRange(now) {
   return {min: format(min), max: format(max)};
 }
 
+// 検証・評価（docs/検証計画.md）のための数。願いの中身は使わず、端末の中の記録から数だけを出す。
+// openDays は、この端末でアプリを開いた日（YYYY-MM-DD）の一覧。
+export function summarize(wishes, openDays = [], now = Date.now()) {
+  const count = status => wishes.filter(wish => wish.status === status).length;
+  const received = count(STATUS.DOING);
+  const archived = count(STATUS.DONE);
+  const days = [...new Set(openDays)].sort();
+  const dayNumber = day => {
+    const [year, month, date] = day.split('-').map(Number);
+    return Math.round(new Date(year, month - 1, date).getTime() / DAY_MS);
+  };
+  const today = dayNumber(new Date(now).toLocaleDateString('sv-SE'));
+  const firstDay = days.length ? dayNumber(days[0]) : null;
+  return {
+    deposited: wishes.length,
+    orbiting: count(STATUS.WAITING),
+    pending: count(STATUS.RETURNED),
+    received,
+    archived,
+    // 受け取り率：帰ってきて決めた願いのうち「想いを受け取る」を選んだ割合（決めた願いがなければ null）
+    receiveRate: received + archived ? Math.round((received / (received + archived)) * 100) : null,
+    backToOrbit: wishes.reduce((sum, wish) => sum + (wish.laterCount ?? 0), 0),
+    withReturnFrom: wishes.filter(wish => Number.isFinite(wish.returnFrom)).length,
+    openDays: days.length,
+    activeDaysLast7: days.filter(day => today - dayNumber(day) < 7).length,
+    // 初めて開いた日から7日以上たってから、もう一度開いたか
+    cameBackAfter7Days: firstDay != null && days.some(day => dayNumber(day) - firstDay >= 7),
+  };
+}
+
 export function gentleMessage(wish) {
   return wish.laterCount === LIMITS.gentleLaterCount
-    ? `この願いを${LIMITS.gentleLaterCount}回、軌道へ戻しました。いつでも戻せますし、手放しても大丈夫です。`
+    ? `この願いを${LIMITS.gentleLaterCount}回、もう少し預けました。急がなくて大丈夫です。`
     : '';
 }
 
@@ -68,9 +100,26 @@ export function orbitingWishes(wishes) {
   return wishes.filter(wish => wish.status === STATUS.WAITING);
 }
 
+// 星空に灯す願い。判断待ち・アーカイブは描かない。飛行中の除外は描画側で行う。
+export function skyWishes(wishes) {
+  return wishes.filter(wish => wish.status === STATUS.WAITING || wish.status === STATUS.DOING);
+}
+
 // 帰還の候補。#7：帰還が始まる日（returnFrom）が決まっている願いは、その日になるまで帰らない。
 export function returnCandidates(wishes, now = Date.now()) {
   return orbitingWishes(wishes).filter(wish => !Number.isFinite(wish.returnFrom) || wish.returnFrom <= now);
+}
+
+// #27 はじめての1回。まだ一度も帰ってきたことがない人は、帰還が始まる日の前でも1回だけ帰せる。
+// やりたいことのアプリは最初の1週間で価値が見えないと離れるため、預けた直後に「帰ってくる」まで体験してもらう。
+export function trialAvailable(wishes, trialUsed) {
+  return !trialUsed && orbitingWishes(wishes).length > 0 && wishes.every(wish => wish.status === STATUS.WAITING);
+}
+
+// 帰還の候補（はじめての1回を含む）。ふつうの候補があれば、そちらを優先する
+export function candidatesWithTrial(wishes, now, trialUsed) {
+  const ready = returnCandidates(wishes, now);
+  return ready.length || !trialAvailable(wishes, trialUsed) ? ready : orbitingWishes(wishes);
 }
 
 // まだ帰還の候補がないとき、いちばん早く帰還が始まる日。なければ null。
@@ -81,8 +130,41 @@ export function nextReturnFrom(wishes, now = Date.now()) {
   return upcoming.length ? Math.min(...upcoming) : null;
 }
 
-export function createWish({id, text, now, returnFrom = null}) {
+// 願いの番号（25143-0007-03 の「03」）。端末の中で 1 から数え、サーバーには送らない。
+// 消した願いの番号は使い回さない（counter に、これまでに出した最大の番号を覚えておく）
+export function nextWishSeq(wishes, counter = 0) {
+  const used = wishes.reduce((max, wish) => (Number.isInteger(wish.seq) && wish.seq > max ? wish.seq : max), 0);
+  return Math.max(used, Number.isInteger(counter) ? counter : 0) + 1;
+}
+
+// 番号を持たない前からの願いに、預けた順で番号を付けて固定する（開いたときに1回）。
+// 付けないままだと、新しい願いの番号と重なったり、消したときに表示がずれたりする（2026-10-06 Codex レビュー）
+// 返すのは、番号を付けた願い（保存し直すもの）と、これまでに出した最大の番号
+export function assignMissingSeq(wishes, counter = 0) {
+  const legacy = wishes.filter(wish => !Number.isInteger(wish.seq))
+    .sort((a, b) => a.createdAt - b.createdAt || String(a.id).localeCompare(String(b.id)));
+  let next = nextWishSeq(wishes, counter);
+  const updated = legacy.map(wish => ({...wish, seq: next++}));
+  return {updated, counter: next - 1};
+}
+
+// 番号を持たない願い（固定する前）は、預けた順に数える（表示だけの予備）
+export function wishSeqOf(wish, wishes) {
+  if (Number.isInteger(wish.seq)) return wish.seq;
+  const legacy = wishes.filter(item => !Number.isInteger(item.seq))
+    .sort((a, b) => a.createdAt - b.createdAt || String(a.id).localeCompare(String(b.id)));
+  return legacy.findIndex(item => item.id === wish.id) + 1;
+}
+
+// 25143-0007 と 3 から 25143-0007-03。人の番号がまだなければ null
+export function wishNumber(personNumber, seq) {
+  if (typeof personNumber !== 'string' || !/^25143-\d{4,}$/.test(personNumber) || !Number.isInteger(seq) || seq < 1) return null;
+  return `${personNumber}-${String(seq).padStart(2, '0')}`;
+}
+
+export function createWish({id, text, now, returnFrom = null, seq = null}) {
   const wish = {id, text, status: STATUS.WAITING, createdAt: now, updatedAt: now};
+  if (Number.isInteger(seq) && seq > 0) wish.seq = seq;
   // 今日より後の日付のときだけ持たせる。空欄や過去の日付は「すぐ帰還の候補」
   if (Number.isFinite(returnFrom) && returnFrom > now) wish.returnFrom = returnFrom;
   return wish;
@@ -113,7 +195,7 @@ export function pendingReturn(wishes) {
 
 export function markReturned(wish, now) {
   if (wish.status !== STATUS.WAITING) throw new Error(`軌道上にない願いは帰還できません: ${wish.status}`);
-  return {...wish, status: STATUS.RETURNED, updatedAt: now};
+  return {...wish, status: STATUS.RETURNED, updatedAt: now, returnedAt: now};
 }
 
 export function decide(wish, choice, now) {
@@ -121,7 +203,9 @@ export function decide(wish, choice, now) {
   const status = CHOICES[choice];
   if (!status) throw new Error(`不明な選択肢です: ${choice}`);
   const decided = {...wish, status, updatedAt: now};
-  // 軌道へ戻した回数を数える（#17：5回目に一度だけ、やさしい一言を出すため）
+  // 古い願いにも帰還した時刻を残し、後日つくる帰還票の日付が動かないようにする。
+  if (status !== STATUS.WAITING && !Number.isFinite(decided.returnedAt)) decided.returnedAt = Number.isFinite(wish.updatedAt) ? wish.updatedAt : now;
+  // 星空へ戻した回数を数える（#17：5回目に一度だけ、やさしい一言を出すため）
   if (choice === 'later') decided.laterCount = (wish.laterCount ?? 0) + 1;
   return decided;
 }
@@ -138,5 +222,75 @@ export function daysWaited(wish, now) {
 }
 
 export function waitedMessage(days) {
-  return days === 0 ? '今日、預けた願いです。' : `${days}日間、イトカワの軌道であなたを待っていました。`;
+  return days === 0 ? '今日、預けた願いです。' : `${days}日間、あなたを待っていました。`;
+}
+
+// 育つ願い。受け取った（doing）願いは、小さな一歩をふみ出すたびに明るくなる。
+// 明るさは本物の星の等級で表す（6等星＝やっと見える、1等星＝夜空で目立つ）。
+// 願うだけで終わらせないための仕組みだが、ToDo にはしない：期限・連続日数・比べる数は持たず、
+// 何もしなくても暗くはならない（「今でなくてもいい」が作品の考え方）。
+export const GROWTH = Object.freeze({
+  faintest: 6,     // 受け取ったばかりの願い
+  brightest: 1,    // 一歩ごとに1等級ずつ明るくなり、ここで止まる
+  firstStepMax: 60, // 「最初の小さな一歩」の文字数（願いと同じ）
+});
+
+const DAY_KEY = time => new Date(time).toLocaleDateString('sv-SE');
+
+// 一歩は1日1回まで数える。続けて押して一気に明るくすると、育つ意味がなくなるため
+export function canStep(wish, now) {
+  if (wish.status !== STATUS.DOING || Number.isFinite(wish.fulfilledAt)) return false;
+  const steps = wish.steps ?? [];
+  return !steps.length || DAY_KEY(steps[steps.length - 1]) !== DAY_KEY(now);
+}
+
+// updatedAt は変えない（判断した時点の記録として残すため。応援の信号は 2026-10-07 に廃止）
+export function recordStep(wish, now) {
+  if (wish.status !== STATUS.DOING) throw new Error(`受け取った願いだけが育ちます: ${wish.status}`);
+  if (!canStep(wish, now)) throw new Error('今日の一歩は、もう記録しています');
+  return {...wish, steps: [...(wish.steps ?? []), now]};
+}
+
+// 最初の小さな一歩。書かなくてもいい。空にすれば消える
+export function setFirstStep(wish, text) {
+  if (wish.status !== STATUS.DOING) throw new Error(`受け取った願いだけが育ちます: ${wish.status}`);
+  const value = String(text ?? '').trim();
+  if ([...value].length > GROWTH.firstStepMax) throw new Error(`最初の一歩は${GROWTH.firstStepMax}字までです`);
+  // 変わらないときは同じ願いを返す（入力欄から出たときと Enter のときに重ねて呼ばれても、保存は1回で済む）
+  if (value === (wish.firstStep ?? '')) return wish;
+  const next = {...wish};
+  if (value) next.firstStep = value;
+  else delete next.firstStep;
+  return next;
+}
+
+// 叶った。状態（status）は doing のまま、叶った日だけを持たせる（状態遷移を増やさない）
+export function markFulfilled(wish, now) {
+  if (wish.status !== STATUS.DOING) throw new Error(`受け取った願いだけが叶います: ${wish.status}`);
+  if (Number.isFinite(wish.fulfilledAt)) return wish;
+  return {...wish, fulfilledAt: now};
+}
+
+// 今の等級。受け取っていない願いは null。叶った願いは1等星
+export function magnitude(wish) {
+  if (wish.status !== STATUS.DOING) return null;
+  if (Number.isFinite(wish.fulfilledAt)) return GROWTH.brightest;
+  return Math.max(GROWTH.brightest, GROWTH.faintest - (wish.steps?.length ?? 0));
+}
+
+export function growthLabel(wish) {
+  const value = magnitude(wish);
+  if (value == null) return '';
+  if (Number.isFinite(wish.fulfilledAt)) return '叶った星';
+  return `${value}等星`;
+}
+
+export function growthMessage(wish) {
+  const value = magnitude(wish);
+  if (value == null) return '';
+  if (Number.isFinite(wish.fulfilledAt)) return '叶いました。いちばん明るい星です。';
+  const steps = wish.steps?.length ?? 0;
+  if (!steps) return 'かすかな星です。一歩ふみ出すと、明るくなります。';
+  if (value === GROWTH.brightest) return `${steps}歩ふみ出して、1等星になりました。`;
+  return `${steps}歩ふみ出して、${value}等星になりました。`;
 }

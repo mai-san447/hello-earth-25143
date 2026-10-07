@@ -26,6 +26,13 @@ export function formatDistanceJa(km) {
   return `約${Math.round(km / 1e4).toLocaleString('ja-JP')}万km`;
 }
 
+// 光の速さ（km/秒）。遠さを「時間」で感じてもらうために使う（#26、Slowly の「遅さを価値に」から）
+export const LIGHT_KM_PER_S = 299792.458;
+
+export function lightMinutes(km) {
+  return km == null ? null : Math.max(1, Math.round(km / LIGHT_KM_PER_S / 60));
+}
+
 export function distanceMessage(km) {
-  return km == null ? '' : `いま、イトカワは地球から${formatDistanceJa(km)}。`;
+  return km == null ? '' : `いま、イトカワは地球から${formatDistanceJa(km)}。光でも約${lightMinutes(km)}分かかる距離です。`;
 }

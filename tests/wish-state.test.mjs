@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CHOICES, LIMITS, STATUS, canDeposit, checkReturnFrom, createWish, daysWaited, decide, gentleMessage, markReturned, nextReturnFrom, orbitingWishes, parseReturnFrom, pendingReturn, returnCandidates, returnFromLabel, returnFromRange, waitedMessage} from '../public/wish-state.js';
+import {CHOICES, LIMITS, STATUS, candidatesWithTrial, canDeposit, checkReturnFrom, createWish, daysWaited, decide, gentleMessage, markReturned, nextReturnFrom, orbitingWishes, parseReturnFrom, pendingReturn, returnCandidates, returnFromLabel, returnFromRange, summarize, trialAvailable, waitedMessage} from '../public/wish-state.js';
 
 const at = (y, m, d, h = 12, min = 0) => new Date(y, m - 1, d, h, min).getTime();
 const wish = (overrides = {}) => ({id: 'a', text: '朝の海を歩きたい', status: STATUS.WAITING, createdAt: at(2026, 9, 22), updatedAt: at(2026, 9, 22), ...overrides});
@@ -54,7 +54,7 @@ test('待っていた日数は時刻ではなく日付で数える', () => {
 
 test('待っていた日数の文言', () => {
   assert.equal(waitedMessage(0), '今日、預けた願いです。');
-  assert.equal(waitedMessage(37), '37日間、イトカワの軌道であなたを待っていました。');
+  assert.equal(waitedMessage(37), '37日間、あなたを待っていました。');
 });
 
 // #7 帰還が始まる日
@@ -95,7 +95,7 @@ test('日付の入力を端末の 0:00 に直す。空や存在しない日付�
   assert.equal(parseReturnFrom('10/25'), null);
 });
 
-test('「軌道へ戻す」を選んでも、帰還が始まる日はそのまま残る', () => {
+test('「星空へ戻す」を選んでも、帰還が始まる日はそのまま残る', () => {
   const back = decide(wish({status: STATUS.RETURNED, returnFrom: discharge}), 'later', at(2026, 10, 26));
   assert.equal(back.returnFrom, discharge);
   assert.deepEqual(returnCandidates([back], at(2026, 10, 26)).map(item => item.id), ['a']);
@@ -109,6 +109,11 @@ test('軌道に置ける願いは30件まで。受け取った願いは数えな
   assert.equal(canDeposit([...orbit.slice(0, LIMITS.orbit - 1), wish({id: 'r', status: STATUS.DONE})]), true);
 });
 
+test('判断を待っているカプセルも枠に数える（もう少し預けたときに31個にならない）', () => {
+  const orbit = Array.from({length: LIMITS.orbit - 1}, (_, index) => wish({id: `o${index}`}));
+  assert.equal(canDeposit([...orbit, wish({id: 'p', status: STATUS.RETURNED})]), false);
+});
+
 test('帰還が始まる日は翌日から1年後まで。空欄はすぐ帰還の候補', () => {
   const now = at(2026, 10, 1, 15);
   assert.deepEqual(checkReturnFrom('', now), {ok: true, time: null});
@@ -120,7 +125,7 @@ test('帰還が始まる日は翌日から1年後まで。空欄はすぐ帰還�
   assert.deepEqual(returnFromRange(now), {min: '2026-10-02', max: '2027-10-01'});
 });
 
-test('軌道へ戻した回数を数え、5回目に一度だけやさしい一言を出す', () => {
+test('星空へ戻した回数を数え、5回目に一度だけやさしい一言を出す', () => {
   let current = wish({status: STATUS.RETURNED});
   const messages = [];
   for (let count = 1; count <= 6; count++) {
@@ -131,4 +136,52 @@ test('軌道へ戻した回数を数え、5回目に一度だけやさしい一�
   assert.equal(current.laterCount, 6);
   assert.deepEqual(messages.map(Boolean), [false, false, false, false, true, false]);
   assert.equal('laterCount' in decide(wish({status: STATUS.RETURNED}), 'try', 1), false);
+});
+
+
+// 検証・評価のための数
+test('検証の数は、願いの中身を使わず状態と回数だけから出す', () => {
+  const wishes = [
+    wish({id: '1'}),
+    wish({id: '2', returnFrom: at(2026, 10, 25, 0)}),
+    wish({id: '3', status: STATUS.RETURNED}),
+    wish({id: '4', status: STATUS.DOING, laterCount: 2}),
+    wish({id: '5', status: STATUS.DOING}),
+    wish({id: '6', status: STATUS.DONE, laterCount: 1}),
+  ];
+  const summary = summarize(wishes, ['2026-10-01', '2026-10-03', '2026-10-03', '2026-10-09'], at(2026, 10, 9));
+  assert.deepEqual(summary, {
+    deposited: 6, orbiting: 2, pending: 1, received: 2, archived: 1, receiveRate: 67,
+    backToOrbit: 3, withReturnFrom: 1, openDays: 3, activeDaysLast7: 2, cameBackAfter7Days: true,
+  });
+  assert.equal(JSON.stringify(summary).includes('朝の海'), false);
+});
+
+test('まだ何も決めていないときの受け取り率は null', () => {
+  const summary = summarize([wish()], [], at(2026, 10, 1));
+  assert.equal(summary.receiveRate, null);
+  assert.equal(summary.cameBackAfter7Days, false);
+});
+
+test('#27 はじめての1回：一度も帰ってきたことがなければ、帰還が始まる日の前でも1回だけ帰せる', () => {
+  const now = at(2026, 9, 30);
+  const future = [wish({id: '1', returnFrom: at(2026, 10, 20, 0)})];
+  assert.equal(trialAvailable(future, false), true);
+  assert.deepEqual(candidatesWithTrial(future, now, false).map(item => item.id), ['1']);
+  // 使ったあとは、ふつうのきまり（帰還が始まる日まで帰らない）に戻る
+  assert.deepEqual(candidatesWithTrial(future, now, true), []);
+});
+
+test('#27 はじめての1回：一度でも帰ってきた人や、軌道が空の人には出さない', () => {
+  const now = at(2026, 9, 30);
+  const returnedBefore = [wish({id: '1', returnFrom: at(2026, 10, 20, 0)}), wish({id: '2', status: STATUS.DONE})];
+  assert.equal(trialAvailable(returnedBefore, false), false);
+  assert.deepEqual(candidatesWithTrial(returnedBefore, now, false), []);
+  assert.equal(trialAvailable([], false), false);
+});
+
+test('#27 ふつうの候補があれば、そちらだけを出す', () => {
+  const now = at(2026, 9, 30);
+  const wishes = [wish({id: '1'}), wish({id: '2', returnFrom: at(2026, 10, 20, 0)})];
+  assert.deepEqual(candidatesWithTrial(wishes, now, false).map(item => item.id), ['1']);
 });

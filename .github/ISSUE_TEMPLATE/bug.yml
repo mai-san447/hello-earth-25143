@@ -1,0 +1,39 @@
+name: 不具合
+description: 思ったとおりに動かないところ
+title: "[P1] 修正: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現する手順
+      description: 何をどの順で操作したか。本番か手元か、ネットあり／なしも
+      value: |
+        1.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待したこと
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 実際に起きたこと
+      description: 画面の文言はそのまま。スクリーンショットがあれば貼る（願いの中身は写さなくてよい）
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: 端末とブラウザ
+      placeholder: iPhone 15 / Safari、ホーム画面から開いた
+  - type: textarea
+    id: done
+    attributes:
+      label: 完了条件
+      value: |
+        - [ ] 手順どおりに操作して、期待したとおりに動く
+        - [ ] 同じ不具合を防ぐテストがある（書けない場合は理由）

@@ -1,0 +1,299 @@
+<title>季節の星座に願いを預ける</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700&family=Zen+Old+Mincho:wght@400;700&display=swap">
+<style>
+  /* 夜空の作品なので、あえて暗い見た目ひとつに決めている（本体アプリと同じ色）
+     レイアウト：星空1枚が主役。下に入力1行。帰ってきた願いは下から出るシート */
+  :root {
+    color-scheme: dark;
+    --sky: #0a0f1e;
+    --sky-deep: #121a33;
+    --gold: #f2d08d;
+    --gold-ink: #1b1606;
+    --text: #ebe7dc;
+    --muted: #9aa5b8;
+    --line: rgba(199, 213, 207, .16);
+    --panel: #141c38;
+    --mincho: "Zen Old Mincho", "Yu Mincho", "Hiragino Mincho ProN", serif;
+    --gothic: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
+  }
+  html, body { background: var(--sky); }
+  body { color: var(--text); font-family: var(--gothic); line-height: 1.6; padding-inline: 16px; padding-block: 16px 32px; }
+  .wrap { max-width: 560px; margin: 0 auto; display: grid; gap: 12px; }
+  button, input { font: inherit; }
+  button { cursor: pointer; }
+  button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+  .sky-card { position: relative; border-radius: 20px; overflow: hidden; border: 1px solid var(--line);
+    background: radial-gradient(120% 80% at 80% 0%, #1d2852 0%, var(--sky-deep) 50%, var(--sky) 100%); }
+  canvas#sky { display: block; width: 100%; aspect-ratio: 4 / 5; max-width: 100%; }
+  .top { position: absolute; inset: 12px 14px auto; display: flex; justify-content: space-between; align-items: start; gap: 8px; pointer-events: none; }
+  .place { display: grid; }
+  .place small { font-size: 11px; letter-spacing: .14em; color: var(--gold); }
+  .place strong { font: 700 20px var(--mincho); }
+  .place span { font-size: 12px; color: var(--muted); }
+  .nav { display: flex; gap: 4px; pointer-events: auto; }
+  .nav button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: rgba(10,15,30,.6); color: var(--text); }
+
+  .bubble { position: absolute; transform: translate(-50%, calc(-100% - 14px)); padding: 8px 12px; border-radius: 12px;
+    background: var(--panel); border: 1px solid var(--line); font-size: 13px; white-space: nowrap; display: grid; gap: 4px; justify-items: center; }
+  .bubble button { border: 0; background: none; color: var(--gold); text-decoration: underline; text-underline-offset: 3px; padding: 4px; min-height: 32px; }
+
+  .toast { position: absolute; left: 0; right: 0; bottom: 12px; text-align: center; font-size: 13px; color: var(--gold); pointer-events: none; padding-inline: 12px; }
+
+  .compose { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .text-input { min-width: 0; font-size: 16px; padding: 12px 16px; border-radius: 99px; border: 1px solid var(--line);
+    background: rgba(0,0,0,.3); color: var(--text); font-family: var(--mincho); }
+  .btn { min-height: 48px; padding: 10px 20px; border-radius: 99px; border: 1px solid var(--gold); background: var(--gold); color: var(--gold-ink); font-weight: 700; }
+  .btn.ghost { background: transparent; color: var(--gold); }
+  .season-chip { justify-self: start; border: 0; background: none; color: var(--muted); font-size: 13px; padding: 4px 0; min-height: 36px; }
+  .season-chip b { color: var(--text); font-weight: 400; text-decoration: underline; text-underline-offset: 3px; }
+
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+    background: var(--panel); border-top: 1px solid var(--line); border-radius: 20px 20px 0 0; display: grid; gap: 12px;
+    max-width: 560px; margin: 0 auto; transform: translateY(0); transition: transform .25s ease; }
+  .sheet[hidden] { display: grid !important; transform: translateY(110%); visibility: hidden; }
+  .sheet small { color: var(--muted); font-size: 12px; }
+  .sheet blockquote { margin: 0; font: 700 22px/1.5 var(--mincho); overflow-wrap: anywhere; }
+  .sheet .two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .sheet .later { justify-self: center; border: 0; background: none; color: var(--muted); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; min-height: 40px; }
+
+  .demo { justify-self: end; border: 1px dashed var(--line); background: none; color: var(--muted); font-size: 12px; border-radius: 99px; padding: 6px 12px; min-height: 36px; }
+  .note { font-size: 11px; color: var(--muted); margin: 0; }
+  @media (prefers-reduced-motion: reduce) { .sheet { transition: none; } }
+</style>
+
+<div class="wrap">
+  <div class="sky-card">
+    <canvas id="sky" aria-label="星空。あなたの願いは星座の中で光ります。タップすると、いつ帰るかがわかります"></canvas>
+    <div class="top">
+      <div class="place"><small>MORUNE 25143</small><strong id="season-name"></strong><span id="season-sub"></span></div>
+      <div class="nav">
+        <button type="button" id="prev" aria-label="前の季節の空">‹</button>
+        <button type="button" id="next" aria-label="次の季節の空">›</button>
+      </div>
+    </div>
+    <div class="bubble" id="bubble" hidden></div>
+    <p class="toast" id="toast" role="status"></p>
+  </div>
+
+  <form class="compose" id="compose">
+    <input class="text-input" id="wish" placeholder="やりたいことを書く" maxlength="60" aria-label="やりたいこと">
+    <button class="btn" type="submit">星にする</button>
+  </form>
+  <button class="season-chip" type="button" id="chip"></button>
+
+  <button class="demo" type="button" id="demo">試作：次に帰る日まで進める</button>
+  <p class="note">試作です。帰ってくる日は、東京で夜9時にその季節の星座が東から昇ってくる日を計算しています。星の位置・距離は概数です。</p>
+</div>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-labelledby="ret-text">
+  <small id="ret-from"></small>
+  <blockquote id="ret-text"></blockquote>
+  <div class="two">
+    <button class="btn" type="button" data-choice="doing">やる</button>
+    <button class="btn ghost" type="button" data-choice="expired">手放す</button>
+  </div>
+  <button class="later" type="button" data-choice="later">もう少し預ける（次の季節へ）</button>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const H = (h, m, s) => (h + m / 60 + s / 3600) * 15;
+  const D = (d, m) => d < 0 ? d - m / 60 : d + m / 60;
+  // 季節ごとに1つの星座。軽くするため、1画面に1星座だけ出す。
+  const SEASONS = [
+    {id: 'spring', name: '春', c: '北斗七星', stars: [
+      ['ドゥーベ', H(11,3,44), D(61,45), 1.8, 123], ['メラク', H(11,1,50), D(56,23), 2.4, 79], ['フェクダ', H(11,53,50), D(53,42), 2.4, 84],
+      ['メグレズ', H(12,15,26), D(57,2), 3.3, 81], ['アリオト', H(12,54,2), D(55,58), 1.8, 83], ['ミザール', H(13,23,56), D(54,56), 2.2, 83],
+      ['アルカイド', H(13,47,32), D(49,19), 1.9, 104]], edges: [[0,1],[1,2],[2,3],[3,0],[3,4],[4,5],[5,6]]},
+    {id: 'summer', name: '夏', c: 'はくちょう座と夏の大三角', stars: [
+      ['デネブ', H(20,41,26), D(45,17), 1.3, 1400], ['サドル', H(20,22,14), D(40,15), 2.2, 1800], ['アルビレオ', H(19,30,43), D(27,58), 3.1, 430],
+      ['ギェナー', H(20,46,13), D(33,58), 2.5, 72], ['ファワリス', H(19,44,58), D(45,8), 2.9, 165], ['ベガ', H(18,36,56), D(38,47), 0.0, 25],
+      ['アルタイル', H(19,50,47), D(8,52), 0.8, 17]], edges: [[0,1],[1,2],[3,1],[1,4],[0,5],[5,6],[6,0]]},
+    {id: 'autumn', name: '秋', c: 'カシオペヤ座', stars: [
+      ['カフ', H(0,9,11), D(59,9), 2.3, 55], ['シェダル', H(0,40,30), D(56,32), 2.2, 228], ['ツィー', H(0,56,43), D(60,43), 2.2, 550],
+      ['ルクバー', H(1,25,49), D(60,14), 2.7, 99], ['セギン', H(1,54,24), D(63,40), 3.4, 410]], edges: [[0,1],[1,2],[2,3],[3,4]]},
+    {id: 'winter', name: '冬', c: 'オリオン座', stars: [
+      ['ベテルギウス', H(5,55,10), D(7,24), 0.5, 550], ['ベラトリックス', H(5,25,8), D(6,21), 1.6, 250], ['ミンタカ', H(5,32,0), D(-0,18), 2.2, 1200],
+      ['アルニラム', H(5,36,13), D(-1,12), 1.7, 2000], ['アルニタク', H(5,40,46), D(-1,57), 1.8, 1200], ['サイフ', H(5,47,45), D(-9,40), 2.1, 650],
+      ['リゲル', H(5,14,32), D(-8,12), 0.1, 860]], edges: [[0,1],[1,2],[2,3],[3,4],[4,0],[4,5],[2,6]]},
+  ].map(s => ({...s, stars: s.stars.map(([name, ra, dec, mag, ly]) => ({name, ra, dec, mag, ly}))}));
+
+  // ─── 帰ってくる日：夜9時に星座の真ん中が東から昇って見ごろに入る日（東京）────
+  const LON = 139.69, RAD = Math.PI / 180, DAY = 86400000;
+  const centerRa = st => { let x = 0, y = 0; for (const s of st) { x += Math.cos(s.ra * RAD); y += Math.sin(s.ra * RAD); } return (Math.atan2(y, x) / RAD + 360) % 360; };
+  SEASONS.forEach(s => { s.ra = centerRa(s.stars); });
+  function hourAngle(ra, d) {
+    const jd = d.getTime() / DAY + 2440587.5, g = (280.46061837 + 360.98564736629 * (jd - 2451545)) % 360;
+    let h = ((g + LON - ra) % 360 + 360) % 360; return h > 180 ? h - 360 : h;
+  }
+  const at9 = d => { const t = new Date(d); t.setHours(21, 0, 0, 0); return t; };
+  const inSeason = (s, d) => { const h = hourAngle(s.ra, at9(d)); return h >= -45 && h <= 15; };
+  const MIN_DAYS = 14;  // 預けてすぐには帰らない
+  function returnDate(s, from) {
+    for (let i = MIN_DAYS; i < 420; i++) {
+      const d = new Date(from.getTime() + i * DAY);
+      if (inSeason(s, d) && !inSeason(s, new Date(d.getTime() - DAY))) return at9(d);
+    }
+    return null;
+  }
+  // えらべるのは、これから来る季節だけ。近い順に並べ、はじめは一番近い季節
+  function upcoming(from) {
+    return SEASONS.map(s => ({s, at: returnDate(s, from)})).sort((a, b) => a.at - b.at).slice(0, 3);
+  }
+  const md = d => `${d.getMonth() + 1}月${d.getDate()}日`;
+
+  // ─── 状態 ──────────────────────────────────────────────────────────────
+  const $ = id => document.getElementById(id);
+  let today = new Date(); today.setHours(12, 0, 0, 0);
+  const state = {view: 0, pick: 0, wishes: [], open: null};
+  const slotIn = s => { const used = new Set(state.wishes.filter(w => w.s === s.id && w.status !== 'expired').map(w => w.star)); return s.stars.findIndex((_, i) => !used.has(i)); };
+  const isReady = w => w.status === 'waiting' && today >= w.at;
+  const seasonOf = id => SEASONS.find(s => s.id === id);
+
+  function deposit(text, s, from = today) {
+    const star = slotIn(s); if (star < 0) return null;
+    const w = {id: Math.random().toString(36).slice(2), text, s: s.id, star, from, at: returnDate(s, from), status: 'waiting'};
+    state.wishes.push(w); return w;
+  }
+
+  // ─── 星空（変化があったときだけ描く）──────────────────────────────────────
+  const canvas = $('sky'), ctx = canvas.getContext('2d');
+  let lay = [], field = [], anim = 0, flashId = null;
+  function layout() {
+    const s = SEASONS[state.view], w = canvas.clientWidth, h = canvas.clientHeight;
+    const decC = s.stars.reduce((a, x) => a + x.dec, 0) / s.stars.length;
+    const pts = s.stars.map(x => { let d = x.ra - s.ra; if (d > 180) d -= 360; if (d < -180) d += 360; return {x: -d * Math.cos(decC * RAD), y: -(x.dec - decC)}; });
+    const xs = pts.map(p => p.x), ys = pts.map(p => p.y), padX = w * 0.16, padTop = h * 0.2, padBottom = h * 0.12;
+    const sc = Math.min((w - padX * 2) / (Math.max(...xs) - Math.min(...xs)), (h - padTop - padBottom) / (Math.max(...ys) - Math.min(...ys)));
+    const ox = (w - (Math.max(...xs) - Math.min(...xs)) * sc) / 2, oy = padTop + (h - padTop - padBottom - (Math.max(...ys) - Math.min(...ys)) * sc) / 2;
+    lay = pts.map(p => ({x: ox + (p.x - Math.min(...xs)) * sc, y: oy + (p.y - Math.min(...ys)) * sc}));
+  }
+  function resize() {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = canvas.clientWidth * dpr; canvas.height = canvas.clientHeight * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    field = Array.from({length: 110}, (_, i) => { const r = n => Math.abs((Math.sin(i * 12.9898 + n * 78.233) * 43758.5453) % 1); return {x: r(1) * canvas.clientWidth, y: r(2) * canvas.clientHeight, a: .08 + r(3) * .3, r: .4 + r(3) * .7}; });
+    layout(); paint();
+  }
+  function paint(now = performance.now()) {
+    const s = SEASONS[state.view], w = canvas.clientWidth, h = canvas.clientHeight;
+    ctx.clearRect(0, 0, w, h);
+    for (const f of field) { ctx.fillStyle = `rgba(235,231,220,${f.a})`; ctx.fillRect(f.x, f.y, f.r * 2, f.r * 2); }
+    const mine = new Map(state.wishes.filter(x => x.s === s.id && x.status !== 'expired').map(x => [x.star, x]));
+    for (const [a, b] of s.edges) {
+      const on = mine.has(a) && mine.has(b);
+      ctx.strokeStyle = on ? 'rgba(242,208,141,.7)' : 'rgba(199,213,207,.16)'; ctx.lineWidth = on ? 1.5 : 1;
+      ctx.beginPath(); ctx.moveTo(lay[a].x, lay[a].y); ctx.lineTo(lay[b].x, lay[b].y); ctx.stroke();
+    }
+    const pulse = (Math.sin(now / 420) + 1) / 2;
+    let moving = false;
+    s.stars.forEach((st, i) => {
+      const p = lay[i], wish = mine.get(i), size = Math.max(1.5, 4.2 - st.mag);
+      if (!wish) { ctx.fillStyle = 'rgba(154,165,184,.5)'; ctx.beginPath(); ctx.arc(p.x, p.y, size * .7, 0, 7); ctx.fill(); return; }
+      const ready = isReady(wish), flash = flashId === wish.id;
+      if (ready || flash) moving = true;
+      const color = wish.status === 'doing' ? '#f2d08d' : '#ebe7dc';
+      const glow = size * (ready ? 4 + pulse * 3 : flash ? 4 + pulse * 4 : 3);
+      ctx.fillStyle = wish.status === 'doing' ? 'rgba(242,208,141,.18)' : 'rgba(235,231,220,.16)';
+      ctx.beginPath(); ctx.arc(p.x, p.y, glow, 0, 7); ctx.fill();
+      ctx.fillStyle = color; ctx.beginPath(); ctx.arc(p.x, p.y, size * 1.2, 0, 7); ctx.fill();
+    });
+    // 光っている星があるときだけ動かし続ける
+    cancelAnimationFrame(anim);
+    if (moving && !matchMedia('(prefers-reduced-motion: reduce)').matches) anim = requestAnimationFrame(paint);
+  }
+
+  // ─── 操作 ──────────────────────────────────────────────────────────────
+  function toast(text) { $('toast').textContent = text; clearTimeout(toast.t); toast.t = setTimeout(() => { $('toast').textContent = ''; }, 4000); }
+  function renderTop() {
+    const s = SEASONS[state.view];
+    $('season-name').textContent = `${s.name}の空`;
+    const n = state.wishes.filter(w => w.s === s.id && w.status !== 'expired').length;
+    $('season-sub').textContent = `${s.c}　${n}/${s.stars.length}`;
+  }
+  function renderChip() {
+    const list = upcoming(today), p = list[state.pick % list.length];
+    $('chip').innerHTML = `<b>${p.s.name}</b>に帰ってくる（${md(p.at)}ごろ）　変える`;
+    $('chip').dataset.season = p.s.id;
+  }
+  function show(viewIdx) { state.view = (viewIdx + 4) % 4; $('bubble').hidden = true; layout(); renderTop(); paint(); }
+  $('prev').addEventListener('click', () => show(state.view - 1));
+  $('next').addEventListener('click', () => show(state.view + 1));
+  $('chip').addEventListener('click', () => { state.pick++; renderChip(); });
+
+  $('compose').addEventListener('submit', e => {
+    e.preventDefault();
+    const text = $('wish').value.trim();
+    if (!text) { $('wish').focus(); return; }
+    const s = seasonOf($('chip').dataset.season), w = deposit(text, s);
+    if (!w) { toast(`${s.name}の星座はいっぱいです。季節を変えてください`); return; }
+    $('wish').value = ''; state.pick = 0;
+    flashId = w.id; setTimeout(() => { flashId = null; paint(); }, 1800);
+    show(SEASONS.indexOf(s)); renderChip();
+    toast(`${s.stars[w.star].name}になりました。${md(w.at)}ごろ帰ってきます`);
+  });
+
+  canvas.addEventListener('click', e => {
+    const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    const s = SEASONS[state.view];
+    const i = lay.findIndex(p => Math.hypot(p.x - x, p.y - y) < 26);
+    const wish = i < 0 ? null : state.wishes.find(w => w.s === s.id && w.star === i && w.status !== 'expired');
+    if (!wish) { $('bubble').hidden = true; return; }
+    if (isReady(wish)) { openSheet(wish); return; }
+    const b = $('bubble'), st = s.stars[i];
+    b.innerHTML = '';
+    const line = document.createElement('span');
+    line.textContent = wish.status === 'doing' ? `${st.name}：${wish.text}` : `${st.name}・${md(wish.at)}ごろ帰る`;
+    b.append(line);
+    if (wish.status === 'waiting') {
+      const go = document.createElement('button'); go.type = 'button'; go.textContent = 'いま会いに行く';
+      go.addEventListener('click', ev => { ev.stopPropagation(); b.hidden = true; openSheet(wish); });
+      b.append(go);
+    }
+    b.style.left = `${Math.min(Math.max(lay[i].x, 90), canvas.clientWidth - 90)}px`; b.style.top = `${lay[i].y}px`;
+    b.hidden = false;
+  });
+
+  function openSheet(w) {
+    state.open = w;
+    const s = seasonOf(w.s), st = s.stars[w.star], days = Math.max(0, Math.round((today - w.from) / DAY));
+    $('ret-from').textContent = `${s.c}の${st.name}から・${days}日ぶり`;
+    $('ret-text').textContent = w.text;
+    $('sheet').hidden = false;
+    $('sheet').querySelector('[data-choice="doing"]').focus();
+  }
+  document.querySelectorAll('[data-choice]').forEach(b => b.addEventListener('click', () => {
+    const w = state.open; if (!w) return;
+    const st = seasonOf(w.s).stars[w.star];
+    $('sheet').hidden = true; state.open = null;
+    if (b.dataset.choice === 'doing') { w.status = 'doing'; toast(`${st.name}が金色になりました`); }
+    if (b.dataset.choice === 'expired') { w.status = 'expired'; toast('星は空にかえりました'); }
+    if (b.dataset.choice === 'later') {
+      const nextS = SEASONS[(SEASONS.indexOf(seasonOf(w.s)) + 1) % 4], star = slotIn(nextS);
+      if (star >= 0) { Object.assign(w, {s: nextS.id, star, at: returnDate(nextS, today)}); show(SEASONS.indexOf(nextS)); toast(`${nextS.name}の星座へ。${md(w.at)}ごろまた帰ってきます`); }
+      else toast(`${nextS.name}の星座はいっぱいです`);
+    }
+    renderTop(); paint();
+  }));
+
+  // 試作：次に帰る日まで日付を進める
+  $('demo').addEventListener('click', () => {
+    const next = state.wishes.filter(w => w.status === 'waiting').sort((a, b) => a.at - b.at)[0];
+    if (!next) { toast('預けている願いがありません'); return; }
+    today = new Date(next.at);
+    show(SEASONS.findIndex(s => s.id === next.s)); renderChip();
+    toast(`${md(today)}になりました。光っている星をタップしてください`);
+  });
+
+  // はじめの画面：例の願いが1つある冬の空
+  window.addEventListener('resize', resize);
+  const winter = SEASONS.find(s => s.id === 'winter');
+  state.view = SEASONS.indexOf(winter);
+  deposit('新しいスニーカーで散歩', winter, new Date(today.getTime() - 3 * DAY));
+  renderTop(); renderChip(); resize();
+})();
+</script>

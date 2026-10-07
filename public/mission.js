@@ -2,15 +2,26 @@
   // 状態遷移は wish-state.js に集め、テストで確かめる。ここは画面・保存・演出を担当する。
   // 部品が1つでも読めないと、この先の登録が何も動かない。スプラッシュが残ったまま固まらないよう、
   // 失敗したらスプラッシュを外して理由を出す（例：休憩室の遅い回線で、端末への保存も済んでいないとき）。
+  let Sky;
   let WishState;
   let Itokawa;
-  let Constellation;
+  let PublicStars;
+  let KeyedQueue;
+  let Receipt;
+  // 帰還票の QR を描く部品（public/vendor/qrcode.mjs、qrcode-generator 2.0.4、MIT）
+  let QrCode;
   try {
-    [WishState, Itokawa, Constellation] = await Promise.all([
+    let QrModule;
+    [Sky, WishState, Itokawa, PublicStars, KeyedQueue, Receipt, QrModule] = await Promise.all([
+      import('/sky.js'),
       import('/wish-state.js'),
       import('/itokawa.js'),
-      import('/constellation.js'),
+      import('/public-stars.js'),
+      import('/keyed-queue.js'),
+      import('/receipt.js'),
+      import('/vendor/qrcode.mjs'),
     ]);
+    QrCode = QrModule.qrcode;
   } catch (error) {
     console.error('mission modules', error);
     document.querySelector('#splash-screen')?.remove();
@@ -20,24 +31,60 @@
   }
   let distanceTable = null;
 
-  // 応援の信号。軌道ID はこの端末で1度だけ作るランダムなUUID。届いた時刻は端末にも控え、病室でも明るさを出す。
+  // 軌道ID はこの端末で1度だけ作るランダムなUUID（人の番号の発行に使う）。
+  // スマホを振って他の人の星を明るくする「応援の信号」は 2026-10-07 に外した（応援は X の投稿へのいいねで受け取る）
   const ORBIT_KEY = 'morune-25143-orbit-id';
-  const SIGNAL_CACHE_KEY = 'morune-25143-signal-times';
   function readStorage(key) {
     try { return localStorage.getItem(key); } catch { return null; }
   }
   function writeStorage(key, value) {
     try { localStorage.setItem(key, value); } catch { /* 保存できなくても使い続けられる */ }
   }
-  function readSignalCache() {
+
+  // #22 みんなの星。他の人の星は、最後にネットにつながったときに受け取った分を端末に控え、病室でも見せる。
+  // 自分の願いは今までどおり IndexedDB だけ。サーバーに出るのは「流す」を選んだ言葉と軌道IDだけ。
+  const STARS_CACHE_KEY = 'morune-25143-public-stars';
+  const STARS_ENABLED_KEY = 'morune-25143-stars-enabled';
+  const PROMISE_KEY = 'morune-25143-stars-promise';
+  const NUMBER_KEY = 'morune-25143-orbit-number';
+  // 願いの番号（25143-0007-03 の「03」）を、これまでいくつまで出したか。消した番号を使い回さないため
+  const WISH_SEQ_KEY = 'morune-25143-wish-seq';
+  const REPORTED_KEY = 'morune-25143-reported-stars';
+  const STAR_SIGNALS_KEY = 'morune-25143-star-signals';
+  const PUBLISH_QUEUE_KEY = 'morune-25143-publish-queue';
+  function readJson(key, fallback) {
     try {
-      const times = JSON.parse(readStorage(SIGNAL_CACHE_KEY) || '[]');
-      return Array.isArray(times) ? times.filter(Number.isFinite) : [];
+      return JSON.parse(readStorage(key) ?? 'null') ?? fallback;
+    } catch {
+      return fallback;
+    }
+  }
+  const todayKey = () => new Date().toLocaleDateString('sv-SE');
+  let starsEnabled = readStorage(STARS_ENABLED_KEY) === '1';
+  let reportedStars = readJson(REPORTED_KEY, []);
+  if (!Array.isArray(reportedStars)) reportedStars = [];
+  let otherStars = PublicStars.sanitizeStars(readJson(STARS_CACHE_KEY, []), Date.now(), reportedStars);
+  // 直前に描いた他の人の星の場所（触れたときの当たり判定に使う）
+  let otherStarPoints = [];
+  let openStar = null;
+  let lastShownStarId = null;
+
+  // 検証・評価（docs/検証計画.md）：アプリを開いた日だけを端末に控える。願いの中身は含まない
+  const OPEN_DAYS_KEY = 'morune-25143-open-days';
+  const TRIAL_KEY = 'morune-25143-first-return-used';
+  function readOpenDays() {
+    try {
+      const days = JSON.parse(readStorage(OPEN_DAYS_KEY) || '[]');
+      return Array.isArray(days) ? days.filter(day => /^\d{4}-\d{2}-\d{2}$/.test(day)) : [];
     } catch {
       return [];
     }
   }
-  let signalTimes = readSignalCache();
+  function recordOpenDay() {
+    const today = new Date().toLocaleDateString('sv-SE');
+    const days = readOpenDays();
+    if (!days.includes(today)) writeStorage(OPEN_DAYS_KEY, JSON.stringify([...days, today].slice(-120)));
+  }
   const $ = selector => document.querySelector(selector);
   const app = $('#mission-app');
   const canvas = $('#orbit-canvas');
@@ -49,13 +96,10 @@
   const itokawaLabel = $('#itokawa-label');
   const telemetryLabel = $('.telemetry');
   const observerReading = $('#observer-reading');
-  const accountTrigger = $('#account-open');
-  const accountSheet = $('#account-sheet');
   const policySheet = $('#policy-sheet');
   const policyOpen = $('#policy-open');
   const policyClose = $('#policy-close');
   const missionDock = $('#mission-dock');
-  const stepButtons = [...document.querySelectorAll('[data-mission-step]')];
   const splashScreen = $('#splash-screen');
   const context = canvas.getContext('2d');
   const wishInput = $('#wish');
@@ -64,6 +108,10 @@
   const depositStatus = $('#deposit-status');
   const returnCard = $('#return-card');
   const sampleButton = $('#sample-trigger');
+  const publishCheckbox = $('#publish-wish');
+  const promiseSheet = $('#promise-sheet');
+  const starCard = $('#star-card');
+  const fulfilledSheet = $('#fulfilled-sheet');
   const cloud = $('#sync-mode')?.dataset.sync === 'cloud';
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -84,13 +132,50 @@
       // Haptics are optional and can be blocked by the browser or device.
     }
   }, true);
-  const stars = Array.from({length: 185}, () => ({
-    x: Math.random(), y: Math.random(), size: 0.25 + Math.random() * 1.15,
-    phase: Math.random() * Math.PI * 2, speed: 0.15 + Math.random() * 0.55,
-  }));
+  let catalog = null;
+  let radecTable = null;
+  let visibleSky = [];
+  let realItokawa = null;
+  let refreshThreeSky = () => {};
+  const northSky = new Map();
+  function refreshSky() {
+    const {lat, lon} = pendingLocation;
+    const now = Date.now();
+    if (width <= 0 || height <= 0) return;
+    visibleSky = catalog ? catalog.stars.filter(([, dec]) => dec >= 40).map(([raDeg, decDeg, magnitude]) => ({
+      ...Sky.projectPolarStar(raDeg, decDeg, now, lat, lon, width, height), raDeg, decDeg, magnitude,
+    })) : [];
+    for (const group of Sky.NORTH_CONSTELLATIONS) {
+      northSky.set(group.id, group.stars.map(star => Sky.projectPolarStar(star.raDeg, star.decDeg, now, lat, lon, width, height)));
+    }
+    const position = radecTable ? Sky.itokawaPosition(radecTable, now) : null;
+    realItokawa = position ? Sky.equatorialToHorizontal(position.raDeg, position.decDeg, now, lat, lon) : null;
+    if (catalog) observerReading.textContent = Sky.skyCaption(lat, lon, now);
+    refreshThreeSky();
+  }
+  async function loadSkyData() {
+    const results = await Promise.allSettled(['/sky-stars.json', '/itokawa-radec.json'].map(async path => {
+      const response = await fetch(path, {signal: AbortSignal.timeout(8000)});
+      if (!response.ok) throw new Error(`星空データ ${response.status}`);
+      return response.json();
+    }));
+    if (results[0].status === 'fulfilled' && Array.isArray(results[0].value.stars)) catalog = results[0].value;
+    if (results[1].status === 'fulfilled' && Array.isArray(results[1].value.days)) radecTable = results[1].value;
+    if (!catalog) observerReading.textContent = '恒星データを読み込めません。ネットにつながったときに再読み込みしてください';
+    refreshSky();
+  }
   let database;
   let wishes = [];
   const selectedArchiveIds = new Set();
+  // 育つ願い：同じ願いへの保存を押した順に1つずつ行う／書きかけ・保存できなかった「最初の一歩」を、描き直しで捨てない
+  const growthQueue = KeyedQueue.createKeyedQueue();
+  const growthDrafts = new Map();
+  let archiveListStale = false;
+  // 押したボタンは押せなくなるとブラウザがフォーカスを外すので、押した操作を覚えておいて描き直しのあとに戻す
+  let growthFocusKey = null;
+  // 一覧の中を押している最中（指やマウスが下りてから click まで）。この間に描き直すと、
+  // iPhone の Safari のようにボタンへフォーカスを移さないブラウザーでは click が届かなくなる
+  let growthPointerActive = false;
   let width = 0;
   let height = 0;
   let pixelRatio = 1;
@@ -110,8 +195,7 @@
   let itokawaMesh;
   let hayabusaOrbit;
   let hayabusaCraft;
-  let updateItokawaLabel = () => {};
-  let pendingLocation;
+  let pendingLocation = {lat: 35.68, lon: 139.76};
   let threeReady = false;
 
   function openDatabase() {
@@ -181,6 +265,8 @@
     const removed = new Set(removedIds);
     wishes = all ? [] : wishes.filter(wish => !removed.has(wish.id));
     removedIds.forEach(id => selectedArchiveIds.delete(id));
+    if (all) growthDrafts.clear();
+    else removedIds.forEach(id => growthDrafts.delete(id));
     if (all || removed.has(returningWish?.id) || removed.has(returnFlight?.wish.id)) {
       returningWish = null;
       returnFlight = null;
@@ -200,9 +286,15 @@
     return WishState.orbitingWishes(wishes);
   }
 
-  // 今、帰還させられる星（#7 帰還が始まる日を過ぎたもの）
+  // #27 はじめての1回を使ったか。端末ごとに覚える（保存できない端末では毎回「未使用」になるが、
+  // 一度帰ってきた願いがあれば trialAvailable が止めるので、何度も使えるわけではない）
+  function trialUsed() {
+    return readStorage(TRIAL_KEY) === '1';
+  }
+
+  // 今、帰還させられる星（#7 帰還が始まる日を過ぎたもの。#27 はじめての1回を含む）
   function readyToReturn() {
-    return WishState.returnCandidates(wishes, Date.now());
+    return WishState.candidatesWithTrial(wishes, Date.now(), trialUsed());
   }
 
   function waitingForStartMessage() {
@@ -210,16 +302,19 @@
     return next == null ? '' : `${WishState.returnFromLabel(next)}から、帰還が始まります`;
   }
 
+  // 3つのタブはやめた（2026-10-07、帰還のタブで行き止まりになったため）。
+  // 「預ける」はいつも出し、「帰す／カプセルを開く」は、できるときだけ出す。step は見た目の調整にだけ使う
   function setMissionStep(step) {
     missionDock.dataset.step = step;
-    for (const button of stepButtons) {
-      const selected = button.dataset.missionStep === step;
-      button.setAttribute('aria-selected', String(selected));
-      button.tabIndex = selected ? 0 : -1;
-    }
-    for (const panel of document.querySelectorAll('[data-step-panel]')) {
-      panel.hidden = panel.dataset.stepPanel !== step;
-    }
+    updateDockPanels();
+  }
+
+  function updateDockPanels() {
+    const capsuleWaiting = landed && Boolean(returningWish);
+    const canReturn = readyToReturn().length > 0 || capsuleWaiting || Boolean(returnFlight);
+    $('#step-panel-deposit').hidden = false;
+    $('#step-panel-receive').hidden = !canReturn;
+    $('#step-panel-choose').hidden = true;
     requestAnimationFrame(alignTelemetryToDock);
   }
 
@@ -235,7 +330,7 @@
   }
 
   function dispositionLabel(status) {
-    return ({returned: '帰還・未整理', doing: 'やってみる', later: '保留', expired: '手放した', done: '完了'})[status] || '地球に保管';
+    return ({returned: '帰還・未整理', doing: 'やってみる', later: '保留', expired: '手放した', done: 'アーカイブ'})[status] || '地球に保管';
   }
 
   function refreshArchiveControls(archiveItems) {
@@ -256,14 +351,37 @@
     const archiveIds = new Set(archiveItems.map(wish => wish.id));
     selectedArchiveIds.forEach(id => { if (!archiveIds.has(id)) selectedArchiveIds.delete(id); });
     $('#archive-count').textContent = String(archiveItems.length);
-    $('#shake').disabled = $('#fallback').disabled = count === 0 || Boolean(returningWish) || Boolean(returnFlight);
+    // カプセルが着地して開かれていないとき、「帰還」のタブからも開けるようにする。
+    // 「カプセルを開く」は「受け取り」のタブにしかなく、帰還のタブではボタンが全部止まって行き止まりに見えたため（2026-10-07）
+    const capsuleWaiting = landed && Boolean(returningWish) && !returnFlight;
+    $('#shake').disabled = count === 0 || Boolean(returningWish) || Boolean(returnFlight);
+    $('#fallback').disabled = capsuleWaiting ? false : $('#shake').disabled;
+    $('#fallback').textContent = capsuleWaiting ? 'カプセルを開く' : 'タップで帰還';
+    updateDockPanels();
     $('#choose-status').textContent = landed ? '帰還カプセルを回収しました' : 'カプセルの帰還を待っています';
     $('#gesture-hint').textContent = landed
-      ? '着地したカプセルを開いて、あの日の言葉を受信してください'
+      ? 'カプセルが着地しています。「カプセルを開く」から、あの日の言葉を受け取ってください'
       : count ? 'シグナルを探すと、想いがひとつ地球へ帰還します'
-        : orbiting().length ? `星はイトカワの軌道で待っています。${waitingForStartMessage()}`
-          : '願いを預けると、星がイトカワの軌道に浮かびます';
+        : orbiting().length ? `星が待っています。${waitingForStartMessage()}`
+          : '願いを預けると、星がひとつ灯ります';
     const list = $('#archive-list');
+    // 「最初の一歩」を書いている途中（日本語の変換中を含む）は描き直さない。入力欄から出たときに描き直す
+    const editing = list.contains(document.activeElement) && document.activeElement.matches('input[type="text"]');
+    // 一覧の中を押している最中も描き直さない（押し終わったあとに行う。描き直すと、離したときの click が元のボタンに届かない）
+    if (editing || growthPointerActive) archiveListStale = true;
+    else renderArchiveList(list, archiveItems);
+    $('#archive-empty').hidden = archiveItems.length > 0;
+    renderMyRecord();
+    refreshArchiveControls(archiveItems);
+  }
+
+  function renderArchiveList(list, archiveItems) {
+    archiveListStale = false;
+    // 描き直しても、押したボタンからフォーカスが消えないようにする
+    const active = document.activeElement;
+    const untouched = !active || active === document.body;
+    const focusKey = (list.contains(active) ? active.dataset.growthKey : null) ?? (untouched && !$('#archive-sheet').hidden ? growthFocusKey : null);
+    growthFocusKey = null;
     list.replaceChildren();
     for (const wish of archiveItems) {
       const row = document.createElement('li');
@@ -275,6 +393,7 @@
       label.className = 'archive-item-label';
       checkbox.type = 'checkbox';
       checkbox.className = 'archive-item-checkbox';
+      checkbox.dataset.growthKey = `${wish.id}:select`;
       checkbox.checked = selectedArchiveIds.has(wish.id);
       checkbox.setAttribute('aria-label', `${wish.text}を選択`);
       checkbox.addEventListener('change', () => {
@@ -284,15 +403,149 @@
       });
       text.textContent = wish.text;
       disposition.className = 'archive-state';
-      disposition.textContent = dispositionLabel(wish.status);
+      disposition.textContent = wish.status === WishState.STATUS.DOING ? WishState.growthLabel(wish) : dispositionLabel(wish.status);
       date.textContent = new Intl.DateTimeFormat('ja-JP', {month: 'short', day: 'numeric'}).format(wish.updatedAt);
       label.append(checkbox, text);
       row.append(label, disposition, date);
+      if (wish.status === WishState.STATUS.DOING) row.append(growthControls(wish));
       list.append(row);
     }
-    $('#archive-empty').hidden = archiveItems.length > 0;
-    drawConstellation();
-    refreshArchiveControls(archiveItems);
+    if (focusKey) {
+      // 押したボタンが押せなくなったとき（今日の一歩を記録した等）は、同じ願いの次の操作へ移す
+      const target = list.querySelector(`[data-growth-key="${CSS.escape(focusKey)}"]`);
+      // 入力欄には戻さない（戻すと「書いている途中」とみなされ、描き直しが止まってしまう）
+      const row = target?.closest('li');
+      const focusable = target && !target.disabled ? target : row?.querySelector('.archive-growth button:not(:disabled)') ?? row?.querySelector('.archive-item-checkbox');
+      focusable?.focus({preventScroll: true});
+    }
+  }
+
+  // 育つ願い。受け取った願いに「最初の一歩」「一歩ふみ出した」「叶った」を添える（ルールは wish-state.js）
+  function growthControls(wish) {
+    const box = document.createElement('div');
+    box.className = 'archive-growth';
+    const message = document.createElement('p');
+    message.textContent = WishState.growthMessage(wish);
+    box.append(message);
+    if (Number.isFinite(wish.fulfilledAt)) {
+      if (wish.firstStep) {
+        const first = document.createElement('p');
+        first.className = 'archive-growth-first';
+        first.textContent = `最初の一歩：${wish.firstStep}`;
+        box.append(first);
+      }
+      return box;
+    }
+    const busy = growthQueue.busy(wish.id);
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.dataset.growthKey = `${wish.id}:first`;
+    input.value = growthDrafts.get(wish.id) ?? wish.firstStep ?? '';
+    input.placeholder = '最初の小さな一歩は？';
+    input.setAttribute('aria-label', `${wish.text}の、最初の小さな一歩（書かなくても大丈夫）`);
+    // 文字数はルール（wish-state.js）と同じく、絵文字も1字として数える。maxLength は UTF-16 で数えるため使わない
+    const keepDraft = () => {
+      const chars = [...input.value];
+      if (chars.length > WishState.GROWTH.firstStepMax) input.value = chars.slice(0, WishState.GROWTH.firstStepMax).join('');
+      growthDrafts.set(wish.id, input.value);
+    };
+    input.addEventListener('input', event => { if (!event.isComposing) keepDraft(); });
+    input.addEventListener('compositionend', keepDraft);
+    input.addEventListener('change', () => saveFirstStepDraft(wish.id));
+    input.addEventListener('focusout', event => {
+      // 保存できなかった下書きは、変えずに出入りしただけでも（change が起きなくても）もう一度保存する
+      saveFirstStepDraft(wish.id);
+      // 書いている間に止めていた描き直しを、入力欄から出たときに行う。
+      // 一覧の中を押している最中や、一覧の中へ移るときは、押した操作の処理（保存のあとの描き直し）に任せる
+      if (archiveListStale && !growthPointerActive && !$('#archive-list').contains(event.relatedTarget)) queueMicrotask(refreshInterface);
+    });
+    const actions = document.createElement('div');
+    actions.className = 'archive-growth-actions';
+    const step = document.createElement('button');
+    step.type = 'button';
+    step.dataset.growthKey = `${wish.id}:step`;
+    const stepAllowed = WishState.canStep(wish, Date.now());
+    step.textContent = stepAllowed ? '一歩ふみ出した' : '今日の一歩は記録しました';
+    step.disabled = !stepAllowed || busy;
+    step.addEventListener('click', () => {
+      growthFocusKey = step.dataset.growthKey;
+      step.disabled = true;
+      saveFirstStepDraft(wish.id);
+      updateGrowth(wish.id, current => WishState.recordStep(current, Date.now()), next => `星が明るくなりました（${WishState.growthLabel(next)}）。`);
+    });
+    const fulfilled = document.createElement('button');
+    fulfilled.type = 'button';
+    fulfilled.dataset.growthKey = `${wish.id}:fulfilled`;
+    fulfilled.textContent = '叶った';
+    fulfilled.disabled = busy;
+    fulfilled.addEventListener('click', () => {
+      if (!window.confirm(`「${wish.text}」は叶いましたか？ 叶った星として、いちばん明るく光ります。`)) return;
+      growthFocusKey = fulfilled.dataset.growthKey;
+      fulfilled.disabled = true;
+      saveFirstStepDraft(wish.id);
+      updateGrowth(wish.id, current => WishState.markFulfilled(current, Date.now()), 'おめでとうございます。叶った星になりました。');
+    });
+    const receipt = document.createElement('button');
+    receipt.type = 'button';
+    receipt.className = 'archive-growth-receipt';
+    receipt.textContent = '帰還票';
+    receipt.addEventListener('click', () => {
+      saveFirstStepDraft(wish.id);
+      openReceiptSheet(currentWish(wish.id) ?? wish);
+    });
+    actions.append(step, fulfilled);
+    box.append(input, actions, receipt);
+    return box;
+  }
+
+  function currentWish(id) {
+    return wishes.find(wish => wish.id === id);
+  }
+
+  // 書きかけの「最初の一歩」を保存する。同じ内容なら wish-state.js が同じ願いを返すので、重ねて呼んでも保存は1回
+  function saveFirstStepDraft(id) {
+    if (!growthDrafts.has(id)) return;
+    const value = growthDrafts.get(id);
+    updateGrowth(id, current => WishState.setFirstStep(current, value), next => {
+      if (growthDrafts.get(id) === value) growthDrafts.delete(id);
+      return next.firstStep ? '最初の一歩を書きとめました。' : '最初の一歩を消しました。';
+    }, () => {
+      if (growthDrafts.get(id) === value) growthDrafts.delete(id);
+    });
+  }
+
+  // 同じ願いへの保存は growthQueue で1つずつ行い、順番が来た時点の最新の願いから次の形を作る
+  async function updateGrowth(id, change, message, onUnchanged) {
+    let outcome;
+    try {
+      outcome = await growthQueue.run(id, async () => {
+        const current = currentWish(id);
+        if (!current) return {failed: true};
+        let next;
+        try {
+          next = change(current);
+        } catch (error) {
+          // 1日1回・文字数などのルールで受け付けなかった（保存の失敗とは分けて伝える）
+          return {rule: error.message};
+        }
+        if (next === current) return {skipped: true};
+        await store('readwrite', object => object.put(next));
+        wishes = wishes.map(wish => wish.id === id ? next : wish);
+        return {next};
+      });
+    } catch (error) {
+      console.error('save growth', error);
+      outcome = {failed: true};
+    }
+    if (outcome.skipped) onUnchanged?.();
+    refreshInterface();
+    const status = $('#archive-status');
+    if (outcome.next) status.textContent = typeof message === 'function' ? message(outcome.next) : message;
+    else if (outcome.rule) status.textContent = outcome.rule;
+    else if (outcome.failed) status.textContent = growthDrafts.has(id)
+      ? '保存できませんでした。書いた一歩は残してあります。もう一度お試しください'
+      : '保存できませんでした。もう一度お試しください';
+    return {ok: Boolean(outcome.next || outcome.skipped), error: outcome.rule || (outcome.failed ? status.textContent : '')};
   }
 
   function geometry() {
@@ -315,6 +568,7 @@
     canvas.width = Math.round(width * pixelRatio);
     canvas.height = Math.round(height * pixelRatio);
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    refreshSky();
   }
 
   function syncVisualViewport() {
@@ -326,12 +580,6 @@
     resize();
   }
 
-  function hash(text) {
-    let value = 2166136261;
-    for (const character of text) value = Math.imul(value ^ character.charCodeAt(0), 16777619);
-    return value >>> 0;
-  }
-
   function createWishId() {
     if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
     const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -341,26 +589,21 @@
     return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
   }
 
-  function orbitPosition(wish, index, time) {
-    const {centerX, centerY, orbitX, orbitY} = geometry();
-    const seed = hash(wish.id);
-    const lane = 0.76 + (seed % 23) / 100;
-    const angle = seed % 628 / 100 + index * 0.37 + (reducedMotion ? 0 : time * (0.000025 + seed % 11 * 0.000001));
-    return {x: centerX + Math.cos(angle) * orbitX * lane, y: centerY + Math.sin(angle) * orbitY * lane};
+  function projectNorthStar(group, index) {
+    return northSky.get(group.id)?.[index] ?? null;
+  }
+
+  function wishStarPosition(wish) {
+    const slot = Sky.northStarForSeq(WishState.wishSeqOf(wish, wishes));
+    const point = projectNorthStar(slot.constellation, slot.starIndex);
+    return point && {...point, x: point.x + slot.offsetX, y: point.y + slot.offsetY};
   }
 
   function applyLocation(latitude, longitude) {
     const lat = Math.max(-90, Math.min(90, latitude));
     const lon = ((longitude + 180) % 360 + 360) % 360 - 180;
     pendingLocation = {lat, lon};
-    const latitudeLabel = `${Math.abs(lat).toFixed(2)}°${lat >= 0 ? 'N' : 'S'}`;
-    const longitudeLabel = `${Math.abs(lon).toFixed(2)}°${lon >= 0 ? 'E' : 'W'}`;
-    observerReading.textContent = `OBSERVER: EARTH [ ${latitudeLabel}, ${longitudeLabel} ]`;
-    if (starfieldGroup) {
-      starfieldGroup.rotation.x = lat * Math.PI / 180 * 0.1;
-      starfieldGroup.rotation.y = -lon * Math.PI / 180 * 0.0045;
-      updateItokawaLabel();
-    }
+    refreshSky();
     locationStatus.textContent = `星空を現在地に合わせました（緯度 ${lat.toFixed(1)}°）。`;
     setTimeout(() => locationModal.classList.add('is-hidden'), 650);
   }
@@ -378,58 +621,69 @@
     starfieldGroup = new THREE.Group();
     skyGroup.add(starfieldGroup);
 
-    const starCount = 4600;
-    const positions = new Float32Array(starCount * 3);
-    const sizes = new Float32Array(starCount);
-    const phases = new Float32Array(starCount);
-    const rates = new Float32Array(starCount);
-    for (let index = 0; index < starCount; index++) {
-      const y = Math.random() * 2 - 1;
-      const angle = Math.random() * Math.PI * 2;
-      const radius = 95 + Math.random() * 65;
-      const ring = Math.sqrt(1 - y * y);
-      positions[index * 3] = Math.cos(angle) * ring * radius;
-      positions[index * 3 + 1] = y * radius;
-      positions[index * 3 + 2] = Math.sin(angle) * ring * radius;
-      sizes[index] = 0.65 + Math.pow(Math.random(), 3) * 2.7;
-      phases[index] = Math.random() * Math.PI * 2;
-      rates[index] = 0.3 + Math.random() * 1.2;
-    }
+    // 願いと同じ星図の画面座標を直接使う。小惑星用の透視カメラには依存しない。
     const starGeometry = new THREE.BufferGeometry();
-    starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    starGeometry.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
-    starGeometry.setAttribute('aPhase', new THREE.BufferAttribute(phases, 1));
-    starGeometry.setAttribute('aRate', new THREE.BufferAttribute(rates, 1));
     starMaterial = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
       uniforms: {uTime: {value: 0}, uPixelRatio: {value: renderer.getPixelRatio()}},
       vertexShader: `
         attribute float aSize;
+        attribute float aBrightness;
         attribute float aPhase;
-        attribute float aRate;
+        attribute vec3 aColor;
         uniform float uTime;
         uniform float uPixelRatio;
         varying float vAlpha;
+        varying vec3 vColor;
         void main() {
-          vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
-          gl_Position = projectionMatrix * viewPosition;
-          float pulse = 0.7 + 0.3 * sin(uTime * aRate + aPhase);
-          vAlpha = pulse;
-          gl_PointSize = min(aSize * uPixelRatio * pulse * (220.0 / -viewPosition.z), 6.0);
+          gl_Position = vec4(position.xy, 0.9999, 1.0);
+          float pulse = 0.72 + 0.28 * sin(uTime * (0.4 + aPhase * 0.25) + aPhase * 6.2831);
+          vAlpha = aBrightness * pulse;
+          vColor = aColor;
+          gl_PointSize = min(aSize * uPixelRatio * pulse * 2.2, 9.0);
         }
       `,
       fragmentShader: `
         varying float vAlpha;
+        varying vec3 vColor;
         void main() {
           float radius = length(gl_PointCoord - vec2(0.5));
           if (radius > 0.5) discard;
           float glow = 1.0 - smoothstep(0.02, 0.5, radius);
-          gl_FragColor = vec4(vec3(0.76, 0.86, 0.98), glow * vAlpha * 0.9);
+          gl_FragColor = vec4(vColor, glow * vAlpha * 0.95);
         }
       `,
     });
-    starfieldGroup.add(new THREE.Points(starGeometry, starMaterial));
+    const polarStars = new THREE.Points(starGeometry, starMaterial);
+    // 座標はクリップ空間なので、透視カメラによる領域外判定を使わない。
+    polarStars.frustumCulled = false;
+    starfieldGroup.add(polarStars);
+    // イトカワの実方向の印だけは従来の固定視線を保つ。
+    starfieldGroup.rotation.x = -Math.PI / 4;
+    const directionMarker = new THREE.Mesh(new THREE.SphereGeometry(0.35, 8, 8), new THREE.MeshBasicMaterial({color: 0xa6e7ef}));
+    starfieldGroup.add(directionMarker);
+    function skyVector(point) {
+      const alt = point.altitude * Math.PI / 180, az = point.azimuth * Math.PI / 180;
+      return new THREE.Vector3(100 * Math.cos(alt) * Math.sin(az), 100 * Math.sin(alt), -100 * Math.cos(alt) * Math.cos(az));
+    }
+    refreshThreeSky = () => {
+      const positions = visibleSky.flatMap(point => [point.x / width * 2 - 1, 1 - point.y / height * 2, 0]);
+      starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      // 等級（明るいほど小さい数）から、大きさと明るさを決める。暗い星も、以前の星空くらいには見えるようにする
+      starGeometry.setAttribute('aSize', new THREE.Float32BufferAttribute(visibleSky.map(s => 0.7 + 2.6 * Math.pow(10, -0.13 * (s.magnitude + 1.46))), 1));
+      starGeometry.setAttribute('aBrightness', new THREE.Float32BufferAttribute(visibleSky.map(s =>
+        (s.altitude < 0 ? .45 : 1) * (0.45 + 0.55 * Math.pow(10, -0.12 * (s.magnitude + 1.46)))), 1));
+      // またたきの位相と色は、星の位置から決まった値にする（再計算のたびに変わらないように）
+      const tints = [[0.76, 0.86, 0.98], [0.95, 0.96, 1.0], [1.0, 0.92, 0.78], [0.86, 0.9, 1.0]];
+      const seedOf = s => Math.abs(Math.sin(s.raDeg * 12.9898 + s.decDeg * 78.233) * 43758.5453) % 1;
+      starGeometry.setAttribute('aPhase', new THREE.Float32BufferAttribute(visibleSky.map(seedOf), 1));
+      starGeometry.setAttribute('aColor', new THREE.Float32BufferAttribute(visibleSky.flatMap(s => tints[Math.floor(seedOf(s) * 997) % tints.length]), 3));
+      starGeometry.computeBoundingSphere();
+      directionMarker.visible = Boolean(realItokawa && realItokawa.altitude > 0);
+      if (directionMarker.visible) directionMarker.position.copy(skyVector(realItokawa));
+    };
+    refreshThreeSky();
 
     const peanutProfile = [
       [-7.4, 0.12], [-6.8, 1.05], [-5.7, 2.05], [-4.2, 2.65],
@@ -606,9 +860,7 @@
         itokawaLabel.style.top = `${(-projected.y * 0.5 + 0.5) * window.innerHeight - 12}px`;
       }
     }
-    updateItokawaLabel = updateLabel;
 
-    if (pendingLocation) applyLocation(pendingLocation.lat, pendingLocation.lon);
     updateSize();
     threeReady = true;
     window.addEventListener('resize', updateSize, {passive: true});
@@ -618,7 +870,7 @@
       const elapsed = clock.getElapsedTime();
       starMaterial.uniforms.uTime.value = reducedMotion ? 0 : elapsed;
       if (!reducedMotion) {
-        starfieldGroup.rotation.y += 0.000035;
+
         itokawaMesh.rotation.y += 0.0008;
         itokawaMesh.rotation.z += 0.00018;
         hayabusaOrbit.rotation.z += 0.00055;
@@ -632,7 +884,7 @@
 
   locationAllow.addEventListener('click', () => {
     if (!navigator.geolocation) {
-      locationStatus.textContent = '位置情報に対応していません。位置情報なしで続けられます。';
+      locationStatus.textContent = '位置情報に対応していません。東京の星空で続けられます。';
       return;
     }
     locationAllow.disabled = true;
@@ -643,13 +895,13 @@
         locationAllow.disabled = false;
       },
       () => {
-        locationStatus.textContent = '位置情報を取得できませんでした。位置情報なしで続けられます。';
+        locationStatus.textContent = '位置情報を取得できませんでした。東京の星空で続けられます。';
         locationAllow.disabled = false;
       },
       {enableHighAccuracy: false, timeout: 10000, maximumAge: 300000},
     );
   });
-  locationSkip.addEventListener('click', () => locationModal.classList.add('is-hidden'));
+  locationSkip.addEventListener('click', () => { applyLocation(35.68, 139.76); locationModal.classList.add('is-hidden'); });
 
   function drawSpace(time) {
     const sky = context.createLinearGradient(0, 0, width * 0.65, height);
@@ -666,15 +918,25 @@
     context.fillStyle = haze;
     context.fillRect(0, 0, width, height);
 
-    for (const star of stars) {
-      const alpha = 0.26 + (Math.sin(time * 0.001 * star.speed + star.phase) + 1) * 0.29;
-      context.globalAlpha = alpha;
-      context.fillStyle = star.size > 1 ? '#f3dbac' : '#d9e7ed';
+    for (const star of visibleSky) {
+      const phase = Math.abs(Math.sin(star.raDeg * 12.9898 + star.decDeg * 78.233) * 43758.5453) % 1;
+      const pulse = .72 + .28 * Math.sin((reducedMotion ? 0 : time / 1000) * (.4 + phase * .25) + phase * Math.PI * 2);
+      const alpha = .45 + .55 * Math.pow(10, -.12 * (star.magnitude + 1.46));
+      context.globalAlpha = alpha * pulse * (star.altitude < 0 ? .45 : 1);
+      context.fillStyle = ['#c2dbfa', '#f2f5ff', '#ffebc7', '#dbe6ff'][Math.floor(phase * 997) % 4];
       context.beginPath();
-      context.arc(star.x * width, star.y * height, star.size, 0, Math.PI * 2);
+      context.arc(star.x, star.y, (.7 + 2.6 * Math.pow(10, -.13 * (star.magnitude + 1.46))) * pulse * 1.1, 0, Math.PI * 2);
       context.fill();
     }
     context.globalAlpha = 1;
+    if (realItokawa?.altitude > 0) {
+      const radius = (90 - realItokawa.altitude) / 90 * Math.min(width, height) * 0.48;
+      const az = realItokawa.azimuth * Math.PI / 180;
+      context.fillStyle = '#a6e7ef';
+      context.beginPath();
+      context.arc(width / 2 + radius * Math.sin(az), height / 2 - radius * Math.cos(az), 2.5, 0, Math.PI * 2);
+      context.fill();
+    }
   }
 
   function drawEarth() {
@@ -700,7 +962,6 @@
     context.fillStyle = 'rgba(207, 232, 226, .78)';
     context.textAlign = 'center';
     context.font = '9px ui-monospace, monospace';
-    context.fillText('EARTH / CAPSULE RECOVERY', width * 0.5, height - 26);
   }
 
   function drawItokawa(time) {
@@ -747,33 +1008,90 @@
     context.fillText('25143 ITOKAWA', centerX, centerY + asteroid + 23);
   }
 
-  function drawOrbit(time) {
+  function drawWishStars(time) {
     const {centerX, centerY, orbitX, orbitY} = geometry();
-    context.save();
-    context.strokeStyle = 'rgba(197, 215, 218, .23)';
-    context.setLineDash([2, 7]);
-    context.lineWidth = .8;
-    context.beginPath();
-    context.ellipse(centerX, centerY, orbitX, orbitY, -.12, 0, Math.PI * 2);
-    context.stroke();
-    context.restore();
-
     if (!threeReady) drawHayabusa(centerX - orbitX * .48, centerY - orbitY * .82, -.22, 1);
-
-    orbiting().forEach((wish, index) => {
-      if (launchFlight?.wish.id === wish.id) return;
-      const point = orbitPosition(wish, index, time);
-      // 応援の信号が届いた星ほど明るく光る
-      const glow = Constellation.brightness(Constellation.signalsWhileWaiting(wish, signalTimes));
+    const stars = WishState.skyWishes(wishes).filter(wish => wish.id !== returnFlight?.wish.id && wish.id !== launchFlight?.wish.id);
+    // 星座の線は引かない（2026-10-07、本人の判断：文字なしの線は意味が伝わらなかった）
+    stars.forEach(wish => {
+      const point = wishStarPosition(wish);
+      if (!point?.visible) return;
+      // 自分の願いの星は、背景の本物の星とひと目で分かるよう、金色のにじむ光と細い十字の光で描く。
+      // 丸い線の輪は「印」に見えて星らしくなかったのでやめた（2026-10-07）。明るさはゆっくりまたたく
+      const magnitude = WishState.magnitude(wish);
+      const growth = magnitude == null ? 1 : .7 + (6 - magnitude) * .1;
+      const twinkle = reducedMotion ? 1 : .82 + Math.sin(time * .0018 + WishState.wishSeqOf(wish, wishes)) * .18;
+      const halo = 13 * growth * twinkle;
       context.save();
-      context.shadowColor = '#ffe4a6';
-      context.shadowBlur = 13 * glow;
-      context.fillStyle = '#fff1ce';
+      context.globalAlpha = point.altitude < 0 ? .7 : 1;
+      const glow = context.createRadialGradient(point.x, point.y, 0, point.x, point.y, halo);
+      glow.addColorStop(0, 'rgba(255, 236, 190, .9)');
+      glow.addColorStop(.25, 'rgba(255, 214, 140, .35)');
+      glow.addColorStop(1, 'rgba(255, 200, 120, 0)');
+      context.fillStyle = glow;
       context.beginPath();
-      context.arc(point.x, point.y, (2.2 + index % 3 * .45) * glow, 0, Math.PI * 2);
+      context.arc(point.x, point.y, halo, 0, Math.PI * 2);
+      context.fill();
+      const spike = 11 * growth * twinkle;
+      context.strokeStyle = 'rgba(255, 232, 180, .55)';
+      context.lineWidth = .8;
+      context.beginPath();
+      context.moveTo(point.x - spike, point.y);
+      context.lineTo(point.x + spike, point.y);
+      context.moveTo(point.x, point.y - spike);
+      context.lineTo(point.x, point.y + spike);
+      context.stroke();
+      context.fillStyle = '#fff6dc';
+      context.beginPath();
+      context.arc(point.x, point.y, 1.9 * growth, 0, Math.PI * 2);
       context.fill();
       context.restore();
     });
+    drawOtherStars(time);
+  }
+
+  // #22 他の人の星。自分の金色の星とひと目で分かるよう、青白く小さく描く。「叶ったよ」は流れ星にする。
+  // 3D星空のときも簡易表示のときも、願いの星はこの 2D の層に描く
+  function drawOtherStars(time) {
+    const {centerX, centerY, orbitX, orbitY} = geometry();
+    const now = Date.now();
+    otherStarPoints = [];
+    for (const star of otherStars) {
+      if (star.expiresAt <= now) continue;
+      const seed = PublicStars.starSeed(star.id);
+      // 自分の星とは逆向きに、ゆっくりめぐる
+      const angle = seed.angle - (reducedMotion ? 0 : time * 0.000012);
+      const x = centerX + Math.cos(angle) * orbitX * seed.lane;
+      const y = centerY + Math.sin(angle) * orbitY * seed.lane;
+      otherStarPoints.push({x, y, star});
+      let headX = x;
+      let headY = y;
+      context.save();
+      if (star.kind === 'fulfilled') {
+        // 星ごとにずらして、12秒に1度だけ短く流れる（動きを減らす設定では、尾だけを描いて止める）
+        const cycle = reducedMotion ? 1 : (time / 12000 + seed.phase) % 1;
+        const streak = cycle < 0.14 ? cycle / 0.14 : 0;
+        headX = x + streak * 34;
+        headY = y + streak * 15;
+        const tail = 16 + streak * 30;
+        const tailGradient = context.createLinearGradient(headX - tail, headY - tail * .45, headX, headY);
+        tailGradient.addColorStop(0, 'rgba(176, 212, 255, 0)');
+        tailGradient.addColorStop(1, `rgba(214, 234, 255, ${0.5 + streak * 0.45})`);
+        context.strokeStyle = tailGradient;
+        context.lineWidth = 1.2;
+        context.beginPath();
+        context.moveTo(headX - tail, headY - tail * .45);
+        context.lineTo(headX, headY);
+        context.stroke();
+      }
+      context.shadowColor = '#8fc1ff';
+      context.shadowBlur = 7;
+      context.fillStyle = '#d8e9ff';
+      context.beginPath();
+      context.arc(headX, headY, star.kind === 'fulfilled' ? 1.7 : 1.35, 0, Math.PI * 2);
+      context.fill();
+      context.restore();
+    }
   }
 
   function drawHayabusa(x, y, rotation, scale = 1) {
@@ -828,14 +1146,15 @@
 
   function drawFlight(time) {
     if (launchFlight) {
-      const progress = Math.min(1, (time - launchFlight.startedAt) / 1750);
-      const target = orbitPosition(launchFlight.wish, Math.max(0, orbiting().length - 1), time);
-      drawComet(width * .5, height + 8, target.x, target.y, progress);
+      const progress = Math.min(1, (time - launchFlight.startedAt) / (reducedMotion ? 60 : 1750));
+      const target = wishStarPosition(launchFlight.wish);
+      if (target?.visible) drawComet(width * .5, geometry().earthY, target.x, target.y, progress);
       if (progress >= 1) launchFlight = null;
     }
     if (returnFlight) {
       const progress = Math.min(1, (time - returnFlight.startedAt) / (reducedMotion ? 60 : 2600));
-      drawComet(returnFlight.from.x, returnFlight.from.y, width * .5, geometry().earthY, progress);
+      const from = wishStarPosition(returnFlight.wish);
+      if (from?.visible) drawComet(from.x, from.y, width * .5, geometry().earthY, progress);
     }
     if (landed) {
       const {earthY} = geometry();
@@ -885,7 +1204,7 @@
     if (threeReady) context.clearRect(0, 0, width, height);
     else drawSpace(time);
     drawEarth();
-    drawOrbit(time);
+    drawWishStars(time);
     drawFlight(time);
     if (!threeReady) drawItokawa(time);
     requestAnimationFrame(render);
@@ -895,8 +1214,11 @@
     if (!returnFlight || returnFlight.wish.id !== wish.id) return;
     returnFlight = null;
     const returned = WishState.markReturned(wish, Date.now());
+    const wasTrial = WishState.trialAvailable(wishes, trialUsed());
     try {
       await store('readwrite', object => object.put(returned));
+      // 着地前の再読み込みや保存失敗で、試しの帰還だけが使えなくなるのを防ぐ。
+      if (wasTrial) writeStorage(TRIAL_KEY, '1');
       wishes = wishes.map(item => item.id === wish.id ? returned : item);
       returningWish = returned;
       landed = true;
@@ -1064,22 +1386,20 @@
       return;
     }
     returningWish = candidates[Math.floor(Math.random() * candidates.length)];
+    if (launchFlight?.wish.id === returningWish.id) launchFlight = null;
     returnFlight = {
       wish: returningWish,
       startedAt: performance.now(),
-      from: orbitPosition(returningWish, candidates.indexOf(returningWish), performance.now()),
     };
     playReturnWhoosh();
     setTimeout(() => finishReturn(returningWish), reducedMotion ? 60 : 2700);
     landed = false;
     sampleButton.hidden = true;
-    $('#mission-status').textContent = '2005 — イトカワ出発 / 願い星を地球へ';
+    $('#mission-status').textContent = '';
     $('#gesture-hint').textContent = '星はひとつだけ。はやぶさの帰還を見届けてください';
     setTimeout(() => {
-      if (returnFlight) $('#mission-status').textContent = '2007 — イオンエンジンで地球帰還の航路へ';
     }, 1150);
     setTimeout(() => {
-      if (returnFlight) $('#mission-status').textContent = '2010 — 帰還カプセルを分離';
     }, 2050);
     refreshInterface();
   }
@@ -1093,19 +1413,16 @@
     $('#returned-date').textContent = `預けた日 ${new Intl.DateTimeFormat('ja-JP', {year: 'numeric', month: 'long', day: 'numeric'}).format(createdAt)}`;
     $('#returned-date').dateTime = createdAt.toISOString();
     $('#returned-wait').textContent = WishState.waitedMessage(WishState.daysWaited(returningWish, Date.now()));
-    $('#returned-distance').textContent = Itokawa.distanceMessage(Itokawa.distanceKmOn(distanceTable, Date.now()));
-    $('#returned-signals').textContent = Constellation.signalMessage(Constellation.signalsWhileWaiting(returningWish, signalTimes));
-    $('#share-comment').value = '';
-    $('#share-status').textContent = '';
+    $('#returned-number').textContent = currentWishNumber(returningWish) ?? '';
     returnCard.hidden = false;
     setTimeout(() => returnCard.classList.add('card-open'), 20);
-    $('#mission-status').textContent = '2010 — 帰還カプセル / 願い星を回収';
+    $('#mission-status').textContent = '';
     $('#card-close').focus({preventScroll: true});
   }
 
   async function chooseDisposition(choice) {
     if (!returningWish || !landed) return;
-    const actions = [...document.querySelectorAll('#try-wish, #return-to-orbit, #finish-wish, #share-wish')];
+    const actions = [...document.querySelectorAll('#try-wish, #return-to-orbit')];
     actions.forEach(button => { button.disabled = true; });
     let updated;
     try {
@@ -1125,12 +1442,15 @@
       if (backToOrbit) launchFlight = {wish: updated, startedAt: performance.now()};
       closeCard({decided: true});
       setMissionStep(backToOrbit ? 'receive' : 'deposit');
-      // #17 何度も軌道へ戻した願いには、5回目に一度だけ「手放してもいい」と伝える（戻すことは止めない）
+      // #17 何度も星空へ戻した願いには、5回目に一度だけ「手放してもいい」と伝える（戻すことは止めない）
       const gentle = WishState.gentleMessage(updated);
       if (gentle) $('#mission-status').textContent = gentle;
+      // #22 想いを受け取ったら、任意で「叶ったよ」のひとことを流せる
+      // 受け取ったら、帰還票（紙・シェア）をつくるシートを出す。みんなの星が開いている環境では、閉じたあと「叶ったよ」へ
+      if (updated.status === WishState.STATUS.DOING) openReceiptSheet(updated, {thenFulfilled: starsEnabled});
       if (!backToOrbit) {
-        // 受け取った願いは星座に加わる。回収記録のボタンを一度だけ光らせて知らせる
-        $('#mission-status').textContent = 'あなたの星座に、星がひとつ加わりました';
+        // 受け取った願いは回収記録に入る。回収記録のボタンを一度だけ光らせて知らせる
+        $('#mission-status').textContent = '願いを受け取りました。回収記録で「一歩ふみ出した」を押すと、星が育ちます';
         const archiveTrigger = $('#archive-open');
         archiveTrigger.classList.remove('constellation-grew');
         void archiveTrigger.offsetWidth;
@@ -1145,32 +1465,402 @@
     }
   }
 
-  async function shareWish() {
-    if (!returningWish || !landed) return;
-    const shareButton = $('#share-wish');
-    const shareStatus = $('#share-status');
-    const comment = $('#share-comment').value.trim();
-    const message = [`「${returningWish.text}」`, comment, 'イトカワから帰還した願い星 — MORUNE 25143'].filter(Boolean).join('\n');
-    const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(window.location.href)}`;
-    shareButton.disabled = true;
-    shareStatus.textContent = '';
-    try {
-      const popup = window.open(xUrl, '_blank', 'noopener,noreferrer,width=640,height=520');
-      if (popup) {
-        shareStatus.textContent = 'Xの投稿画面を開きました';
-      } else if (typeof navigator.share === 'function') {
-        await navigator.share({title: 'MORUNE 25143 — 帰還した願い星', text: message, url: window.location.href});
-        shareStatus.textContent = '共有シートを開きました';
-      } else {
-        await navigator.clipboard.writeText(`${message}\n${window.location.href}`);
-        shareStatus.textContent = '共有文をコピーしました';
+  // #26 帰還票。端末の中で画像を描いて保存する（願いの言葉はサーバーへ送らない）
+  // スマホでは共有シートの「画像を保存」で写真に残せる。使えない端末ではダウンロードにする。返すのは画面に出す言葉
+  async function saveImage(blob, fileName, title, savedMessage) {
+    const file = new File([blob], fileName, {type: 'image/png'});
+    if (typeof navigator.canShare === 'function' && navigator.canShare({files: [file]})) {
+      await navigator.share({files: [file], title});
+      return '共有シートを開きました。「画像を保存」で端末に残せます';
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return savedMessage;
+  }
+
+  // ---- 印刷用の帰還票（感熱紙 80mm、黒1色）。内容は receipt.js、ここは描くだけ ----
+  const RECEIPT_FONT = '"Zen Kaku Gothic New", "Noto Sans JP", "Hiragino Sans", sans-serif';
+  const RECEIPT_MONO = 'ui-monospace, "SFMono-Regular", Menlo, monospace';
+  const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+
+  // 星の絵をグレーで描いてから、4x4 の網点で黒1色にする（感熱紙は黒しか出ない）
+  function drawReceiptArt(variant, width, height) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', {willReadFrequently: true});
+    const gray = value => `rgb(${value},${value},${value})`;
+    const sky = context.createLinearGradient(0, 0, 0, height);
+    const tones = {dusk: [70, 210], night: [18, 85], dawn: [40, 225], meteor: [14, 70]}[variant.id];
+    sky.addColorStop(0, gray(tones[0]));
+    sky.addColorStop(1, gray(tones[1]));
+    context.fillStyle = sky;
+    context.fillRect(0, 0, width, height);
+    // 星は決まった並びで描く（同じ願いなら同じ絵）
+    let seed = 7;
+    const random = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    const starCount = {dusk: 14, night: 120, dawn: 30, meteor: 110}[variant.id];
+    context.fillStyle = gray(255);
+    for (let index = 0; index < starCount; index += 1) {
+      const radius = random() < 0.12 ? 2.6 : 1.4;
+      const y = random() * height * (variant.id === 'dawn' ? 0.45 : 0.72);
+      context.beginPath();
+      context.arc(random() * width, y, radius, 0, Math.PI * 2);
+      context.fill();
+    }
+    // 願いの星（いちばん明るい星）と、小さな光の筋
+    const star = {x: width * 0.66, y: height * 0.3};
+    context.strokeStyle = gray(255);
+    context.lineWidth = 3;
+    for (const [dx, dy] of [[1, 0], [0, 1]]) {
+      context.beginPath();
+      context.moveTo(star.x - dx * 26, star.y - dy * 26);
+      context.lineTo(star.x + dx * 26, star.y + dy * 26);
+      context.stroke();
+    }
+    context.beginPath();
+    context.arc(star.x, star.y, 8, 0, Math.PI * 2);
+    context.fill();
+    if (variant.id === 'dawn') {
+      const glow = context.createRadialGradient(width * 0.3, height, 10, width * 0.3, height, height * 0.8);
+      glow.addColorStop(0, gray(255));
+      glow.addColorStop(1, 'rgba(255,255,255,0)');
+      context.fillStyle = glow;
+      context.fillRect(0, 0, width, height);
+    }
+    if (variant.rare) {
+      context.strokeStyle = gray(255);
+      context.lineWidth = 5;
+      context.beginPath();
+      context.moveTo(width * 0.08, height * 0.12);
+      context.lineTo(width * 0.42, height * 0.4);
+      context.stroke();
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(width * 0.03, height * 0.1);
+      context.lineTo(width * 0.42, height * 0.4);
+      context.stroke();
+    }
+    // 丘と、空を見上げる人
+    context.fillStyle = gray(variant.id === 'dusk' || variant.id === 'dawn' ? 30 : 5);
+    context.beginPath();
+    context.moveTo(0, height);
+    context.lineTo(0, height * 0.8);
+    context.quadraticCurveTo(width * 0.42, height * 0.62, width, height * 0.84);
+    context.lineTo(width, height);
+    context.fill();
+    const person = {x: width * 0.38, y: height * 0.71};
+    context.beginPath();
+    context.arc(person.x, person.y - 30, 9, 0, Math.PI * 2);
+    context.fill();
+    context.beginPath();
+    context.moveTo(person.x - 13, person.y);
+    context.quadraticCurveTo(person.x, person.y - 34, person.x + 13, person.y);
+    context.fill();
+    ditherToInk(context, width, height);
+    return canvas;
+  }
+
+  // グレーの絵を、4x4 の網点で黒1色にする（感熱紙は黒しか出ない）
+  function ditherToInk(context, width, height) {
+    const image = context.getImageData(0, 0, width, height);
+    const data = image.data;
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const index = (y * width + x) * 4;
+        const lum = (data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114) / 255;
+        const on = lum < (BAYER[(y % 4) * 4 + (x % 4)] + 0.5) / 16;
+        data[index] = data[index + 1] = data[index + 2] = on ? 0 : 255;
+        data[index + 3] = 255;
       }
+    }
+    context.putImageData(image, 0, 0);
+  }
+
+
+
+
+
+  // 1行に収まるように折り返す（日本語は1文字ずつ測る）
+  function wrapLines(context, text, maxWidth) {
+    const lines = [];
+    let line = '';
+    for (const char of [...text]) {
+      if (context.measureText(line + char).width > maxWidth && line) {
+        lines.push(line);
+        line = char;
+      } else {
+        line += char;
+      }
+    }
+    if (line) lines.push(line);
+    return lines;
+  }
+
+  // 読み取ると、自分の星（MORUNE 25143 のページ）に戻れる QR。財布に入れた紙から、また開くきっかけにする
+  function drawReceiptQr(context, content, top) {
+    const qr = QrCode(0, 'M');
+    qr.addData(content.qrUrl);
+    qr.make();
+    const modules = qr.getModuleCount();
+    const cell = 5;
+    const quiet = 4;
+    const size = (modules + quiet * 2) * cell;
+    // 説明の文字は付けず、QR だけを真ん中に置く
+    const margin = Math.round((Receipt.RECEIPT_WIDTH - size) / 2);
+    context.fillStyle = '#fff';
+    context.fillRect(margin, top, size, size);
+    context.fillStyle = '#000';
+    for (let row = 0; row < modules; row += 1) {
+      for (let column = 0; column < modules; column += 1) {
+        if (qr.isDark(row, column)) context.fillRect(margin + (column + quiet) * cell, top + (row + quiet) * cell, cell, cell);
+      }
+    }
+    return top + size + 4;
+  }
+
+  // 切り取り線から下（最初の小さな一歩）。シェアの画像には入れない
+  function drawReceiptStub(context, content, top, margin, width, inner) {
+    let y = top + 40;
+    context.setLineDash([10, 8]);
+    context.lineWidth = 2;
+    context.beginPath();
+    context.moveTo(0, y);
+    context.lineTo(width, y);
+    context.stroke();
+    context.setLineDash([]);
+    context.textAlign = 'left';
+    context.font = `400 22px ${RECEIPT_FONT}`;
+    context.fillText('✂', 8, y - 6);
+    y += 46;
+    context.font = `700 26px ${RECEIPT_FONT}`;
+    context.fillText(content.stub, margin, y);
+    if (content.firstStep) {
+      context.font = `700 30px ${RECEIPT_FONT}`;
+      for (const line of wrapLines(context, content.firstStep, inner)) {
+        y += 50;
+        context.fillText(line, margin, y);
+      }
+      y += 16;
+      context.lineWidth = 2;
+      context.beginPath();
+      context.moveTo(margin, y);
+      context.lineTo(width - margin, y);
+      context.stroke();
+    } else {
+      for (let index = 0; index < 2; index += 1) {
+        y += 56;
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(margin, y);
+        context.lineTo(width - margin, y);
+        context.stroke();
+      }
+    }
+    context.textAlign = 'center';
+    return y;
+  }
+
+  function drawReceipt(content, {withStub = true} = {}) {
+    const width = Receipt.RECEIPT_WIDTH;
+    const margin = 24;
+    const inner = width - margin * 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = 1400;
+    const context = canvas.getContext('2d');
+    context.fillStyle = '#fff';
+    context.fillRect(0, 0, width, canvas.height);
+    context.fillStyle = '#000';
+    context.strokeStyle = '#000';
+    let y = 34;
+    context.font = `500 20px ${RECEIPT_MONO}`;
+    context.textBaseline = 'alphabetic';
+    context.textAlign = 'left';
+    context.fillText('MORUNE 25143', margin, y);
+    if (content.number) {
+      context.textAlign = 'right';
+      context.fillText(content.number, width - margin, y);
+    }
+    y += 16;
+    const artHeight = Math.round(inner * 0.58);
+    // 絵は星のドット絵（ガチャ）だけ。AI の絵は、願いのイメージと違うことが多かったのでやめた（2026-10-07、本人の判断）
+    context.drawImage(drawReceiptArt(content.variant, inner, artHeight), margin, y, inner, artHeight);
+    context.lineWidth = 3;
+    context.strokeRect(margin, y, inner, artHeight);
+    y += artHeight;
+    context.textAlign = 'center';
+    if (content.wishText) {
+      context.font = `700 40px ${RECEIPT_FONT}`;
+      y += 10;
+      for (const line of wrapLines(context, content.wishText, inner)) {
+        y += 50;
+        context.fillText(line, width / 2, y);
+      }
+    }
+    y += 40;
+    context.font = `500 19px ${RECEIPT_MONO}`;
+    context.fillText(content.meta.join(' · '), width / 2, y);
+    if (content.qrUrl) y = drawReceiptQr(context, content, y + 24);
+    if (withStub) y = drawReceiptStub(context, content, y, margin, width, inner);
+    y += 40;
+    context.textAlign = 'center';
+    context.font = `400 16px ${RECEIPT_FONT}`;
+    if (content.source) {
+      context.fillText(content.source, width / 2, y);
+      y += 24;
+    }
+    // 紙の長さを中身に合わせて切る
+    const trimmed = document.createElement('canvas');
+    trimmed.width = width;
+    trimmed.height = Math.ceil(y + 16);
+    trimmed.getContext('2d').drawImage(canvas, 0, 0);
+    return trimmed;
+  }
+
+  // ---- 帰還票をつくるシート。アプリが正本（一歩の記録）、紙とシェアは出口 ----
+  const receiptSheet = $('#receipt-sheet');
+  let receiptWishId = null;
+  let receiptThenFulfilled = false;
+  let receiptPreviewTimer = null;
+
+  function receiptWish() {
+    return wishes.find(wish => wish.id === receiptWishId) ?? null;
+  }
+
+  function openReceiptSheet(wish, {thenFulfilled = false} = {}) {
+    receiptWishId = wish.id;
+    receiptThenFulfilled = thenFulfilled;
+    $('#receipt-first-step').value = growthDrafts.get(wish.id) ?? wish.firstStep ?? '';
+    $('#receipt-include-text').checked = true;
+    $('#receipt-status').textContent = '';
+    $('#receipt-preview').removeAttribute('src');
+    receiptSheet.hidden = false;
+    renderReceiptPreview();
+    setTimeout(() => $('#receipt-first-step').focus({preventScroll: true}), 320);
+  }
+
+  function closeReceiptSheet() {
+    receiptSheet.hidden = true;
+    const wish = receiptWish();
+    receiptWishId = null;
+    if (receiptThenFulfilled && wish?.status === WishState.STATUS.DOING) openFulfilledSheet();
+    else $('#deposit-open').focus({preventScroll: true});
+  }
+
+  // 書いた一歩を、帰還票に使う前にアプリへ記録する（星を育てる記録の正本はアプリ）
+  async function commitReceiptFirstStep() {
+    const wish = receiptWish();
+    if (!wish) return null;
+    const value = $('#receipt-first-step').value;
+    if (value.trim() !== (wish.firstStep ?? '')) {
+      growthDrafts.set(wish.id, value);
+      const result = await updateGrowth(wish.id, current => WishState.setFirstStep(current, value), next => (next.firstStep ? '最初の一歩を書きとめました。' : '最初の一歩を消しました。'), () => growthDrafts.delete(wish.id));
+      // 保存できなかった下書きを画像だけに載せると、アプリの記録と食い違うためここで止める。
+      if (!result.ok) {
+        $('#receipt-status').textContent = result.error;
+        return null;
+      }
+      if (growthDrafts.get(wish.id) === value) growthDrafts.delete(wish.id);
+    }
+    return receiptWish();
+  }
+
+  function receiptContentFor(wish) {
+    const now = Date.now();
+    const km = Itokawa.distanceKmOn(distanceTable, now);
+    const draft = $('#receipt-first-step').value;
+    return Receipt.returnReceiptContent({
+      wish: {...wish, firstStep: draft},
+      now,
+      // 待っていた日数は、帰ってきた日（受け取った日）まで
+      days: WishState.daysWaited(wish, wish.updatedAt ?? now),
+      distanceText: km == null ? '' : Itokawa.formatDistanceJa(km),
+      number: currentWishNumber(wish),
+      includeText: $('#receipt-include-text').checked,
+      qrUrl: `${location.origin}/`,
+    });
+  }
+
+  function renderReceiptPreview() {
+    clearTimeout(receiptPreviewTimer);
+    receiptPreviewTimer = setTimeout(async () => {
+      const wish = receiptWish();
+      if (!wish) return;
+      await document.fonts?.ready;
+      const content = receiptContentFor(wish);
+      $('#receipt-preview').src = drawReceipt(content).toDataURL('image/png');
+    }, 200);
+  }
+
+  function canvasBlob(canvas) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(result => (result ? resolve(result) : reject(new Error('画像を作れませんでした'))), 'image/png');
+    });
+  }
+
+  async function saveReceipt() {
+    const status = $('#receipt-status');
+    const button = $('#receipt-save');
+    button.disabled = true;
+    status.textContent = '帰還票を描いています…';
+    try {
+      const wish = await commitReceiptFirstStep();
+      if (!wish) return;
+      await document.fonts?.ready;
+      const content = receiptContentFor(wish);
+      const blob = await canvasBlob(drawReceipt(content));
+      status.textContent = await saveImage(blob, content.fileName, 'MORUNE 25143 帰還票', '帰還票を保存しました。感熱プリンターなどで印刷できます');
     } catch (error) {
-      if (error?.name !== 'AbortError') shareStatus.textContent = '共有できませんでした。もう一度お試しください';
+      if (error?.name === 'AbortError') status.textContent = '';
+      else {
+        console.error('receipt', error);
+        status.textContent = '帰還票を保存できませんでした。もう一度お試しください';
+      }
     } finally {
-      shareButton.disabled = false;
+      button.disabled = false;
     }
   }
+
+  // シェアは X だけにする（2026-10-07、本人の判断）。OS の共有シートは PC では X が出ず、
+  // 画像を描いてから（await のあと）開くと、ブラウザが「押した直後」と見なさず投稿画面が開かなかった。
+  // そのため投稿画面は押した瞬間に開き、画像（切り取り線より上だけ）は端末に保存して、投稿に添えてもらう
+  // シェアの文は「やると決めた」宣言にする。アプリの中の言葉（25143・願い星）は外の人に通じないので入れない（2026-10-07、本人と決定）
+  function shareReceipt() {
+    const status = $('#receipt-status');
+    const button = $('#receipt-share');
+    const wish = receiptWish();
+    if (!wish) return;
+    const includeText = $('#receipt-include-text').checked;
+    const message = [includeText ? `「${wish.text}」` : '', '星に預けていた願いを、やってみることにした。', '#MORUNE25143'].filter(Boolean).join('\n');
+    // リンクはサービスのトップ（その人の星のリンクではなく）。見た人が自分の願いを預けられるように（2026-10-07、本人の判断）。
+    // 「応援リンクを送る」は、シェアとの違いが分かりにくかったので外した
+    const url = `${location.origin}/`;
+    window.open(`https://x.com/intent/post?text=${encodeURIComponent(message)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer');
+    button.disabled = true;
+    status.textContent = 'X の投稿画面を開きました。画像を保存しています…';
+    (async () => {
+      const saved = await commitReceiptFirstStep();
+      if (!saved) return;
+      await document.fonts?.ready;
+      const content = receiptContentFor(saved);
+      const blob = await canvasBlob(drawReceipt(content, {withStub: false}));
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = content.fileName.replace('receipt', 'share');
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+      status.textContent = '画像を保存しました。X の投稿に添えてください';
+    })().catch(error => {
+      console.error('share receipt', error?.name);
+      status.textContent = '画像を保存できませんでした。「紙に印刷する・保存する」から保存してください';
+    }).finally(() => { button.disabled = false; });
+  }
+
 
   // 判断せずに閉じたときは、願いを判断待ちのまま手元に残す（以前はここが行き止まりだった）。
   // × ボタンからはクリックイベントが渡るので、decided は明示したときだけ true になる。
@@ -1202,7 +1892,7 @@
     $('#return-from').max = range.max;
     depositStatus.textContent = WishState.canDeposit(wishes)
       ? ''
-      : `軌道には${WishState.LIMITS.orbit}個まで預けられます。1つ受け取るか、手放してから預けてください。`;
+      : `預けられるのは${WishState.LIMITS.orbit}個までです。1つ受け取ると、また預けられます。`;
     depositSheet.hidden = false;
     setTimeout(() => depositSheet.classList.add('sheet-open'), 20);
     setTimeout(() => {
@@ -1227,7 +1917,7 @@
     const now = Date.now();
     // #17 軌道に置ける願いは30個まで。いっぱいのときは預けず、入力は残す
     if (!WishState.canDeposit(wishes)) {
-      depositStatus.textContent = `軌道には${WishState.LIMITS.orbit}個まで預けられます。1つ受け取るか、手放してから預けてください。`;
+      depositStatus.textContent = `預けられるのは${WishState.LIMITS.orbit}個までです。1つ受け取ると、また預けられます。`;
       return;
     }
     const returnFromInput = $('#return-from');
@@ -1239,26 +1929,52 @@
     }
     unlockAudioFromGesture();
     launchButton.disabled = true;
-    const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time});
+    depositStatus.textContent = '預けています…';
+    const seq = WishState.nextWishSeq(wishes, Number(readStorage(WISH_SEQ_KEY)) || 0);
+    const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time, seq});
+    const firstWish = wishes.length === 0 && !trialUsed();
+    // #22 「星空に流す」は願いごとに選ぶ（初期値は流さない）。約束に同意したときだけ選べる
+    const publish = starsEnabled && publishCheckbox.checked && promiseAgreed();
     try {
       await store('readwrite', object => object.put(wish));
       wishes = [...wishes, wish];
+      writeStorage(WISH_SEQ_KEY, String(seq));
+      // 最初に預けたとき、人の番号を受け取る（ネットがなければ、つながったときに）
+      ensureNumber();
       refreshInterface();
       wishInput.value = '';
       returnFromInput.value = '';
+      publishCheckbox.checked = false;
       $('#wish-length').textContent = '0';
       depositStatus.textContent = wish.returnFrom
-        ? `送信完了。${WishState.returnFromLabel(wish.returnFrom)}まで、イトカワの軌道で預かります`
-        : '送信完了';
-      $('#mission-status').textContent = '2003 — 地球を出発 / 願いを軌道へ投入';
+        ? `預けました。${WishState.returnFromLabel(wish.returnFrom)}まで帰ってきません`
+        : '預けました';
+      $('#mission-status').textContent = '';
         playLaunchTone();
         launchFlight = {wish, startedAt: performance.now()};
       closeDeposit();
       setTimeout(() => {
-        if (!returnFlight) $('#mission-status').textContent = '2005 — イトカワの軌道に願いの星を確認';
+        if (!returnFlight) $('#mission-status').textContent = '願いの星が灯りました';
       }, 1850);
+      // 自分の願いは先に端末へ預け終えている。流すのが失敗しても、預けたことは取り消さない
+      if (publish) {
+        publishStar('wish', text).then(({message}) => {
+          setTimeout(() => {
+            if (!returnFlight && !returningWish) $('#mission-status').textContent = message;
+          }, 2200);
+        });
+      }
+      // #27 はじめての人には、星が灯ったところで「試しに1つ帰す」へ案内する
+      if (firstWish) {
+        setTimeout(() => {
+          if (returnFlight || returningWish) return;
+          setMissionStep('receive');
+          $('#mission-status').textContent = '試しに1つ、帰してみましょう。スマホを振るか「タップで帰還」を押してください';
+        }, 2600);
+      }
     } catch (error) {
-      depositStatus.textContent = `送信に失敗しました。入力は残しています。${error.message || ''}`;
+      // 願いは端末に保存するだけで送信しない。失敗は端末の保存の失敗
+      depositStatus.textContent = `保存できませんでした。入力は残しています。${error.message || ''}`;
     } finally {
       launchButton.disabled = false;
     }
@@ -1295,50 +2011,12 @@
 
   $('#deposit-open').addEventListener('click', openDeposit);
   $('#deposit-close').addEventListener('click', closeDeposit);
-  stepButtons.forEach((button, index) => {
-    button.addEventListener('click', () => {
-      const step = button.dataset.missionStep;
-      setMissionStep(step);
-      if (step === 'deposit') $('#deposit-open').focus({preventScroll: true});
-      if (step === 'receive') {
-        if (!orbiting().length) $('#mission-status').textContent = '軌道に星はありません';
-        else if (!readyToReturn().length) $('#mission-status').textContent = waitingForStartMessage();
-        else $('#fallback').focus({preventScroll: true});
-      }
-      if (step === 'choose') {
-        if (landed) sampleButton.focus({preventScroll: true});
-        else $('#choose-status').textContent = 'カプセルの帰還を待っています';
-      }
-    });
-    button.addEventListener('keydown', event => {
-      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
-      event.preventDefault();
-      const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? stepButtons.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : stepButtons.length - 1)) % stepButtons.length;
-      stepButtons[nextIndex].click();
-      stepButtons[nextIndex].focus({preventScroll: true});
-    });
-  });
-  accountTrigger.addEventListener('click', () => {
-    const open = accountSheet.hidden;
-    accountSheet.hidden = !open;
-    accountTrigger.setAttribute('aria-expanded', String(open));
-    if (open) $('#account-close').focus({preventScroll: true});
-  });
-  $('#account-close').addEventListener('click', () => {
-    accountSheet.hidden = true;
-    accountTrigger.setAttribute('aria-expanded', 'false');
-    accountTrigger.focus({preventScroll: true});
-  });
   policyOpen.addEventListener('click', () => {
-    accountSheet.hidden = true;
-    accountTrigger.setAttribute('aria-expanded', 'false');
     policySheet.hidden = false;
     policyClose.focus({preventScroll: true});
   });
   function closePolicy() {
     policySheet.hidden = true;
-    accountSheet.hidden = false;
-    accountTrigger.setAttribute('aria-expanded', 'true');
     policyOpen.focus({preventScroll: true});
   }
   policyClose.addEventListener('click', closePolicy);
@@ -1348,19 +2026,99 @@
   launchButton.addEventListener('click', launchWish);
   wishInput.addEventListener('input', () => { $('#wish-length').textContent = String(wishInput.value.length); });
   $('#shake').addEventListener('click', enableMotion);
-  $('#fallback').addEventListener('click', returnOne);
+  // カプセルが着地して待っているときは開き、そうでなければ1つ帰す
+  $('#fallback').addEventListener('click', () => (landed && returningWish && !returnFlight ? openCard() : returnOne()));
   sampleButton.addEventListener('click', openCard);
   $('#card-close').addEventListener('click', closeCard);
   $('#try-wish').addEventListener('click', () => chooseDisposition('try'));
   $('#return-to-orbit').addEventListener('click', () => chooseDisposition('later'));
-  $('#finish-wish').addEventListener('click', () => chooseDisposition('finish'));
-  $('#share-wish').addEventListener('click', shareWish);
-  $('#archive-open').addEventListener('click', () => {
+  $('#receipt-save').addEventListener('click', saveReceipt);
+  $('#receipt-share').addEventListener('click', shareReceipt);
+  $('#receipt-close').addEventListener('click', closeReceiptSheet);
+  $('#receipt-x').addEventListener('click', closeReceiptSheet);
+
+  // 窓の中だけで Tab を回す（窓の外の見えない操作へフォーカスが抜けないように）
+  function trapFocus(event, dialog) {
+    const focusable = [...dialog.querySelectorAll('button:not([disabled]), textarea, input:not([disabled])')].filter(element => element.offsetParent !== null);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+  $('#receipt-first-step').addEventListener('input', event => { if (!event.isComposing) renderReceiptPreview(); });
+  $('#receipt-first-step').addEventListener('compositionend', renderReceiptPreview);
+  $('#receipt-include-text').addEventListener('change', renderReceiptPreview);
+  // 回収記録を開いている間は、下の操作バー（見えなくしている）をキーボードでも選べないようにし、閉じたら元の場所へ戻す
+  function openArchive() {
     $('#archive-sheet').hidden = false;
-    drawConstellation();
+    missionDock.inert = true;
+    $('#archive-close').focus({preventScroll: true});
+  }
+  function closeArchive({restoreFocus = true} = {}) {
+    $('#archive-sheet').hidden = true;
+    missionDock.inert = false;
+    if (restoreFocus) $('#archive-open').focus({preventScroll: true});
+  }
+  $('#archive-open').addEventListener('click', openArchive);
+  publishCheckbox.addEventListener('change', async () => {
+    if (!publishCheckbox.checked || promiseAgreed()) return;
+    // 約束に同意するまでは選べない
+    publishCheckbox.checked = false;
+    if (await askPromise()) publishCheckbox.checked = true;
   });
-  $('#signal-share-button').addEventListener('click', shareSignalLink);
-  $('#archive-close').addEventListener('click', () => { $('#archive-sheet').hidden = true; });
+  $('#promise-agree').addEventListener('click', () => closePromise(true));
+  $('#promise-decline').addEventListener('click', () => closePromise(false));
+  $('#others-open').addEventListener('click', () => {
+    const star = PublicStars.nextStar(visibleOtherStars(), lastShownStarId);
+    if (star) openStarCard(star);
+  });
+  // 星空に触れたとき、近くに他の人の星があればカードを開く（ボタンや文字の上は除く）
+  app.addEventListener('click', event => {
+    if ((event.target !== app && event.target !== canvas) || !otherStarPoints.length || openStarsDialog()) return;
+    const bounds = app.getBoundingClientRect();
+    const star = PublicStars.nearestStar(otherStarPoints, event.clientX - bounds.left, event.clientY - bounds.top);
+    if (star) openStarCard(star);
+  });
+  $('#star-card-close').addEventListener('click', closeStarCard);
+  starCard.addEventListener('click', event => {
+    if (event.target === starCard) closeStarCard();
+  });
+  $('#star-signal').addEventListener('click', sendStarSignal);
+  $('#star-report').addEventListener('click', () => {
+    $('#star-card-actions').hidden = true;
+    $('#star-report-confirm').hidden = false;
+    $('#star-card-status').textContent = '';
+    $('#star-report-cancel').focus({preventScroll: true});
+  });
+  $('#star-report-cancel').addEventListener('click', () => {
+    $('#star-report-confirm').hidden = true;
+    $('#star-card-actions').hidden = false;
+    $('#star-report').focus({preventScroll: true});
+  });
+  $('#star-report-send').addEventListener('click', sendStarReport);
+  $('#fulfilled-text').addEventListener('input', () => { $('#fulfilled-length').textContent = String($('#fulfilled-text').value.length); });
+  $('#fulfilled-send').addEventListener('click', sendFulfilled);
+  $('#fulfilled-skip').addEventListener('click', closeFulfilledSheet);
+  $('#my-record-copy').addEventListener('click', copyMyRecord);
+  $('#archive-close').addEventListener('click', () => closeArchive());
+  $('#archive-list').addEventListener('pointerdown', () => { growthPointerActive = true; });
+  const releaseGrowthPointer = () => {
+    // click の処理より後に解除する
+    setTimeout(() => {
+      growthPointerActive = false;
+      const list = $('#archive-list');
+      const editing = list.contains(document.activeElement) && document.activeElement.matches('input[type="text"]');
+      if (archiveListStale && !editing) refreshInterface();
+    }, 0);
+  };
+  document.addEventListener('pointerup', releaseGrowthPointer);
+  document.addEventListener('pointercancel', releaseGrowthPointer);
   $('#archive-select-all').addEventListener('change', event => {
     const archiveItems = recovered();
     if (event.currentTarget.checked) archiveItems.forEach(wish => selectedArchiveIds.add(wish.id));
@@ -1383,7 +2141,7 @@
   });
   $('#archive-reset').addEventListener('click', async () => {
     const count = wishes.length;
-    if (!count || !window.confirm(`軌道上と回収記録の願い${count}件をすべて削除します。この操作は取り消せません。続けますか？`)) return;
+    if (!count || !window.confirm(`預けている願いと回収記録の願い${count}件をすべて削除します。この操作は取り消せません。続けますか？`)) return;
     const button = $('#archive-reset');
     button.disabled = true;
     try {
@@ -1396,11 +2154,29 @@
     }
   });
   $('#archive-next').addEventListener('click', () => {
-    $('#archive-sheet').hidden = true;
+    closeArchive({restoreFocus: false});
     setMissionStep('deposit');
     openDeposit();
   });
   window.addEventListener('keydown', event => {
+    // 帰還票のシートが開いているときは、その中だけで操作する（スペースで帰還が始まらないように）
+    if (!receiptSheet.hidden) {
+      if (event.key === 'Escape') closeReceiptSheet();
+      else if (event.key === 'Tab') trapFocus(event, receiptSheet);
+      return;
+    }
+    // みんなの星の窓が開いているときは、その中だけで操作する（スペースで帰還が始まらないように）
+    const starsDialog = openStarsDialog();
+    if (starsDialog) {
+      if (event.key === 'Escape') {
+        if (starsDialog === promiseSheet) closePromise(false);
+        else if (starsDialog === starCard) closeStarCard();
+        else closeFulfilledSheet();
+      } else if (event.key === 'Tab') {
+        trapFocus(event, starsDialog);
+      }
+      return;
+    }
     if (!policySheet.hidden && event.key === 'Tab') {
       const focusable = [...policySheet.querySelectorAll('button:not([disabled]), [tabindex="0"]')];
       const first = focusable[0];
@@ -1435,12 +2211,7 @@
       if (!returnCard.hidden) closeCard();
       else if (!depositSheet.hidden) closeDeposit();
       else if (!policySheet.hidden) closePolicy();
-      else if (!accountSheet.hidden) {
-        accountSheet.hidden = true;
-        accountTrigger.setAttribute('aria-expanded', 'false');
-        accountTrigger.focus({preventScroll: true});
-      }
-      else $('#archive-sheet').hidden = true;
+      else closeArchive();
     }
   });
   window.addEventListener('resize', syncVisualViewport);
@@ -1521,87 +2292,366 @@
     return id;
   }
 
-  // 届いた信号の時刻を取りに行く。応援の信号が使えない環境（保存場所がない）では何も出さない。
-  async function loadSignals() {
-    if (!navigator.onLine) return;
+  // 回収記録の「あなたの記録」。数は wish-state.js の summarize で出す（テスト済み）
+  function renderMyRecord() {
+    const list = $('#my-record');
+    if (!list) return;
+    const summary = WishState.summarize(wishes, readOpenDays(), Date.now());
+    const rows = [
+      ['預けた願い', `${summary.deposited}個（待っている星 ${summary.orbiting}個）`],
+      ['受け取った', `${summary.received}個`],
+      ['もう少し預けた', `${summary.backToOrbit}回`],
+      ['開いた日', `${summary.openDays}日`],
+    ];
+    list.replaceChildren(...rows.flatMap(([label, value]) => {
+      const term = document.createElement('dt');
+      const detail = document.createElement('dd');
+      term.textContent = label;
+      detail.textContent = value;
+      return [term, detail];
+    }));
+  }
+
+  async function copyMyRecord() {
+    const summary = WishState.summarize(wishes, readOpenDays(), Date.now());
+    const text = JSON.stringify({app: 'MORUNE 25143', format: 1, date: new Date().toLocaleDateString('sv-SE'), ...summary}, null, 2);
+    const recordStatus = $('#my-record-status');
     try {
-      const response = await fetch(`/api/signals?orbit=${encodeURIComponent(orbitId())}`);
+      await navigator.clipboard.writeText(text);
+      recordStatus.textContent = '記録の数をコピーしました（願いの中身は含みません）';
+    } catch (error) {
+      console.error('copy record', error);
+      recordStatus.textContent = 'コピーできませんでした。画面の数を書き写して渡してください';
+    }
+  }
+
+  // ---- #22 みんなの星（#23 安全） ----
+
+  function promiseAgreed() {
+    return readStorage(PROMISE_KEY) === '1';
+  }
+
+  function saveNumber(number) {
+    if (typeof number === 'string' && /^25143-\d{4,}$/.test(number)) writeStorage(NUMBER_KEY, number);
+  }
+
+  // 願いの番号（25143-人-願い）。人の番号がまだなければ null
+  function currentWishNumber(wish) {
+    return WishState.wishNumber(readStorage(NUMBER_KEY), WishState.wishSeqOf(wish, wishes));
+  }
+
+  // 番号を持たない前からの願いに、番号を付けて保存する。保存できなくても使い続けられる（表示は預けた順で数える）
+  async function fixWishSeq() {
+    const {updated, counter} = WishState.assignMissingSeq(wishes, Number(readStorage(WISH_SEQ_KEY)) || 0);
+    if (!updated.length) return;
+    try {
+      for (const wish of updated) await store('readwrite', object => object.put(wish));
+      const byId = new Map(updated.map(wish => [wish.id, wish]));
+      wishes = wishes.map(wish => byId.get(wish.id) ?? wish);
+      writeStorage(WISH_SEQ_KEY, String(counter));
+    } catch (error) {
+      console.error('fix wish seq', error);
+    }
+  }
+
+  // 人の番号を受け取る。願いを1つでも預けていて、まだ番号がないときだけ。失敗しても預けることは止めない
+  let numbering = false;
+  async function ensureNumber() {
+    if (numbering || readStorage(NUMBER_KEY) || !wishes.length || !navigator.onLine) return;
+    numbering = true;
+    try {
+      const response = await fetch('/api/orbits', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({orbitId: orbitId()})});
       if (!response.ok) return;
       const data = await response.json();
-      if (!data.enabled || !Array.isArray(data.times)) return;
-      signalTimes = data.times.filter(Number.isFinite);
-      writeStorage(SIGNAL_CACHE_KEY, JSON.stringify(signalTimes));
-      $('#signal-share').hidden = false;
-      drawConstellation();
-    } catch {
-      // 読めなければ、端末に控えた分で明るさを出す
-    }
-  }
-
-  async function shareSignalLink() {
-    const url = `${location.origin}/signal?to=${orbitId()}`;
-    const text = 'イトカワの軌道で、私の願いの星が待っています。よければ信号を送ってください（名前も言葉も届きません）。';
-    const shareStatus = $('#signal-share-status');
-    try {
-      if (typeof navigator.share === 'function') {
-        await navigator.share({title: 'MORUNE 25143 — 星に信号を送る', text, url});
-        shareStatus.textContent = '共有シートを開きました';
-      } else {
-        await navigator.clipboard.writeText(`${text}\n${url}`);
-        shareStatus.textContent = '応援リンクをコピーしました';
+      if (data.enabled && data.number) {
+        saveNumber(data.number);
+        refreshStarsInterface();
       }
-    } catch (error) {
-      if (error?.name !== 'AbortError') shareStatus.textContent = `応援リンク：${url}`;
+    } catch {
+      // ネットが切れたなど。次に開いたときや、つながったときにもう一度受け取る
+    } finally {
+      numbering = false;
     }
   }
 
-  // 受け取った願いの星座。言葉の近さでつないだ最小全域木を、回収記録の中に描く。
-  function drawConstellation() {
-    const canvasElement = $('#constellation-canvas');
-    const caption = $('#constellation-caption');
-    if (!canvasElement || $('#archive-sheet').hidden) return;
-    const stars = Constellation.receivedWishes(wishes);
-    const edges = Constellation.constellationEdges(wishes);
-    const ratio = Math.min(devicePixelRatio || 1, 2);
-    const cssWidth = canvasElement.clientWidth || 560;
-    const cssHeight = Math.round(cssWidth * 0.43);
-    canvasElement.width = Math.round(cssWidth * ratio);
-    canvasElement.height = Math.round(cssHeight * ratio);
-    canvasElement.style.height = `${cssHeight}px`;
-    const draw = canvasElement.getContext('2d');
-    draw.setTransform(ratio, 0, 0, ratio, 0, 0);
-    draw.clearRect(0, 0, cssWidth, cssHeight);
-    caption.textContent = stars.length < 2
-      ? '願いを受け取るたびに、ここに星座が育っていきます。'
-      : `受け取った${stars.length}つの願いを、言葉の近さでつないだ星座です。`;
-    if (!stars.length) return;
-    // 置き場所は、預けた順に黄金角で渦を描くように決める（毎回同じ形になる）
-    const positions = new Map(stars.map((star, index) => {
-      const angle = index * 2.399963 + (hash(star.id) % 628) / 1000;
-      const radius = Math.sqrt((index + 0.5) / stars.length);
-      return [star.id, {x: cssWidth / 2 + Math.cos(angle) * radius * cssWidth * 0.42, y: cssHeight / 2 + Math.sin(angle) * radius * cssHeight * 0.4}];
-    }));
-    for (const edge of edges) {
-      const from = positions.get(edge.from);
-      const to = positions.get(edge.to);
-      draw.strokeStyle = `rgba(230, 200, 120, ${0.25 + edge.closeness * 0.6})`;
-      draw.lineWidth = 1 + edge.closeness * 1.5;
-      draw.beginPath();
-      draw.moveTo(from.x, from.y);
-      draw.lineTo(to.x, to.y);
-      draw.stroke();
+  function visibleOtherStars() {
+    const now = Date.now();
+    return otherStars.filter(star => star.expiresAt > now);
+  }
+
+  // 機能の出し入れと数を、今の状態に合わせる（空のとき：星がなければ「みんなの星」ボタンを出さない）
+  function refreshStarsInterface() {
+    $('#publish-field').hidden = !starsEnabled;
+    if (!starsEnabled) publishCheckbox.checked = false;
+    const count = visibleOtherStars().length;
+    $('#others-open').hidden = !starsEnabled || count === 0;
+    $('#others-count').textContent = String(count);
+    const number = readStorage(NUMBER_KEY);
+    $('#orbit-number').hidden = !number;
+    $('#orbit-number-value').textContent = number || '';
+  }
+
+  // 開いている「みんなの星」の窓（約束・星のカード・叶ったよ）。なければ null
+  function openStarsDialog() {
+    return [promiseSheet, starCard, fulfilledSheet].find(element => !element.hidden) || null;
+  }
+
+  // はじめて流す前の約束。confirm() ではなく画面の中で聞く。同意したら端末に覚える
+  let promiseResolve = null;
+  let promiseReturnFocus = null;
+  function askPromise() {
+    if (promiseAgreed()) return Promise.resolve(true);
+    promiseReturnFocus = document.activeElement;
+    promiseSheet.hidden = false;
+    $('#promise-agree').focus({preventScroll: true});
+    return new Promise(resolve => { promiseResolve = resolve; });
+  }
+
+  function closePromise(agreed) {
+    if (agreed) writeStorage(PROMISE_KEY, '1');
+    promiseSheet.hidden = true;
+    promiseResolve?.(agreed);
+    promiseResolve = null;
+    promiseReturnFocus?.focus?.({preventScroll: true});
+  }
+
+  // 他の人の星を受け取る。読めないとき（ネットなし・一時的な失敗）は、端末に控えた星をそのまま見せる
+  // みんなの星は次期バージョンまで止めている。止めている間はサーバーに問い合わせない（軌道ID を送らないため。2026-10-07 レビュー）
+  const PUBLIC_STARS_CLIENT_ENABLED = false;
+  async function loadOtherStars() {
+    if (!PUBLIC_STARS_CLIENT_ENABLED) {
+      starsEnabled = false;
+      otherStars = [];
+      refreshStarsInterface();
+      return;
     }
-    for (const star of stars) {
-      const {x, y} = positions.get(star.id);
-      const glow = Constellation.brightness(Constellation.signalsWhileWaiting(star, signalTimes));
-      draw.save();
-      draw.shadowColor = '#ffe4a6';
-      draw.shadowBlur = 12 * glow;
-      draw.fillStyle = star.status === 'doing' ? '#fff1ce' : '#cfd8d6';
-      draw.beginPath();
-      draw.arc(x, y, 3 * glow, 0, Math.PI * 2);
-      draw.fill();
-      draw.restore();
+    if (!navigator.onLine) return;
+    try {
+      const response = await fetch(`/api/stars?orbit=${encodeURIComponent(orbitId())}`);
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!data.enabled) {
+        // サーバーの準備がない環境では、機能ごと隠す
+        starsEnabled = false;
+        otherStars = [];
+        writeStorage(STARS_ENABLED_KEY, '0');
+        writeStorage(STARS_CACHE_KEY, '[]');
+        refreshStarsInterface();
+        return;
+      }
+      starsEnabled = true;
+      writeStorage(STARS_ENABLED_KEY, '1');
+      otherStars = PublicStars.sanitizeStars(data.stars, Date.now(), reportedStars);
+      writeStorage(STARS_CACHE_KEY, JSON.stringify(otherStars));
+      saveNumber(data.number);
+      refreshStarsInterface();
+      flushPublishQueue();
+    } catch {
+      // 読めなければ、端末に控えた星で続ける
+    }
+  }
+
+  function queuePublish(kind, text) {
+    writeStorage(PUBLISH_QUEUE_KEY, JSON.stringify(PublicStars.enqueue(readJson(PUBLISH_QUEUE_KEY, []), {kind, text}, Date.now())));
+  }
+
+  async function postStar(kind, text) {
+    const response = await fetch('/api/stars', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({orbitId: orbitId(), kind, text}),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) saveNumber(data.number);
+    return {response, data};
+  }
+
+  // 言葉を流す。ネットがなければ控えて、つながったときに流す。
+  // done は「流せた・控えた」とき true（送り直さなくてよい）。上限などで流せなかったときは false
+  async function publishStar(kind, text) {
+    const queued = {done: true, message: 'Wi-Fi につながったら流せます。願いはこの端末に預かっています'};
+    if (!navigator.onLine) {
+      queuePublish(kind, text);
+      return queued;
+    }
+    try {
+      const {response, data} = await postStar(kind, text);
+      if (!response.ok) return {done: false, message: data.error || '星空に流せませんでした。願いはこの端末に預かっています'};
+      refreshStarsInterface();
+      return {done: true, message: PublicStars.publishMessage({status: data.status, number: data.number, kind})};
+    } catch {
+      // 休憩室の弱い電波などで届かなかった。控えておき、次につながったときに流す
+      queuePublish(kind, text);
+      return queued;
+    }
+  }
+
+  let flushingQueue = false;
+  async function flushPublishQueue() {
+    if (flushingQueue || !navigator.onLine || !starsEnabled) return;
+    const queue = PublicStars.pruneQueue(readJson(PUBLISH_QUEUE_KEY, []), Date.now());
+    if (!queue.length) {
+      writeStorage(PUBLISH_QUEUE_KEY, '[]');
+      return;
+    }
+    flushingQueue = true;
+    const rest = [];
+    let message = '';
+    for (const item of queue) {
+      try {
+        const {response, data} = await postStar(item.kind, item.text);
+        if (response.ok) message = PublicStars.publishMessage({status: data.status, number: data.number, kind: item.kind});
+        else if (response.status >= 500) rest.push(item);
+        // 上限や形の誤り（4xx）は、何度送っても通らないので控えから外し、理由だけを伝える
+        else message = data.error || message;
+      } catch {
+        rest.push(item);
+      }
+    }
+    writeStorage(PUBLISH_QUEUE_KEY, JSON.stringify(rest));
+    flushingQueue = false;
+    refreshStarsInterface();
+    if (message && !returnFlight && !returningWish) $('#mission-status').textContent = `Wi-Fi につながりました。${message}`;
+  }
+
+  function openStarCard(star) {
+    openStar = star;
+    lastShownStarId = star.id;
+    $('#star-card-kicker').textContent = star.kind === 'fulfilled' ? 'SHOOTING STAR / 叶ったよ' : "SOMEONE'S WISH";
+    $('#star-card-text').textContent = star.text;
+    $('#star-card-actions').hidden = false;
+    $('#star-report-confirm').hidden = true;
+    const canSignal = PublicStars.canSignal(readJson(STAR_SIGNALS_KEY, {}), star.id, todayKey());
+    $('#star-signal').disabled = !canSignal;
+    $('#star-card-status').textContent = canSignal ? '' : '今日の信号は、この星に届いています。また明日、送れます';
+    starCard.hidden = false;
+    $('#star-card-close').focus({preventScroll: true});
+  }
+
+  function closeStarCard() {
+    starCard.hidden = true;
+    openStar = null;
+    const trigger = $('#others-open');
+    if (!trigger.hidden) trigger.focus({preventScroll: true});
+  }
+
+  // 通報した星や、もう空にない星は、この端末の星空から外す
+  function dropOtherStar(starId) {
+    otherStars = otherStars.filter(star => star.id !== starId);
+    writeStorage(STARS_CACHE_KEY, JSON.stringify(otherStars));
+    refreshStarsInterface();
+  }
+
+  async function sendStarSignal() {
+    const star = openStar;
+    if (!star) return;
+    const status = $('#star-card-status');
+    const button = $('#star-signal');
+    if (!navigator.onLine) {
+      status.textContent = 'Wi-Fi につながったら送れます';
+      return;
+    }
+    button.disabled = true;
+    status.textContent = '信号を送っています…';
+    try {
+      const response = await fetch('/api/stars/signal', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({starId: star.id}),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        if (response.status === 404) dropOtherStar(star.id);
+        status.textContent = data.error || '信号を送れませんでした。少し待ってから、もう一度お試しください';
+        button.disabled = response.status === 404;
+        return;
+      }
+      writeStorage(STAR_SIGNALS_KEY, JSON.stringify(PublicStars.markSignal(readJson(STAR_SIGNALS_KEY, {}), star.id, todayKey())));
+      status.textContent = '信号を送りました。この星が少し明るくなります。また明日、送れます';
+    } catch {
+      status.textContent = 'Wi-Fi につながったら送れます';
+      button.disabled = false;
+    }
+  }
+
+  async function sendStarReport() {
+    const star = openStar;
+    if (!star) return;
+    const status = $('#star-card-status');
+    const button = $('#star-report-send');
+    if (!navigator.onLine) {
+      status.textContent = 'Wi-Fi につながったら通報できます';
+      return;
+    }
+    button.disabled = true;
+    status.textContent = '通報を送っています…';
+    try {
+      const response = await fetch('/api/stars/report', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({starId: star.id, reporterOrbitId: orbitId()}),
+      });
+      const data = await response.json().catch(() => ({}));
+      // 404 はすでに空にない星。通報したのと同じ扱いで、この端末の空から外す
+      if (!response.ok && response.status !== 404) {
+        status.textContent = data.error || '通報を送れませんでした。少し待ってから、もう一度お試しください';
+        return;
+      }
+      // この端末からは同じ星へ二度通報しない。通報した星は、この端末の空にはもう出さない
+      reportedStars = [...new Set([...reportedStars, star.id])].slice(-200);
+      writeStorage(REPORTED_KEY, JSON.stringify(reportedStars));
+      dropOtherStar(star.id);
+      $('#star-report-confirm').hidden = true;
+      $('#star-card-actions').hidden = true;
+      status.textContent = '通報を受け付けました。運営者が確かめます。この星は、あなたの空にはもう出ません';
+      $('#star-card-close').focus({preventScroll: true});
+    } catch {
+      status.textContent = 'Wi-Fi につながったら通報できます';
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function openFulfilledSheet() {
+    $('#fulfilled-text').value = '';
+    $('#fulfilled-length').textContent = '0';
+    $('#fulfilled-status').textContent = '';
+    $('#fulfilled-send').hidden = false;
+    $('#fulfilled-send').disabled = false;
+    $('#fulfilled-skip').textContent = '今は流さない';
+    fulfilledSheet.hidden = false;
+    // 受け取りのカードが閉じ終わってから、入力欄に移る
+    setTimeout(() => $('#fulfilled-text').focus({preventScroll: true}), 320);
+  }
+
+  function closeFulfilledSheet() {
+    fulfilledSheet.hidden = true;
+    $('#deposit-open').focus({preventScroll: true});
+  }
+
+  async function sendFulfilled() {
+    const text = $('#fulfilled-text').value.trim();
+    const status = $('#fulfilled-status');
+    if (!text) {
+      status.textContent = 'ひとことを書いてください。流さないときは「今は流さない」を押してください';
+      $('#fulfilled-text').focus();
+      return;
+    }
+    if (!(await askPromise())) {
+      status.textContent = '約束に同意すると、流せます';
+      return;
+    }
+    const button = $('#fulfilled-send');
+    button.disabled = true;
+    status.textContent = '流れ星にしています…';
+    const result = await publishStar('fulfilled', text);
+    status.textContent = result.message;
+    button.disabled = false;
+    // 流せた・控えたときは送り直さない。上限などで流せなかったときは、書き直して送れるよう残す
+    if (result.done) {
+      button.hidden = true;
+      $('#fulfilled-skip').textContent = '閉じる';
+      $('#fulfilled-skip').focus({preventScroll: true});
     }
   }
 
@@ -1625,21 +2675,31 @@
   window.addEventListener('offline', showConnection);
   window.addEventListener('online', () => {
     if ($('#mission-status').textContent.startsWith('ネットなし')) $('#mission-status').textContent = '';
-    // 休憩室の Wi-Fi につながったら、届いた信号を取りに行く
-    loadSignals();
+    // 休憩室の Wi-Fi につながったら、他の人の星を取りに行き、控えていた言葉を流す
+    loadOtherStars();
+    ensureNumber();
   });
 
   initializeThreeBackground().catch(() => {
     locationStatus.textContent = '3D星空を読み込めません。簡易表示で続けます。';
   });
+  // 同梱カタログの読み込み待ちでも、願いの星と飛行の座標は計算できる。
+  refreshSky();
+  loadSkyData();
+  setInterval(refreshSky, 60000);
+  observerReading.textContent = Sky.skyCaption(35.68, 139.76, Date.now());
   loadItokawaDistance();
+  recordOpenDay();
   await init();
+  await fixWishSeq();
+  ensureNumber();
   showConnection();
   registerOfflineSupport();
-  loadSignals();
+  refreshStarsInterface();
+  loadOtherStars();
   // 開いたまま「帰還が始まる日」を迎えたり、日付が変わったりしたときに、ボタンと案内を今の状態に合わせる
   document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) refreshInterface();
+    if (!document.hidden) { refreshInterface(); refreshSky(); }
   });
   setInterval(refreshInterface, 60 * 1000);
 })();
