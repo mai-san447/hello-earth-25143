@@ -5,7 +5,7 @@ importScripts('/offline-routes.js');
 
 // 保存の形を変えたときに上げる。古い保存は activate で消す。
 // 自前の部品はネット優先なので、ふつうの公開では上げなくてよい。
-const CACHE_VERSION = '2026-10-09-1';
+const CACHE_VERSION = '2026-10-09-2';
 const CACHE_NAME = `morune-25143-${CACHE_VERSION}`;
 // これがないと病室で画面が動かない部品。1つでも取れなければ入れ替えを失敗させ、次に開いたときにやり直す
 // （失敗を無視すると「オフラインで開けない状態」に誰も気づけないため）

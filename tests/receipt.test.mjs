@@ -59,14 +59,15 @@ test('距離・番号を入れる。はやぶさ・イトカワの名前は入�
   const content = returnReceiptContent({wish, now, days: 46, distanceText: '約2.6億km', number: '25143-0000-03', includeText: true});
   assert.deepEqual(content.meta, ['2026.08.22 → 2026.10.07', '25143まで 約2.6億km']);
   assert.equal(content.number, '25143-0000-03');
-  assert.equal(content.source, '距離：NASA/JPL Horizons');
+  assert.match(content.source, /距離：NASA\/JPL Horizons/);
+  assert.match(content.source, /本物の星の名前ではありません/);
   assert.doesNotMatch(JSON.stringify(content), /はやぶさ|HAYABUSA|イトカワ|ITOKAWA|JAXA/);
 });
 
 test('距離がないときは書かない', () => {
   const content = returnReceiptContent({wish: {...wish, createdAt: now - 3600000}, now, days: 0});
   assert.deepEqual(content.meta, ['2026.10.07']);
-  assert.equal(content.source, '');
+  assert.equal(content.source, '番号は作品の中だけのもので、本物の星の名前ではありません');
 });
 
 test('QR は、渡したときだけ入れる（読み取ると自分の星へ）', () => {

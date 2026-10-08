@@ -1400,7 +1400,7 @@
     landed = false;
     sampleButton.hidden = true;
     $('#mission-status').textContent = '';
-    $('#gesture-hint').textContent = '星はひとつだけ。はやぶさの帰還を見届けてください';
+    $('#gesture-hint').textContent = '願いがひとつ、地球へ帰ってきます';
     setTimeout(() => {
     }, 1150);
     setTimeout(() => {
@@ -1715,8 +1715,13 @@
     context.textAlign = 'center';
     context.font = `400 16px ${RECEIPT_FONT}`;
     if (content.source) {
-      context.fillText(content.source, width / 2, y);
-      y += 24;
+      // 出典と注意書きは「／」で区切って、紙の幅に収まるよう折り返す
+      for (const part of content.source.split(' ／ ')) {
+        for (const line of wrapLines(context, part, inner)) {
+          context.fillText(line, width / 2, y);
+          y += 24;
+        }
+      }
     }
     // 紙の長さを中身に合わせて切る
     const trimmed = document.createElement('canvas');
