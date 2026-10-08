@@ -599,13 +599,20 @@
     return point && {...point, x: point.x + slot.offsetX, y: point.y + slot.offsetY};
   }
 
-  function applyLocation(latitude, longitude) {
+  function applyLocation(latitude, longitude, message = null) {
     const lat = Math.max(-90, Math.min(90, latitude));
     const lon = ((longitude + 180) % 360 + 360) % 360 - 180;
     pendingLocation = {lat, lon};
     refreshSky();
-    locationStatus.textContent = `星空を現在地に合わせました（緯度 ${lat.toFixed(1)}°）。`;
-    setTimeout(() => locationModal.classList.add('is-hidden'), 650);
+    locationStatus.textContent = message ?? `星空を現在地に合わせました（緯度 ${lat.toFixed(1)}°）。`;
+    setTimeout(() => locationModal.classList.add('is-hidden'), message ? 1600 : 650);
+  }
+
+  // 位置が取れないとき（電車の中・許可しない・対応していない）は、止めずに東京の星空で始める。
+  // 以前は自分で「東京の星空で見る」を押すまで進めず、動かないと思われてしまった（2026-10-09、利用者の声）
+  function fallBackToTokyo() {
+    locationAllow.disabled = false;
+    applyLocation(35.68, 139.76, '位置が分からなかったので、東京の星空にしました。');
   }
 
   async function initializeThreeBackground() {
@@ -884,7 +891,7 @@
 
   locationAllow.addEventListener('click', () => {
     if (!navigator.geolocation) {
-      locationStatus.textContent = '位置情報に対応していません。東京の星空で続けられます。';
+      fallBackToTokyo();
       return;
     }
     locationAllow.disabled = true;
@@ -894,10 +901,7 @@
         applyLocation(coords.latitude, coords.longitude);
         locationAllow.disabled = false;
       },
-      () => {
-        locationStatus.textContent = '位置情報を取得できませんでした。東京の星空で続けられます。';
-        locationAllow.disabled = false;
-      },
+      fallBackToTokyo,
       {enableHighAccuracy: false, timeout: 10000, maximumAge: 300000},
     );
   });
