@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
-export const metadata: Metadata = { title: "25143 | HELLO EARTH", description: "イトカワへ預けた願いを、はやぶさがひとつずつ連れ帰る。" };
+// 題名と説明は X などでリンクを共有したときにも出る。商品・外に出るものには「25143」・星・MORUNE だけを使う（docs/権利の確認.md）
+export const metadata: Metadata = { title: "MORUNE 25143", description: "手放した「いつかやりたいこと」を星に預け、ひとつずつ受け取りなおす。" };
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,

@@ -58,8 +58,8 @@ export function returnReceiptContent({wish, now, distanceText = '', number = nul
     stub: '最初の小さな一歩',
     // アプリで書いた一歩があれば印刷する。なければペンで書く線を残す（記録はアプリ、紙は目に入る場所に置くメモ）
     firstStep,
-    // 距離の出典だけは残す
-    source: distanceText ? '距離：NASA/JPL Horizons' : '',
+    // 画像だけが SNS で回っても誤解されないよう、番号が本物の天体名ではないことは必ず書く（IAU は星の名前の販売と無関係と明言している）
+    source: distanceText ? '距離：NASA/JPL Horizons ／ 番号は作品の中だけのもので、本物の星の名前ではありません' : '番号は作品の中だけのもので、本物の星の名前ではありません',
     fileName: `morune-25143-receipt-${new Date(now).toLocaleDateString('sv-SE')}.png`,
   };
 }
