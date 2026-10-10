@@ -82,13 +82,14 @@ for (const operation of ['saveReceipt', 'shareReceipt']) {
       assert.equal($(operation === 'shareReceipt' ? '#receipt-share' : '#receipt-save').disabled, false);
     });
   }
-  test(`${operation}：一歩の保存成功後に下書きを消し、画像を保存する`, async () => {
+  // シェアは投稿画面を開くだけ（画像は付けない。2026-10-11）。一歩はアプリに残す
+  test(`${operation}：一歩の保存成功後に下書きを消す（印刷は画像を保存し、シェアは画像を付けない）`, async () => {
     const {sandbox, calls} = scene();
     await sandbox[operation]();
     for (let i = 0; i < 20; i++) await Promise.resolve();
     assert.equal(sandbox.growthDrafts.has('w'), false);
     assert.equal(sandbox.persisted.firstStep, '見学を予約する');
-    assert.deepEqual(calls, operation === 'shareReceipt' ? ['post', 'put', 'draw', 'download'] : ['put', 'draw', 'save']);
+    assert.deepEqual(calls, operation === 'shareReceipt' ? ['post', 'put'] : ['put', 'draw', 'save']);
   });
 }
 
