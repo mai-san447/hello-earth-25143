@@ -8,11 +8,12 @@
   let PublicStars;
   let KeyedQueue;
   let Receipt;
+  let FloatingWishes;
   // 帰還票の QR を描く部品（public/vendor/qrcode.mjs、qrcode-generator 2.0.4、MIT）
   let QrCode;
   try {
     let QrModule;
-    [Sky, WishState, Itokawa, PublicStars, KeyedQueue, Receipt, QrModule] = await Promise.all([
+    [Sky, WishState, Itokawa, PublicStars, KeyedQueue, Receipt, QrModule, FloatingWishes] = await Promise.all([
       import('/sky.js'),
       import('/wish-state.js'),
       import('/itokawa.js'),
@@ -20,6 +21,7 @@
       import('/keyed-queue.js'),
       import('/receipt.js'),
       import('/vendor/qrcode.mjs'),
+      import('/floating-wishes.js'),
     ]);
     QrCode = QrModule.qrcode;
   } catch (error) {
@@ -181,6 +183,14 @@
   let pixelRatio = 1;
   let returningWish = null;
   let cardHideTimer;
+  let openingCard = false;
+  let floatingTimer;
+  let encounterShown = false;
+  let homeSince = null;
+  const floatingText = document.createElement('p');
+  floatingText.className = 'floating-wish';
+  floatingText.hidden = true;
+  app.append(floatingText);
   let returnFlight = null;
   let launchFlight = null;
   let landed = false;
@@ -597,6 +607,55 @@
     const slot = Sky.northStarForSeq(WishState.wishSeqOf(wish, wishes));
     const point = projectNorthStar(slot.constellation, slot.starIndex);
     return point && {...point, x: point.x + slot.offsetX, y: point.y + slot.offsetY};
+  }
+
+  function homeIsVisible() {
+    return !document.hidden && !openingCard && !returnFlight && !launchFlight &&
+      (!splashScreen || !splashScreen.isConnected) && locationModal.classList.contains('is-hidden') &&
+      !app.querySelector('.sheet:not([hidden]), .archive-sheet:not([hidden]), .return-card:not([hidden]), .stars-backdrop:not([hidden]), .policy-backdrop:not([hidden]), .account-sheet:not([hidden])');
+  }
+
+  function wishStarPoints() {
+    return WishState.skyWishes(wishes)
+      .filter(wish => wish.id !== returnFlight?.wish.id && wish.id !== launchFlight?.wish.id)
+      .map(wish => ({wish, ...wishStarPosition(wish)}))
+      .filter(point => point.visible && point.x >= 0 && point.x <= width && point.y >= 0 && point.y <= height);
+  }
+
+  function hideFloatingWish() {
+    if (floatingText.hidden) return;
+    clearTimeout(floatingTimer);
+    floatingText.hidden = true;
+    floatingText.textContent = '';
+  }
+
+  function showFloatingWish(point, chance = false) {
+    hideFloatingWish();
+    floatingText.textContent = point.wish.text;
+    floatingText.className = 'floating-wish' + (chance ? ' floating-wish-chance' : '');
+    floatingText.style.left = `${Math.max(110, Math.min(width - 110, point.x))}px`;
+    floatingText.style.top = `${Math.max(40, Math.min(height - 100, point.y - 20))}px`;
+    floatingText.hidden = false;
+    // 同じ星を続けて触っても、前の言葉が途中から再生されないようにする。
+    void floatingText.offsetWidth;
+    floatingText.classList.add('floating-wish-visible');
+    floatingTimer = setTimeout(hideFloatingWish, 2500);
+  }
+
+  function updateFloatingWish(time) {
+    if (!homeIsVisible()) {
+      homeSince = null;
+      if (!openingCard) hideFloatingWish();
+      return;
+    }
+    homeSince ??= time;
+    if (!encounterShown && time - homeSince >= 3500) {
+      const point = FloatingWishes.randomStar(wishStarPoints().filter(point => WishState.orbitingWishes([point.wish]).length), Math.random());
+      if (point) {
+        encounterShown = true;
+        showFloatingWish(point, true);
+      }
+    }
   }
 
   function applyLocation(latitude, longitude, message = null) {
@@ -1210,6 +1269,7 @@
     drawEarth();
     drawWishStars(time);
     drawFlight(time);
+    updateFloatingWish(time);
     if (!threeReady) drawItokawa(time);
     requestAnimationFrame(render);
   }
@@ -1409,6 +1469,30 @@
   }
 
   function openCard() {
+    if (!returningWish || !landed || openingCard || !returnCard.hidden) return;
+    hideFloatingWish();
+    if (reducedMotion) {
+      revealCard();
+      return;
+    }
+    openingCard = true;
+    const wishId = returningWish.id;
+    floatingText.textContent = returningWish.text;
+    floatingText.className = 'floating-wish returning-wish';
+    floatingText.style.left = '50%';
+    floatingText.style.top = '42%';
+    floatingText.hidden = false;
+    // カプセルを連打しても、同じ帰還カードを重ねて開かない。
+    sampleButton.disabled = true;
+    setTimeout(() => {
+      openingCard = false;
+      sampleButton.disabled = false;
+      hideFloatingWish();
+      if (returningWish?.id === wishId && landed) revealCard();
+    }, 1200);
+  }
+
+  function revealCard() {
     if (!returningWish || !landed) return;
     // 閉じた直後に開き直すと、閉じる処理の続き（300ms後に隠す）がカードを隠してしまうため止める
     clearTimeout(cardHideTimer);
@@ -1736,6 +1820,8 @@
   let receiptWishId = null;
   let receiptThenFulfilled = false;
   let receiptPreviewTimer = null;
+  let receiptRevealPending = false;
+  let receiptPreviewVersion = 0;
 
   function receiptWish() {
     return wishes.find(wish => wish.id === receiptWishId) ?? null;
@@ -1748,6 +1834,8 @@
     $('#receipt-include-text').checked = true;
     $('#receipt-status').textContent = '';
     $('#receipt-preview').removeAttribute('src');
+    $('#receipt-preview').classList.remove('receipt-developing');
+    receiptRevealPending = !reducedMotion;
     receiptSheet.hidden = false;
     renderReceiptPreview();
     setTimeout(() => $('#receipt-first-step').focus({preventScroll: true}), 320);
@@ -1755,6 +1843,10 @@
 
   function closeReceiptSheet() {
     receiptSheet.hidden = true;
+    clearTimeout(receiptPreviewTimer);
+    receiptPreviewVersion++;
+    receiptRevealPending = false;
+    $('#receipt-preview').classList.remove('receipt-developing');
     const wish = receiptWish();
     receiptWishId = null;
     if (receiptThenFulfilled && wish?.status === WishState.STATUS.DOING) openFulfilledSheet();
@@ -1797,12 +1889,22 @@
 
   function renderReceiptPreview() {
     clearTimeout(receiptPreviewTimer);
+    const version = ++receiptPreviewVersion;
     receiptPreviewTimer = setTimeout(async () => {
       const wish = receiptWish();
       if (!wish) return;
       await document.fonts?.ready;
+      // 待っている間に閉じたり書き直した場合、古いプレビューで上書きしない。
+      if (version !== receiptPreviewVersion || receiptSheet.hidden) return;
       const content = receiptContentFor(wish);
-      $('#receipt-preview').src = drawReceipt(content).toDataURL('image/png');
+      const preview = $('#receipt-preview');
+      preview.classList.remove('receipt-developing');
+      preview.src = drawReceipt(content).toDataURL('image/png');
+      if (receiptRevealPending) {
+        receiptRevealPending = false;
+        void preview.offsetWidth;
+        preview.classList.add('receipt-developing');
+      }
     }, 200);
   }
 
@@ -2087,10 +2189,16 @@
     const star = PublicStars.nextStar(visibleOtherStars(), lastShownStarId);
     if (star) openStarCard(star);
   });
-  // 星空に触れたとき、近くに他の人の星があればカードを開く（ボタンや文字の上は除く）
+  // 操作中に願いが割り込まないよう、ボタンや文字の上は星へのタップから除く。
   app.addEventListener('click', event => {
-    if ((event.target !== app && event.target !== canvas) || !otherStarPoints.length || openStarsDialog()) return;
+    if ((event.target !== app && event.target !== canvas) || !homeIsVisible()) return;
     const bounds = app.getBoundingClientRect();
+    const ownStar = FloatingWishes.nearestStar(wishStarPoints(), event.clientX - bounds.left, event.clientY - bounds.top);
+    if (ownStar) {
+      homeSince = null;
+      showFloatingWish(ownStar);
+      return;
+    }
     const star = PublicStars.nearestStar(otherStarPoints, event.clientX - bounds.left, event.clientY - bounds.top);
     if (star) openStarCard(star);
   });

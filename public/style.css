@@ -498,3 +498,16 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 .archive-trigger{font-size:12px}
 .wish-label{display:block;margin:0 40px 6px 0;color:#e4e8df;font-size:13px;font-weight:600}
 .receipt-panel{position:relative}
+
+/* 願いの言葉は星のそばにだけ浮かべ、操作や星空を遮らない。 */
+.floating-wish{position:absolute;z-index:1;pointer-events:none;width:max-content;max-width:min(220px,calc(100% - 32px));margin:0;color:#f5ead1;font-size:14px;line-height:1.7;text-align:center;overflow-wrap:anywhere;text-shadow:0 2px 8px #050812,0 0 18px #050812;transform:translate(-50%,-100%)}
+.floating-wish[hidden]{display:none}
+.floating-wish-visible{animation:wish-float 2.5s ease-out both}
+.floating-wish-chance{color:rgba(245,234,209,.7)}
+@keyframes wish-float{0%{opacity:0;transform:translate(-50%,-100%)}20%{opacity:1}70%{opacity:1}100%{opacity:0;transform:translate(-50%,calc(-100% - 18px))}}
+.returning-wish{z-index:4;max-width:min(320px,calc(100% - 48px));animation:wish-descend 1.2s ease-in-out both}
+@keyframes wish-descend{0%{opacity:0;transform:translate(-50%,calc(-50% - 160px))}25%{opacity:1}72%{opacity:1;transform:translate(-50%,-50%)}100%{opacity:0;transform:translate(-50%,calc(-50% + 10px))}}
+.receipt-developing{animation:receipt-develop 1.5s linear both}
+@keyframes receipt-develop{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0)}}
+@media(prefers-reduced-motion:reduce){.floating-wish-visible{animation:wish-still 2.5s linear both}.returning-wish,.receipt-developing{animation:none}}
+@keyframes wish-still{0%,100%{opacity:0}12%,85%{opacity:1}}
