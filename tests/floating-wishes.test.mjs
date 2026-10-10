@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-import {nearestStar, randomStar} from '../public/floating-wishes.js';
+import {nearestStar, randomStar, nextAutoStar} from '../public/floating-wishes.js';
 
 test('24px以内の最も近い星だけ選び、境界も触れられる', () => {
   const points = [{x: 24, y: 0}, {x: 8, y: 0}, {x: 12, y: 0}];
@@ -36,7 +36,7 @@ test('自分の星は空のタップだけで浮かび、ボタン・シート�
   const star = {x: 24, y: 30, wish: {text: '海を見る'}};
   const sandbox = {
     app, canvas, homeIsVisible: () => home, wishStarPoints: () => [star],
-    FloatingWishes: {nearestStar}, homeSince: null,
+    FloatingWishes: {nearestStar}, homeSince: null, performance: {now: () => 0},
     showFloatingWish: point => shown.push(point), otherStarPoints: [],
     PublicStars: {nearestStar: () => null}, openStarCard: () => {},
   };
@@ -100,27 +100,32 @@ test('動きを減らす設定では待たずにカードを開き、取り消�
   assert.equal(cancelled.sandbox.reveals, 0);
 });
 
-test('ホームを数秒見たときだけ偶然の言葉が1度現れる', () => {
-  let home = false;
-  const shown = [];
-  const sandbox = {
-    homeSince: null, encounterShown: false, openingCard: false,
-    homeIsVisible: () => home, hideFloatingWish: () => {},
-    wishStarPoints: () => [{wish: {status: 'waiting'}}],
-    WishState: {orbitingWishes: items => items}, FloatingWishes: {randomStar},
-    Math: {random: () => 0}, showFloatingWish: (...args) => shown.push(args),
-  };
-  vm.createContext(sandbox);
-  vm.runInContext(functionSource('updateFloatingWish'), sandbox);
-  sandbox.updateFloatingWish(0);
-  home = true;
-  sandbox.updateFloatingWish(1000);
-  sandbox.updateFloatingWish(4499);
-  assert.equal(shown.length, 0);
-  sandbox.updateFloatingWish(4500);
-  sandbox.updateFloatingWish(9000);
-  assert.equal(shown.length, 1);
-  assert.equal(shown[0][1], true);
+test('ホームを見ている間、最初は数秒後、その後は一定の間隔で1つずつ浮かぶ（案C）。動きを減らす設定では浮かべない', () => {
+  for (const reducedMotion of [false, true]) {
+    let home = false;
+    const shown = [];
+    const sandbox = {
+      homeSince: null, lastAutoWishId: null, openingCard: false, reducedMotion,
+      homeIsVisible: () => home, hideFloatingWish: () => {},
+      wishStarPoints: () => [{wish: {id: 'a', status: 'waiting'}}, {wish: {id: 'b', status: 'waiting'}}],
+      WishState: {orbitingWishes: items => items}, FloatingWishes: {nextAutoStar, AUTO_FIRST_MS: 3500, AUTO_INTERVAL_MS: 8000},
+      Math: {random: () => 0}, showFloatingWish: (...args) => shown.push(args),
+    };
+    vm.createContext(sandbox);
+    vm.runInContext(functionSource('updateFloatingWish'), sandbox);
+    sandbox.updateFloatingWish(0);
+    home = true;
+    sandbox.updateFloatingWish(1000);
+    sandbox.updateFloatingWish(4499);
+    assert.equal(shown.length, 0);
+    sandbox.updateFloatingWish(4500);
+    sandbox.updateFloatingWish(12000);
+    sandbox.updateFloatingWish(12500);
+    if (reducedMotion) { assert.equal(shown.length, 0); continue; }
+    assert.equal(shown.length, 2);
+    assert.equal(shown[0][1], true);
+    assert.notEqual(shown[0][0].wish.id, shown[1][0].wish.id);
+  }
 });
 
 test('帰還票は最初の描画だけ現像し、入力更新では再生しない', async () => {
@@ -151,4 +156,11 @@ test('帰還票は最初の描画だけ現像し、入力更新では再生し�
   sandbox.receiptSheet.hidden = true;
   await timers.shift()();
   assert.equal(preview.src, 'current');
+});
+
+test('自動で浮かべる星は、直前と同じ星を続けて選ばない（1つしかなければその星）', () => {
+  const points = [{wish: {id: 'a'}}, {wish: {id: 'b'}}];
+  for (const r of [0, .5, .99]) assert.equal(nextAutoStar(points, 'a', r).wish.id, 'b');
+  assert.equal(nextAutoStar([points[0]], 'a', 0).wish.id, 'a');
+  assert.equal(nextAutoStar([], 'a', 0), null);
 });
