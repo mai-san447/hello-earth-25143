@@ -1993,10 +1993,8 @@
     if (!wish) return;
     const includeText = $('#receipt-include-text').checked;
     const message = [includeText ? `「${wish.text}」` : '', '星に預けていた願いを、やってみることにした。', '#MORUNE25143'].filter(Boolean).join('\n');
-    // リンクはサービスのトップ（その人の星のリンクではなく）。見た人が自分の願いを預けられるように（2026-10-07、本人の判断）。
-    // 「応援リンクを送る」は、シェアとの違いが分かりにくかったので外した
-    const url = `${location.origin}/`;
-    window.open(`https://x.com/intent/post?text=${encodeURIComponent(message)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer');
+    // リンクは付けない（2026-10-11、本人の判断：宣言の文だけでよい）。#MORUNE25143 から作品にたどり着ける
+    window.open(`https://x.com/intent/post?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer');
     status.textContent = 'X の投稿画面を開きました';
     // 書いた一歩は、シェアしてもアプリに残す（失敗したときは commitReceiptFirstStep が帰還票の画面に出す）
     commitReceiptFirstStep().catch(error => console.error('share first step', error?.name));
