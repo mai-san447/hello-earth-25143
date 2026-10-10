@@ -1943,7 +1943,6 @@
   // シェアの文は「やると決めた」宣言にする。アプリの中の言葉（25143・願い星）は外の人に通じないので入れない（2026-10-07、本人と決定）
   function shareReceipt() {
     const status = $('#receipt-status');
-    const button = $('#receipt-share');
     const wish = receiptWish();
     if (!wish) return;
     const includeText = $('#receipt-include-text').checked;
@@ -2173,6 +2172,21 @@
   $('#others-open').addEventListener('click', () => {
     const star = PublicStars.nextStar(visibleOtherStars(), lastShownStarId);
     if (star) openStarCard(star);
+  });
+  // マウスでは、自分の星に重ねるだけで言葉が浮かぶ（パソコンで見る人・展示の画面のため。2026-10-11）。
+  // 同じ星の上にいる間は出し直さない。タッチの端末は click で出す
+  let hoveredWishId = null;
+  app.addEventListener('pointermove', event => {
+    if (event.pointerType !== 'mouse') return;
+    const overSky = (event.target === app || event.target === canvas) && homeIsVisible();
+    const bounds = app.getBoundingClientRect();
+    const star = overSky ? FloatingWishes.nearestStar(wishStarPoints(), event.clientX - bounds.left, event.clientY - bounds.top) : null;
+    app.style.cursor = star ? 'pointer' : '';
+    if (!star) { hoveredWishId = null; return; }
+    if (star.wish.id === hoveredWishId) return;
+    hoveredWishId = star.wish.id;
+    homeSince = null;
+    showFloatingWish(star);
   });
   // 操作中に願いが割り込まないよう、ボタンや文字の上は星へのタップから除く。
   app.addEventListener('click', event => {
