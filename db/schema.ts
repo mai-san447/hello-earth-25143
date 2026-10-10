@@ -1,5 +1,12 @@
 import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
+// 削除の回数も共有し、Worker が替わっても連打の上限を守る。
+export const watchSettings = sqliteTable("watch_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: integer("updated_at").notNull(),
+});
+
 export const wishes = sqliteTable("wishes", {
   userId: text("user_id").notNull(),
   id: text("id").notNull(),

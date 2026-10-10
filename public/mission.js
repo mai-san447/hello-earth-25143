@@ -9,11 +9,12 @@
   let KeyedQueue;
   let Receipt;
   let FloatingWishes;
+  let Care;
   // 帰還票の QR を描く部品（public/vendor/qrcode.mjs、qrcode-generator 2.0.4、MIT）
   let QrCode;
   try {
     let QrModule;
-    [Sky, WishState, Itokawa, PublicStars, KeyedQueue, Receipt, QrModule, FloatingWishes] = await Promise.all([
+    [Sky, WishState, Itokawa, PublicStars, KeyedQueue, Receipt, QrModule, FloatingWishes, Care] = await Promise.all([
       import('/sky.js'),
       import('/wish-state.js'),
       import('/itokawa.js'),
@@ -22,6 +23,7 @@
       import('/receipt.js'),
       import('/vendor/qrcode.mjs'),
       import('/floating-wishes.js'),
+      import('/care.js'),
     ]);
     QrCode = QrModule.qrcode;
   } catch (error) {
@@ -2091,7 +2093,21 @@
       $('#mission-status').textContent = '';
         playLaunchTone();
         launchFlight = {wish, startedAt: performance.now()};
-      closeDeposit();
+      // 案内を読んでリンクを押せるよう、このときだけ自動で閉じない。
+      const notice = Care.careNotice(text);
+      if (notice) {
+        const paragraph = document.createElement('p');
+        paragraph.append(document.createTextNode('つらい気持ちのときは、話せる場所があります。'));
+        const link = document.createElement('a');
+        link.href = Care.CARE_URL;
+        link.textContent = 'まもろうよ こころ（厚生労働省）';
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        paragraph.append(link);
+        depositStatus.append(paragraph);
+      } else {
+        closeDeposit();
+      }
       setTimeout(() => {
         if (!returnFlight) $('#mission-status').textContent = '願いの星が灯りました';
       }, 1850);

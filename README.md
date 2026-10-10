@@ -134,31 +134,14 @@ npx wrangler deploy --config wrangler.jsonc
 
 ## 保留・通報された言葉の確認
 
-みんなの星で「保留（held）」になった言葉と、通報で「非表示（hidden）」になった言葉は、運営者（本人）が確かめて表示・非表示を決めます。管理画面はまだないので、手元の PC から SQL で行います。**本番のデータを触るので、落ち着いて1つずつ。**
+運営者だけが使う画面は `/watch`。アプリからのリンクはありません。トークンはこのタブの sessionStorage にだけ保存し、「閉じる」で消せます。
 
-一覧を見る（新しい順）：
-
-```bash
-npx wrangler d1 execute morune-25143 --remote --command "SELECT id, kind, status, reports, text, datetime(created_at/1000, 'unixepoch', '+9 hours') AS created_jst, datetime(expires_at/1000, 'unixepoch', '+9 hours') AS expires_jst FROM public_stars WHERE status IN ('held', 'hidden') ORDER BY created_at DESC LIMIT 50"
-```
-
-表示に戻す／非表示にする（`<星のid>` を一覧の id に置き換える）：
-
-```bash
-npx wrangler d1 execute morune-25143 --remote --command "UPDATE public_stars SET status = 'visible' WHERE id = '<星のid>'"
-npx wrangler d1 execute morune-25143 --remote --command "UPDATE public_stars SET status = 'hidden' WHERE id = '<星のid>'"
-```
-
-- 通報で非表示になった言葉を表示に戻すときは、通報数も 0 に戻す：`UPDATE public_stars SET status = 'visible', reports = 0 WHERE id = '<星のid>'`（通報した端末の記録 `star_reports` は残すので、同じ端末からの二重の通報は数えない）
-- 消すとき（取り返しがつかない）：`DELETE FROM star_reports WHERE star_id = '<星のid>'` → `DELETE FROM public_stars WHERE id = '<星のid>'`
-
-書き出し（バックアップ。1つの外部サービスが止まっても、公開された言葉を手元に残す）：
-
-```bash
-npx wrangler d1 export morune-25143 --remote --output backup-$(date +%Y-%m-%d).sql
-```
-
-書き出したファイルには公開された言葉が入るので、Git にコミットしない。
+- `WATCH_TOKEN` は32文字以上のランダムな秘密値を wrangler secret で設定します。未設定・32文字未満では API は404です。リポジトリや画面URLには書きません。
+- 公開前に `drizzle/0005_watch_settings.sql` を適用する必要があります（本番への適用・公開は本人の了承後）。初期値は一時停止です。
+- 一時停止中の新しい言葉はすべて保留になります。設定の表が読めないときも保留になります。既に表示中の星はそのままです。
+- 保留・非表示の言葉を新しい順に100件まで確認し、「出す」「隠す」「消す」を選べます。「出す」は通報数を0に戻します。同じ端末からの通報記録は残します。「消す」はページ内で確認してから星と通報を一緒に消します。
+- 本人の削除は `POST /api/stars/delete` に `{starId, orbitId}` を渡します。軌道IDが一致するときだけ消せます。削除の試行は軌道ごとに1分10回までで、D1に短時間の回数だけを記録します。軌道IDは端末が持つ秘密の識別子で、ログインによる本人確認ではありません。
+- つらい気持ちの言葉を預けたあとは、端末の中で相談先を案内します。願いの保存・状態は変わりません。この案内のための送信は行いません。
 
 ## JAXA素材
 
