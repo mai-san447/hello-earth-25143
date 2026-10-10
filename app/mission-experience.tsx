@@ -213,7 +213,7 @@ export function MissionExperience({
         <section className="stars-backdrop receipt-backdrop" id="receipt-sheet" role="dialog" aria-modal="true" aria-labelledby="receipt-title" hidden>
           <div className="stars-panel receipt-panel">
             <button className="sheet-close" id="receipt-x" type="button" aria-label="閉じる">×</button>
-            <h2 id="receipt-title">帰還票をつくる</h2>
+            <h2 id="receipt-title">帰還票が現像されました</h2>
             <label className="receipt-label" htmlFor="receipt-first-step">最初の小さな一歩（書かなくても大丈夫）</label>
             <input id="receipt-first-step" type="text" placeholder="例：天文台の見学に申し込む" />
             <label className="certificate-option" htmlFor="receipt-include-text"><input id="receipt-include-text" type="checkbox" /> 願いの言葉も入れる</label>
