@@ -23,7 +23,7 @@ function scene({fail = false, text = '見学を予約する', status = 'doing'} 
   const sandbox = {WishState, $, wishes: [{id: 'w', status, text: '星を見たい', createdAt: 1, updatedAt: 2, returnFrom: Date.now() + 86400000}],
     growthQueue: createKeyedQueue(), growthDrafts: new Map(), returningWish: null, returnFlight: null,
     launchFlight: null, landed: false, reducedMotion: true, sampleButton: {}, TRIAL_KEY: 'trial',
-    performance: {now: () => 0}, Date, Math, location: {origin: 'https://example.com'},
+    performance: {now: () => 0}, pendingLocation: {lat: 35.68, lon: 139.76}, Date, Math, location: {origin: 'https://example.com'},
     console: {error() {}}, setTimeout() {}, refreshInterface() {}, setMissionStep() {}, playRecoveryTone() {}, playReturnWhoosh() {},
     document: {fonts: {ready: Promise.resolve()}, createElement: () => ({click: () => calls.push('download')})},
     URL: {createObjectURL: () => 'blob:test', revokeObjectURL() {}},
