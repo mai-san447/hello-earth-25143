@@ -664,8 +664,33 @@
     pendingLocation = {lat, lon};
     refreshSky();
     locationStatus.textContent = message ?? `星空を現在地に合わせました（緯度 ${lat.toFixed(1)}°）。`;
-    setTimeout(() => locationModal.classList.add('is-hidden'), message ? 1600 : 650);
+    setTimeout(() => {
+      locationModal.classList.add('is-hidden');
+      openDepositAfterIntro();
+    }, message ? 1600 : 650);
   }
+
+  // 入口（はじめての人だけ）。「願いを預ける」を押したら、星空の場所を決めたあと、そのまま入力へ進む
+  const INTRO_KEY = 'morune-25143-intro-seen';
+  let depositAfterIntro = false;
+  function openDepositAfterIntro() {
+    if (!depositAfterIntro) return;
+    depositAfterIntro = false;
+    openDeposit();
+  }
+  function showIntroIfFirstTime() {
+    if (readStorage(INTRO_KEY) || wishes.length) return;
+    $('#intro-screen').hidden = false;
+    $('#intro-start').focus({preventScroll: true});
+  }
+  $('#intro-start').addEventListener('click', () => {
+    writeStorage(INTRO_KEY, '1');
+    $('#intro-screen').hidden = true;
+    depositAfterIntro = true;
+    // 場所をもう決めてあれば（2回目以降など）、すぐ入力へ
+    if (locationModal.classList.contains('is-hidden')) openDepositAfterIntro();
+    else locationAllow.focus({preventScroll: true});
+  });
 
   // 位置が取れないとき（電車の中・許可しない・対応していない）は、止めずに東京の星空で始める。
   // 以前は自分で「東京の星空で見る」を押すまで進めず、動かないと思われてしまった（2026-10-09、利用者の声）
@@ -964,7 +989,7 @@
       {enableHighAccuracy: false, timeout: 10000, maximumAge: 300000},
     );
   });
-  locationSkip.addEventListener('click', () => { applyLocation(35.68, 139.76); locationModal.classList.add('is-hidden'); });
+  locationSkip.addEventListener('click', () => { applyLocation(35.68, 139.76); locationModal.classList.add('is-hidden'); openDepositAfterIntro(); });
 
   function drawSpace(time) {
     const sky = context.createLinearGradient(0, 0, width * 0.65, height);
@@ -1838,7 +1863,8 @@
     receiptRevealPending = !reducedMotion;
     receiptSheet.hidden = false;
     renderReceiptPreview();
-    setTimeout(() => $('#receipt-first-step').focus({preventScroll: true}), 320);
+    // 帰還票が主役なので、入力欄には自動で入らない（スマホでキーボードが開いて帰還票が隠れるため）。フォーカスは閉じるボタンへ
+    setTimeout(() => $('#receipt-x').focus({preventScroll: true}), 320);
   }
 
   function closeReceiptSheet() {
@@ -2275,6 +2301,11 @@
     openDeposit();
   });
   window.addEventListener('keydown', event => {
+    // 入口が開いているときは、その中だけで操作する
+    if (!$('#intro-screen').hidden) {
+      if (event.key === 'Tab') trapFocus(event, $('#intro-screen'));
+      return;
+    }
     // 帰還票のシートが開いているときは、その中だけで操作する（スペースで帰還が始まらないように）
     if (!receiptSheet.hidden) {
       if (event.key === 'Escape') closeReceiptSheet();
@@ -2807,6 +2838,7 @@
   loadItokawaDistance();
   recordOpenDay();
   await init();
+  showIntroIfFirstTime();
   await fixWishSeq();
   ensureNumber();
   showConnection();

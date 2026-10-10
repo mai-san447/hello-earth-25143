@@ -57,11 +57,12 @@ export function MissionExperience({
         <section className="sheet deposit-sheet" id="deposit-sheet" aria-label="願いを星に預ける" hidden>
           <div className="sheet-grip" aria-hidden="true" />
           <button className="sheet-close" id="deposit-close" type="button" aria-label="閉じる">×</button>
+          <h2 className="deposit-question">いつか、何をしたい？</h2>
           <label className="wish-label" htmlFor="wish">願い（60字まで）</label>
           <textarea id="wish" maxLength={60} placeholder="例：天文台に行く" />
           <div className="input-meta"><span /><span><b id="wish-length">0</b> / 60</span></div>
           <div className="return-from-field">
-            <label htmlFor="return-from">帰還が始まる日（任意）</label>
+            <label htmlFor="return-from">帰ってくる日（任意）</label>
             <input id="return-from" type="date" aria-describedby="return-from-hint" />
             <p id="return-from-hint">この日までは帰ってきません。空欄なら、すぐ帰還の候補になります。</p>
           </div>
@@ -73,7 +74,7 @@ export function MissionExperience({
             </label>
             <p id="publish-hint">言葉だけが30日間、ほかの人の星空に小さく出ます。預けた願いは、これまでどおりこの端末の中にあります。</p>
           </div>
-          <button className="launch-button" id="deposit" type="button">星に預ける <span aria-hidden="true">↗</span></button>
+          <button className="launch-button" id="deposit" type="button">星へ送る <span aria-hidden="true">↗</span></button>
           <p className="sheet-status" id="deposit-status" role="status" />
         </section>
         <section className="return-card" id="return-card" role="dialog" aria-modal="true" aria-labelledby="returned-text" hidden>
@@ -90,7 +91,8 @@ export function MissionExperience({
           <h2 id="returned-text" />
           <time id="returned-date" />
           <p className="returned-wait" id="returned-wait" />
-          <div className="return-actions" aria-label="帰還した願いの扱い">
+          <p className="return-question">今の気持ちは？</p>
+          <div className="return-actions" aria-label="今の気持ち">
             <button className="return-action-primary" id="try-wish" type="button">想いを受け取る</button>
             <button id="return-to-orbit" type="button">もう少し預ける</button>
           </div>
@@ -214,14 +216,15 @@ export function MissionExperience({
           <div className="stars-panel receipt-panel">
             <button className="sheet-close" id="receipt-x" type="button" aria-label="閉じる">×</button>
             <h2 id="receipt-title">帰還票が現像されました</h2>
-            <label className="receipt-label" htmlFor="receipt-first-step">最初の小さな一歩（書かなくても大丈夫）</label>
+            {/* 完成の画面は帰還票が主役。画面の帰還票と、展示で印刷される紙は同じもの（2026-10-11） */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- 端末の中で描いた帰還票（data URL）を出すだけなので、画像の最適化は要らない */}
+            <img className="receipt-preview" id="receipt-preview" alt="帰還票" />
+            <label className="receipt-label" htmlFor="receipt-first-step">最初の小さな一歩（書くと帰還票に入ります）</label>
             <input id="receipt-first-step" type="text" placeholder="例：天文台の見学に申し込む" />
             <label className="certificate-option" htmlFor="receipt-include-text"><input id="receipt-include-text" type="checkbox" /> 願いの言葉も入れる</label>
-            {/* eslint-disable-next-line @next/next/no-img-element -- 端末の中で描いた帰還票（data URL）を出すだけなので、画像の最適化は要らない */}
-            <img className="receipt-preview" id="receipt-preview" alt="帰還票のプレビュー" />
-            <button className="stars-primary receipt-primary" id="receipt-save" type="button">紙に印刷する・保存する</button>
+            <button className="stars-primary receipt-primary" id="receipt-save" type="button">保存する</button>
             <button className="stars-secondary" id="receipt-share" type="button">X でシェアする</button>
-            <button className="stars-secondary" id="receipt-close" type="button">あとで</button>
+            <button className="receipt-later" id="receipt-close" type="button">星空へ戻る</button>
             <p className="stars-status" id="receipt-status" role="status" aria-live="polite" />
           </div>
         </section>
@@ -238,6 +241,25 @@ export function MissionExperience({
           </div>
         </section>
         <div className="itokawa-label" id="itokawa-label" aria-hidden="true" hidden>25143 ITOKAWA</div>
+        {/* 入口：はじめて開いた人にだけ、完成物（帰還票）と3つのステップを見せる（2026-10-11） */}
+        <section className="intro-screen" id="intro-screen" role="dialog" aria-modal="true" aria-labelledby="intro-title" hidden>
+          <div className="intro-inner">
+            <p className="intro-brand">MORUNE <span>25143</span></p>
+            <h2 id="intro-title">願いを星に、<br />想いを地球へ。</h2>
+            <p className="intro-lead">手放した「いつかやりたいこと」を星に預け、ひとつずつ受け取りなおす。</p>
+            <div className="intro-sample">
+              {/* eslint-disable-next-line @next/next/no-img-element -- 見本の帰還票（同梱の画像） */}
+              <img src="/receipt-sample.png" alt="帰還票の見本" />
+              <p><span>持ち帰れるもの</span>帰ってきた願いは、<br />帰還票として現像されます。</p>
+            </div>
+            <ol className="intro-steps">
+              <li>願いを星に預ける</li>
+              <li>ある日、1つだけ帰ってくる</li>
+              <li>帰還票が現像される</li>
+            </ol>
+            <button className="intro-start" id="intro-start" type="button">願いを預ける</button>
+          </div>
+        </section>
         <section className="location-backdrop" id="location-modal" role="dialog" aria-modal="true" aria-labelledby="location-title" aria-describedby="location-description">
           <div className="location-panel">
             <h2 id="location-title">あなたのいる場所の、今の本物の星空を表示します</h2>

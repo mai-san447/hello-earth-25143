@@ -511,3 +511,24 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 @keyframes receipt-develop{from{clip-path:inset(0 0 100% 0)}to{clip-path:inset(0)}}
 @media(prefers-reduced-motion:reduce){.floating-wish-visible{animation:wish-still 2.5s linear both}.returning-wish,.receipt-developing{animation:none}}
 @keyframes wish-still{0%,100%{opacity:0}12%,85%{opacity:1}}
+
+/* 5つの段階（2026-10-11）：入口・入力の一問・帰還の問い・帰還票が主役の完成画面 */
+.intro-screen{position:fixed;z-index:20;inset:0;overflow-y:auto;background:radial-gradient(120% 70% at 70% 10%,#13213a 0%,#0b1220 55%,#070b14 100%);color:#e9e6dc}
+.intro-inner{box-sizing:border-box;width:min(100%,440px);min-height:100%;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 24px max(32px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:22px}
+.intro-brand{margin:0;font:700 14px/1 "Zen Kaku Gothic New",sans-serif;letter-spacing:.14em}.intro-brand span{color:#e3bd72}
+.intro-screen h2{margin:24px 0 0;font:800 clamp(30px,8.5vw,36px)/1.45 "Zen Kaku Gothic New",sans-serif}
+.intro-lead{margin:0;font-size:14px;line-height:1.8;color:#c3ccd5}
+.intro-sample{display:flex;gap:16px;align-items:center;padding:14px;border:1px solid #2a3546;border-radius:16px;background:#141d2c}
+.intro-sample img{width:96px;flex:none;transform:rotate(-3deg);box-shadow:0 8px 18px rgba(0,0,0,.5)}
+.intro-sample p{margin:0;font-size:14px;line-height:1.7}.intro-sample span{display:block;color:#e3bd72;font-size:12px;letter-spacing:.1em}
+.intro-steps{margin:0;padding:0;list-style:none;counter-reset:s;display:grid;gap:12px}
+.intro-steps li{counter-increment:s;display:flex;gap:12px;align-items:center;font-size:15px}
+.intro-steps li::before{content:counter(s);width:26px;height:26px;flex:none;border-radius:50%;background:#e3bd72;color:#0b1220;display:grid;place-items:center;font:700 13px/1 ui-monospace,monospace}
+.intro-start{margin-top:auto;min-height:52px;border:0;border-radius:999px;background:#e3bd72;color:#0b1220;font:700 16px/1 "Zen Kaku Gothic New",sans-serif;cursor:pointer}
+.intro-start:focus-visible,.receipt-later:focus-visible{outline:2px solid #fff;outline-offset:3px}
+.deposit-question{margin:4px 40px 10px 0;font:800 22px/1.5 "Zen Kaku Gothic New",sans-serif;color:#f1ede2}
+.return-question{margin:6px 0 2px;text-align:center;font-size:14px;color:#c3ccd5}
+.receipt-preview{width:min(300px,100%);margin:6px auto 14px}
+.receipt-later{display:block;width:100%;min-height:44px;margin-top:4px;border:0;background:none;color:#a2adb8;font:400 14px/1 "Zen Kaku Gothic New",sans-serif;cursor:pointer}
+/* 帰還票と、保存・シェアのボタンが1画面に収まるよう、帰還票の高さをおさえる */
+.receipt-preview{width:auto;max-width:100%;max-height:min(52dvh,520px)}
