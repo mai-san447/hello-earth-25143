@@ -193,9 +193,12 @@ export function pendingReturn(wishes) {
     .sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null;
 }
 
-export function markReturned(wish, now) {
+export function markReturned(wish, now, observer = null) {
   if (wish.status !== STATUS.WAITING) throw new Error(`軌道上にない願いは帰還できません: ${wish.status}`);
-  return {...wish, status: STATUS.RETURNED, updatedAt: now, returnedAt: now};
+  const returned = {...wish, status: STATUS.RETURNED, updatedAt: now, returnedAt: now};
+  // 帰ってきたときの観測地（帰還票の「観測」の行に使う。端末の中だけに保存する）
+  if (observer && Number.isFinite(observer.lat) && Number.isFinite(observer.lon)) returned.observedAt = {lat: observer.lat, lon: observer.lon};
+  return returned;
 }
 
 export function decide(wish, choice, now) {

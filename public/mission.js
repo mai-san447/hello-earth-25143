@@ -1306,7 +1306,7 @@
   async function finishReturn(wish) {
     if (!returnFlight || returnFlight.wish.id !== wish.id) return;
     returnFlight = null;
-    const returned = WishState.markReturned(wish, Date.now());
+    const returned = WishState.markReturned(wish, Date.now(), pendingLocation);
     const wasTrial = WishState.trialAvailable(wishes, trialUsed());
     try {
       await store('readwrite', object => object.put(returned));
@@ -1823,6 +1823,21 @@
     context.font = `500 19px ${RECEIPT_MONO}`;
     context.fillText(content.meta.join(' · '), width / 2, y);
     if (content.qrUrl) y = drawReceiptQr(context, content, y + 24);
+    if (content.observation) {
+      // QR の下に、細い線で挟んだ観測の記録を1行
+      context.font = `400 15px ${RECEIPT_MONO}`;
+      context.textAlign = 'center';
+      context.lineWidth = 1.5;
+      context.beginPath();
+      context.moveTo(margin, y + 10);
+      context.lineTo(width - margin, y + 10);
+      context.moveTo(margin, y + 44);
+      context.lineTo(width - margin, y + 44);
+      context.stroke();
+      const lines = wrapLines(context, content.observation, inner);
+      context.fillText(lines[0], width / 2, y + 33);
+      y += 44;
+    }
     y = drawReceiptStub(context, content, y, margin, width, inner);
     y += 40;
     context.textAlign = 'center';
@@ -1914,6 +1929,7 @@
       number: currentWishNumber(wish),
       includeText: $('#receipt-include-text').checked,
       qrUrl: `${location.origin}/`,
+      observer: pendingLocation,
     });
   }
 

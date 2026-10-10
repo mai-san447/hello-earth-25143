@@ -30,13 +30,27 @@ export function receiptVariant(wishId) {
   return RECEIPT_VARIANTS[Math.floor(value / 10) % 3];
 }
 
+// 観測の記録（QR の下の1行）。どの空・いつ・どの絵から帰ってきたかを、標本のラベルのように残す（2026-10-11、本人が①緯度経度に決定）。
+// 同じ場所・時刻・絵柄・番号があれば、同じ星空と絵を描き直せる（再現性）。位置は小数1桁（約10km）
+function coordinate(value, positive, negative) {
+  return `${Math.abs(value).toFixed(1)}°${value >= 0 ? positive : negative}`;
+}
+export function observationLine({observer, time, variant, serial}) {
+  const date = new Date(time);
+  const clock = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  const place = observer && Number.isFinite(observer.lat) && Number.isFinite(observer.lon)
+    ? `${coordinate(observer.lat, 'N', 'S')} ${coordinate(observer.lon, 'E', 'W')} `
+    : '';
+  return `観測 ${place}${formatDate(time)} ${clock} ／ ${variant.name} No.${String(serial).padStart(4, '0')}`;
+}
+
 function formatDate(time) {
   const date = new Date(time);
   return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
 }
 
 // 願いの言葉を入れるかは本人が選ぶ（「願いの言葉も入れる」。紙の主役なので初期値は入れる。2026-10-07 変更）
-export function returnReceiptContent({wish, now, distanceText = '', number = null, includeText = false, qrUrl = ''}) {
+export function returnReceiptContent({wish, now, distanceText = '', number = null, includeText = false, qrUrl = '', observer = null}) {
   const firstStep = typeof wish.firstStep === 'string' ? wish.firstStep.trim() : '';
   const variant = receiptVariant(wish.id);
   // 預けた日 → 帰ってきた日。同じ日なら1つだけ（旅の長さが、紙を見ただけで分かるように）
@@ -55,6 +69,8 @@ export function returnReceiptContent({wish, now, distanceText = '', number = nul
     number,
     // 読み取ると、自分の星（このアプリ）へ。紙を財布に入れておけば、また開くきっかけになる
     qrUrl,
+    // 帰ってきたときの場所を使う（古い願いで記録がなければ、今の場所）
+    observation: observationLine({observer: wish.observedAt ?? observer, time: returnedAt, variant, serial: hash(wish.id) % 10000}),
     stub: '最初の小さな一歩',
     // アプリで書いた一歩があれば印刷する。なければペンで書く線を残す（記録はアプリ、紙は目に入る場所に置くメモ）
     firstStep,
