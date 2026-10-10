@@ -1318,7 +1318,7 @@
       sampleButton.hidden = false;
       setTimeout(() => sampleButton.classList.add('sample-arrived'), 20);
       setMissionStep('choose');
-      $('#mission-status').textContent = 'カプセル帰還 / オーストラリアで回収';
+      $('#mission-status').textContent = 'カプセルが地球に着きました';
       refreshInterface();
       playRecoveryTone();
     } catch {
