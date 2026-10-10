@@ -2,6 +2,7 @@
 // 決めた数はすべてここに置く（docs/みんなの星_設計.md、docs/状態設計.md の #17）。
 
 import {isOrbitId} from '../signals/rules.mjs';
+import {CARE_WORDS} from '../../../public/care.js';
 
 export {isOrbitId};
 
@@ -35,7 +36,7 @@ export const NUMBER_PREFIX = '25143';
 export const CAUTION_WORDS = Object.freeze([
   '死ね', '氏ね', '殺す', 'ころす', '殺したい', '消えろ', 'きえろ',
   'きもい', 'キモい', 'うざい', 'ウザい', 'ブス', 'アホ', 'クズ',
-  '自殺', '死にたい', 'しにたい', '消えたい',
+  ...CARE_WORDS,
   'セックス', '援交', 'パパ活',
   'line id', 'lineid', 'ライン id', 'dm', '住所', '電話番号',
 ]);
@@ -57,6 +58,25 @@ export function publicStarsEnabled(env) {
 
 export function isStarId(value) {
   return typeof value === 'string' && STAR_ID.test(value);
+}
+
+export function publishStatus(text, paused) {
+  return paused ? STATUS.HELD : screenText(text).status;
+}
+
+export const DELETE_LIMIT = Object.freeze({windowMs: 60_000, max: 10});
+export function canDelete(recentCount) {
+  return Number.isInteger(recentCount) && recentCount >= 0 && recentCount < DELETE_LIMIT.max;
+}
+export function ownsStar(star, orbitId) {
+  return isOrbitId(orbitId) && star?.orbitId === orbitId;
+}
+/** @returns {{ok: true, value: {starId: string, orbitId: string}} | Rejected} */
+export function parseDelete(body) {
+  const starId = bodyField(body, 'starId');
+  const orbitId = bodyField(body, 'orbitId');
+  if (!isStarId(starId) || !isOrbitId(orbitId)) return {ok: false, status: 400, error: '消す星を確認してください。'};
+  return {ok: true, value: {starId, orbitId}};
 }
 
 // 改行や連続した空白は1つの空白にし、前後の空白を落とす。見た目の制御文字も除く

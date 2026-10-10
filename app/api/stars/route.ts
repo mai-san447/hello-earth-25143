@@ -3,7 +3,8 @@ import { env } from "cloudflare:workers";
 import { and, count, eq, gt, gte, inArray, lt, ne, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { orbits, publicStars, starReports } from "../../../db/schema";
-import { DAILY_WINDOW_MS, SKY_LIMIT, STATUS, acceptPublish, publicStarsEnabled, expiresAt, formatNumber, isOrbitId, parsePublish, publicStar, screenText } from "./rules.mjs";
+import { DAILY_WINDOW_MS, SKY_LIMIT, STATUS, acceptPublish, publicStarsEnabled, expiresAt, formatNumber, isOrbitId, parsePublish, publicStar, publishStatus } from "./rules.mjs";
+import { readPaused } from "../watch/settings";
 
 // みんなの星（#22）。公開を選んだ言葉（60字まで）と軌道IDだけを受け取る。名前・IPアドレスは保存しない。
 // D1 の `DB` が無い環境、または PUBLIC_STARS_ENABLED が "true" でない環境では、機能ごと隠す（rules.mjs）。
@@ -66,10 +67,10 @@ export async function POST(request: Request) {
     const number = await orbitNumber(orbitId);
     if (!number) throw new Error("orbit number was not assigned");
 
-    const screened = screenText(text);
+    const status = publishStatus(text, await readPaused());
     const id = crypto.randomUUID();
     const expires = expiresAt(kind, now);
-    await db.insert(publicStars).values({ id, orbitId, kind, text, status: screened.status, reports: 0, createdAt: now, expiresAt: expires });
+    await db.insert(publicStars).values({ id, orbitId, kind, text, status, reports: 0, createdAt: now, expiresAt: expires });
 
     // 期限を過ぎたこの軌道の星は、次に公開したときに消す（持ちすぎない）
     const expired = await db
@@ -83,7 +84,7 @@ export async function POST(request: Request) {
     }
 
     // 保留（held）になったことは本人に伝える。理由の種類は返さない（どう書けば通るかの手がかりにしないため）
-    return Response.json({ ok: true, id, status: screened.status, number, expiresAt: expires });
+    return Response.json({ ok: true, id, status, number, expiresAt: expires });
   } catch (error) {
     console.error("stars POST", errorKind(error));
     return Response.json({ error: "星空に流せませんでした。" }, { status: 503 });

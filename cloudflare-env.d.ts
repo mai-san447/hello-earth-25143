@@ -6,6 +6,7 @@ declare namespace Cloudflare {
     BUCKET?: R2Bucket;
     CHATGPT_SYNC_ENABLED?: string;
     PUBLIC_STARS_ENABLED?: string;
+    WATCH_TOKEN?: string;
     ART_ENABLED?: string;
   }
 }
