@@ -1753,7 +1753,7 @@
     return y;
   }
 
-  function drawReceipt(content, {withStub = true} = {}) {
+  function drawReceipt(content) {
     const width = Receipt.RECEIPT_WIDTH;
     const margin = 24;
     const inner = width - margin * 2;
@@ -1794,7 +1794,7 @@
     context.font = `500 19px ${RECEIPT_MONO}`;
     context.fillText(content.meta.join(' · '), width / 2, y);
     if (content.qrUrl) y = drawReceiptQr(context, content, y + 24);
-    if (withStub) y = drawReceiptStub(context, content, y, margin, width, inner);
+    y = drawReceiptStub(context, content, y, margin, width, inner);
     y += 40;
     context.textAlign = 'center';
     context.font = `400 16px ${RECEIPT_FONT}`;
@@ -1939,7 +1939,7 @@
 
   // シェアは X だけにする（2026-10-07、本人の判断）。OS の共有シートは PC では X が出ず、
   // 画像を描いてから（await のあと）開くと、ブラウザが「押した直後」と見なさず投稿画面が開かなかった。
-  // そのため投稿画面は押した瞬間に開き、画像（切り取り線より上だけ）は端末に保存して、投稿に添えてもらう
+  // そのため投稿画面は押した瞬間に開く。画像は付けない（2026-10-11、本人の判断：文とリンクだけでよい）
   // シェアの文は「やると決めた」宣言にする。アプリの中の言葉（25143・願い星）は外の人に通じないので入れない（2026-10-07、本人と決定）
   function shareReceipt() {
     const status = $('#receipt-status');
@@ -1952,24 +1952,9 @@
     // 「応援リンクを送る」は、シェアとの違いが分かりにくかったので外した
     const url = `${location.origin}/`;
     window.open(`https://x.com/intent/post?text=${encodeURIComponent(message)}&url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer');
-    button.disabled = true;
-    status.textContent = 'X の投稿画面を開きました。画像を保存しています…';
-    (async () => {
-      const saved = await commitReceiptFirstStep();
-      if (!saved) return;
-      await document.fonts?.ready;
-      const content = receiptContentFor(saved);
-      const blob = await canvasBlob(drawReceipt(content, {withStub: false}));
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = content.fileName.replace('receipt', 'share');
-      link.click();
-      setTimeout(() => URL.revokeObjectURL(link.href), 10000);
-      status.textContent = '画像を保存しました。X の投稿に添えてください';
-    })().catch(error => {
-      console.error('share receipt', error?.name);
-      status.textContent = '画像を保存できませんでした。「紙に印刷する・保存する」から保存してください';
-    }).finally(() => { button.disabled = false; });
+    status.textContent = 'X の投稿画面を開きました';
+    // 書いた一歩は、シェアしてもアプリに残す（失敗したときは commitReceiptFirstStep が帰還票の画面に出す）
+    commitReceiptFirstStep().catch(error => console.error('share first step', error?.name));
   }
 
 
