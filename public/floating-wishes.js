@@ -14,6 +14,16 @@ export function nearestStar(points, x, y, radius = 24) {
   return nearest;
 }
 
+// 見ているだけで願いが1つずつ浮かぶ間隔（2026-10-11、本人が案Cに決定）。最初の1つは少し早めに出す
+export const AUTO_FIRST_MS = 3500;
+export const AUTO_INTERVAL_MS = 8000;
+
+// 続けて同じ星を選ばないよう、直前の星は（ほかに候補があれば）除いてから選ぶ
+export function nextAutoStar(points, lastId, random) {
+  const others = points.length > 1 ? points.filter(point => point.wish?.id !== lastId) : points;
+  return randomStar(others, random);
+}
+
 // 乱数を外から渡して、空の星空や選ばれる端の星も確かめられるようにする。
 export function randomStar(points, random) {
   if (!points.length || !Number.isFinite(random) || random < 0 || random >= 1) return null;

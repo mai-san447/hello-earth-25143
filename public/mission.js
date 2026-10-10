@@ -185,7 +185,7 @@
   let cardHideTimer;
   let openingCard = false;
   let floatingTimer;
-  let encounterShown = false;
+  let lastAutoWishId = null;
   let homeSince = null;
   const floatingText = document.createElement('p');
   floatingText.className = 'floating-wish';
@@ -648,11 +648,15 @@
       if (!openingCard) hideFloatingWish();
       return;
     }
-    homeSince ??= time;
-    if (!encounterShown && time - homeSince >= 3500) {
-      const point = FloatingWishes.randomStar(wishStarPoints().filter(point => WishState.orbitingWishes([point.wish]).length), Math.random());
+    // 見ているだけで、願いが1つずつ浮かんでは消える（案C）。触れると homeSince が戻り、次の自動は間隔をあけてから。
+    // 動きを減らす設定では、自動では浮かべない（触れたときだけ）
+    if (reducedMotion) return;
+    if (homeSince == null) homeSince = time - FloatingWishes.AUTO_INTERVAL_MS + FloatingWishes.AUTO_FIRST_MS;
+    if (time - homeSince >= FloatingWishes.AUTO_INTERVAL_MS) {
+      homeSince = time;
+      const point = FloatingWishes.nextAutoStar(wishStarPoints().filter(point => WishState.orbitingWishes([point.wish]).length), lastAutoWishId, Math.random());
       if (point) {
-        encounterShown = true;
+        lastAutoWishId = point.wish.id;
         showFloatingWish(point, true);
       }
     }
@@ -2211,7 +2215,7 @@
     if (!star) { hoveredWishId = null; return; }
     if (star.wish.id === hoveredWishId) return;
     hoveredWishId = star.wish.id;
-    homeSince = null;
+    homeSince = performance.now();
     showFloatingWish(star);
   });
   // 操作中に願いが割り込まないよう、ボタンや文字の上は星へのタップから除く。
@@ -2220,7 +2224,7 @@
     const bounds = app.getBoundingClientRect();
     const ownStar = FloatingWishes.nearestStar(wishStarPoints(), event.clientX - bounds.left, event.clientY - bounds.top);
     if (ownStar) {
-      homeSince = null;
+      homeSince = performance.now();
       showFloatingWish(ownStar);
       return;
     }
