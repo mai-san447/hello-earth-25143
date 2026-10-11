@@ -250,8 +250,8 @@ export function MissionExperience({
             <p className="sheet-kicker">叶ったよ</p>
             <h2 id="fulfilled-title">「叶ったよ」のひとこと（任意）</h2>
             <p className="stars-note">書くと、24時間だけ、ほかの人の星空に流れ星として出ます。名前は出ません。</p>
-            <textarea id="fulfilled-text" maxLength={40} aria-label="叶ったよ、のひとこと" placeholder="例：海を見に行けた" />
-            <div className="input-meta"><span>ひとこと</span><span><b id="fulfilled-length">0</b> / 40</span></div>
+            <textarea id="fulfilled-text" maxLength={24} aria-label="叶ったよ、のひとこと" placeholder="例：海を見に行けた" />
+            <div className="input-meta"><span>ひとこと</span><span><b id="fulfilled-length">0</b> / 12</span></div>
             <button className="stars-primary" id="fulfilled-send" type="button">流れ星にして流す</button>
             <button className="stars-secondary" id="fulfilled-skip" type="button">今は流さない</button>
             <p className="stars-status" id="fulfilled-status" role="status" aria-live="polite" />
@@ -263,11 +263,11 @@ export function MissionExperience({
             <p className="intro-brand">MORUNE <span>25143</span></p>
             <p className="title-kicker" lang="en">Leave your wish with the stars</p>
             <h2 id="intro-title">やりたいことを<br />星に預けておく</h2>
-            <p className="intro-lead">手放した「いつかやりたいこと」を星に預け、ひとつずつ受け取りなおす。</p>
+            <p className="intro-lead">預けた願いは　いつか帰ってくる</p>
             <div className="intro-sample">
               {/* eslint-disable-next-line @next/next/no-img-element -- 見本の帰還票（同梱の画像） */}
               <img src="/receipt-sample.png" alt="帰還票の見本" />
-              <p><span>持ち帰れるもの</span>帰ってきた願いは、<br />帰還票として現像されます。</p>
+              <p><span>持ち帰れるもの</span>帰ってきた願いは<br />帰還票として現像される</p>
             </div>
             <ol className="intro-steps">
               <li>願いを星に預ける</li>
