@@ -38,7 +38,7 @@ test('自分の星は空のタップだけで浮かび、ボタン・シート�
     app, canvas, homeIsVisible: () => home, wishStarPoints: () => [star],
     FloatingWishes: {nearestStar}, homeSince: null, performance: {now: () => 0},
     showFloatingWish: point => shown.push(point), otherStarPoints: [],
-    PublicStars: {nearestStar: () => null}, openStarCard: () => {},
+    otherStarPoints: [], PublicStars: {nearestStar: () => null}, openStarCard: () => {},
   };
   vm.createContext(sandbox);
   const start = source.indexOf("  app.addEventListener('click', event => {");
@@ -105,7 +105,7 @@ test('ホームを見ている間、最初は数秒後、その後は一定の�
     let home = false;
     const shown = [];
     const sandbox = {
-      homeSince: null, lastAutoWishId: null, openingCard: false, reducedMotion,
+      homeSince: null, lastAutoWishId: null, openingCard: false, reducedMotion, focusPending: false, otherStarPoints: [],
       homeIsVisible: () => home, hideFloatingWish: () => {},
       wishStarPoints: () => [{wish: {id: 'a', status: 'waiting'}}, {wish: {id: 'b', status: 'waiting'}}],
       WishState: {orbitingWishes: items => items}, FloatingWishes: {nextAutoStar, AUTO_FIRST_MS: 3500, AUTO_INTERVAL_MS: 8000},
