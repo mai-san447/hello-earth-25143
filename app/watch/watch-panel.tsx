@@ -30,17 +30,22 @@ export function WatchPanel() {
       if (action) {
         const response = await fetch("/api/watch", {...options, method: "POST", body: JSON.stringify({action, ...(id ? {id} : {})})});
         if (!response.ok) {
-          const data = await response.json() as {error?: string};
+          const data = await response.json().catch(() => ({})) as {error?: string};
           throw new Error(data.error ?? "変更できませんでした。");
         }
         setDeleting(null);
       }
       const response = await fetch("/api/watch", options);
-      const data = await response.json() as {error?: string; stars: Star[]; paused: boolean};
+      const data = await response.json().catch(() => ({})) as {error?: string; stars: Star[]; paused: boolean};
       if (!response.ok) {
         setConnected(false);
         setStars([]);
         throw new Error(data.error ?? "読み込めませんでした。");
+      }
+      if (!Array.isArray(data.stars) || typeof data.paused !== 'boolean') {
+        setConnected(false);
+        setStars([]);
+        throw new Error('見守りの記録を読み込めませんでした。');
       }
       setStars(data.stars);
       setPaused(data.paused);
@@ -48,7 +53,8 @@ export function WatchPanel() {
       try { sessionStorage.setItem(TOKEN_KEY, token); }
       catch { setMessage("トークンは保存できません。この画面では使えます。"); }
     } catch (error) {
-      setMessage(error instanceof Error && error.name === "Error" ? error.message : "つながりませんでした。もう一度お試しください。");
+      console.error('watch request', error);
+      setMessage('操作できませんでした。トークンと通信を確かめて、もう一度押してください。');
     } finally { setBusy(false); }
   }
   return <main style={{maxWidth: 760, margin: "40px auto", padding: 24, color: "#eee", background: "#121c2b"}}>
@@ -56,7 +62,7 @@ export function WatchPanel() {
     <form onSubmit={event => {event.preventDefault(); void request();}}>
       <label>トークン <input type="password" autoComplete="off" value={token} onChange={event => {setToken(event.target.value); setConnected(false); setStars([]);}} disabled={busy} /></label>
       <button disabled={busy || !token}>開く・更新</button>
-      <button type="button" disabled={busy} onClick={() => {try {sessionStorage.removeItem(TOKEN_KEY);} catch {setMessage("トークンを保存できないタブです。");} setToken(""); setStars([]); setConnected(false);}}>閉じる</button>
+      <button type="button" disabled={busy} onClick={() => {try {sessionStorage.removeItem(TOKEN_KEY);} catch {setMessage("トークンを保存できないタブです。");} setToken(""); setStars([]); setConnected(false);}}>トークンを消す</button>
     </form>
     <p role="status">{message}</p>
     {connected && <>

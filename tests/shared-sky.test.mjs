@@ -251,7 +251,7 @@ test('帰還と公開IDの保存が重なっても、帰還した願いからID�
   const {sandbox, actions} = queueScene();
   const wish = sandbox.wishes[0];
   const element = {classList: {add: () => {}}, hidden: true};
-  Object.assign(sandbox, {returnFlight: {wish}, pendingLocation: {lat: 35.68, lon: 139.76}, trialUsed: () => true, TRIAL_KEY: 'trial', sampleButton: element, setTimeout: () => {}, setMissionStep: () => {}, $: () => element, refreshInterface: () => {}, playRecoveryTone: () => {}, landed: false});
+  Object.assign(sandbox, {returnFlight: {wish}, pendingLocation: {lat: 35.68, lon: 139.76}, trialUsed: () => true, TRIAL_KEY: 'trial', setTimeout: () => {}, setMissionStep: () => {}, $: () => element, refreshInterface: () => {}, playRecoveryTone: () => {}, landed: false});
   vm.runInContext(functionSource('finishReturn'), sandbox);
   await Promise.all([sandbox.attachPublishedStar(wish.id, id(2)), sandbox.finishReturn(wish)]);
   assert.equal(sandbox.wishes[0].publicStarId, id(2));
@@ -270,7 +270,7 @@ test('帰還と削除の送信待ちはオフライン・503・429・機能停�
         return new Response(JSON.stringify(status === 'disabled' ? {enabled: false} : {ok: status === 200}), {status: status === 'disabled' ? 404 : status});
       }};
       vm.createContext(sandbox);
-      vm.runInContext(['queueStarAction', 'flushStarActions'].map(functionSource).join('\n'), sandbox);
+      vm.runInContext(['requestTimeout', 'queueStarAction', 'flushStarActions'].map(functionSource).join('\n'), sandbox);
       sandbox.queueStarAction(action, id(1));
       await sandbox.flushStarActions();
       assert.equal(sandbox.readJson('actions', []).length, [200, 404].includes(status) ? 0 : 1, `${action} ${status}`);
