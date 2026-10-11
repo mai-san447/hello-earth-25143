@@ -45,7 +45,7 @@
     try { localStorage.setItem(key, value); } catch { /* 保存できなくても使い続けられる */ }
   }
 
-  // #22 みんなの星。他の人の星は、最後にネットにつながったときに受け取った分を端末に控え、ネットがない場所でも見せる。
+  // #22 みんなの星。他の人の星は、最後にネットにつながったときに受け取った分を端末に控え、オフラインでも見せる。
   // 自分だけの星は送らず、公開する言葉と軌道IDだけをサーバーに渡す。
   const STARS_CACHE_KEY = 'morune-25143-public-stars';
   const STARS_ENABLED_KEY = 'morune-25143-stars-enabled';
@@ -2644,7 +2644,7 @@
     }
   }
 
-  // #5 ネットがない場所でも開けるように、画面と部品を端末に保存する Service Worker を登録する。
+  // #5 オフラインでも開けるように、画面と部品を端末に保存する Service Worker を登録する。
   // 開発サーバーでは古い部品が残って混乱するため、https の本番だけで動かす。
   function registerOfflineSupport() {
     // 端末の保存を「消されにくい保存」にしてほしいと頼む。iPhone の Safari は、しばらく開かないサイトの

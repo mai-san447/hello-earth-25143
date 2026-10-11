@@ -1,5 +1,5 @@
 // MORUNE 25143 の Service Worker（#5）。
-// ネットがない場所でも使えるよう、一度開いた画面と部品を端末に保存し、ネットなしでも開けるようにする。
+// 一度開いた画面と部品を端末に保存し、オフラインでも開けるようにする。
 // 願いのデータは IndexedDB にあるので、ここでは扱わない。
 importScripts('/offline-routes.js');
 
@@ -7,7 +7,7 @@ importScripts('/offline-routes.js');
 // 自前の部品はネット優先なので、ふつうの公開では上げなくてよい。
 const CACHE_VERSION = '2026-10-12-headline';
 const CACHE_NAME = `morune-25143-${CACHE_VERSION}`;
-// これがないとネットがない場所で画面が動かない部品。1つでも取れなければ入れ替えを失敗させ、次に開いたときにやり直す
+// これがないとオフラインで画面が動かない部品。1つでも取れなければ入れ替えを失敗させ、次に開いたときにやり直す
 // （失敗を無視すると「オフラインで開けない状態」に誰も気づけないため）
 const REQUIRED_SHELL = ['/sky.js', '/mission.js', '/wish-state.js', '/itokawa.js', '/public-stars.js', '/keyed-queue.js', '/receipt.js', '/floating-wishes.js', '/care.js', '/vendor/qrcode.mjs', '/offline-routes.js', '/style.css'];
 // なくても画面は動く部品
