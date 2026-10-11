@@ -24,7 +24,10 @@ export function MissionExperience({
           <span id="observer-reading">35.7°N 139.8°E</span>
         </div>
         <section className="mission-title" aria-labelledby="mission-title">
-          <h1 id="mission-title">願いを星に、<br /><span>想いを地球へ。</span></h1>
+          {/* 見出しは句読点を置かず、改行で区切る（大きな明朝の「。」は行末に穴があいて見えるため）。書体はしっぽり明朝 B1 と Cormorant Garamond（2026-10-12 本人と決定） */}
+          <p className="title-kicker" lang="en">Leave your wish with the stars</p>
+          <h1 id="mission-title">やりたいことを<br />星に預けておく</h1>
+          <p className="title-sub">預けた願いは　いつか帰ってくる</p>
         </section>
         <div className="telemetry" aria-live="polite">
           <span className="telemetry-dot" />
@@ -258,7 +261,8 @@ export function MissionExperience({
         <section className="intro-screen" id="intro-screen" role="dialog" aria-modal="true" aria-labelledby="intro-title" hidden>
           <div className="intro-inner">
             <p className="intro-brand">MORUNE <span>25143</span></p>
-            <h2 id="intro-title">願いを星に、<br />想いを地球へ。</h2>
+            <p className="title-kicker" lang="en">Leave your wish with the stars</p>
+            <h2 id="intro-title">やりたいことを<br />星に預けておく</h2>
             <p className="intro-lead">手放した「いつかやりたいこと」を星に預け、ひとつずつ受け取りなおす。</p>
             <div className="intro-sample">
               {/* eslint-disable-next-line @next/next/no-img-element -- 見本の帰還票（同梱の画像） */}
