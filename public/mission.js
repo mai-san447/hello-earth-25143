@@ -98,7 +98,6 @@
   const locationAllow = $('#location-allow');
   const locationSkip = $('#location-skip');
   const locationStatus = $('#location-status');
-  const itokawaLabel = $('#itokawa-label');
   const telemetryLabel = $('.telemetry');
   const observerReading = $('#observer-reading');
   const policySheet = $('#policy-sheet');
@@ -112,13 +111,38 @@
   const depositSheet = $('#deposit-sheet');
   const depositStatus = $('#deposit-status');
   const returnCard = $('#return-card');
-  const sampleButton = $('#sample-trigger');
   const publishCheckbox = $('#publish-wish');
   const promiseSheet = $('#promise-sheet');
   const starCard = $('#star-card');
   const fulfilledSheet = $('#fulfilled-sheet');
   const cloud = $('#sync-mode')?.dataset.sync === 'cloud';
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function requestTimeout() {
+    return typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(8000) : undefined;
+  }
+
+  const sheetFocus = new Map();
+  function rememberSheetFocus(sheet, origin = document.activeElement) {
+    if (!sheetFocus.has(sheet)) sheetFocus.set(sheet, origin);
+  }
+  function restoreSheetFocus(sheet) {
+    let origin = sheetFocus.get(sheet);
+    sheetFocus.delete(sheet);
+    if (!origin?.isConnected && origin?.dataset.growthKey) {
+      origin = [...$('#archive-list').querySelectorAll('[data-growth-key]')].find(element => element.dataset.growthKey === origin.dataset.growthKey);
+    }
+    // 閉じたカードや操作できないバーへ戻すと、キーボードで続けられなくなる。
+    const usable = element => element?.isConnected && !element.closest('[hidden], [inert], .is-hidden') && !element.disabled && element.getClientRects().length;
+    const dialog = [promiseSheet, policySheet, starCard, fulfilledSheet, receiptSheet, returnCard, depositSheet, $('#archive-sheet')].find(element => !element.hidden);
+    if (dialog?.contains(document.activeElement)) return;
+    if (usable(origin) && (!dialog || dialog.contains(origin))) origin.focus({preventScroll: true});
+    else {
+      const fallback = dialog?.querySelector('button:not([disabled]), input:not([disabled]), textarea') ?? $('#fallback');
+      if (usable(fallback)) fallback.focus({preventScroll: true});
+      else if (usable($('#deposit-open'))) $('#deposit-open').focus({preventScroll: true});
+    }
+  }
 
   if (splashScreen) {
     setTimeout(() => {
@@ -134,7 +158,7 @@
     try {
       navigator.vibrate([15]);
     } catch {
-      // Haptics are optional and can be blocked by the browser or device.
+      // 振動を許可しない端末でも操作を続けられるようにする。
     }
   }, true);
   let catalog = null;
@@ -142,6 +166,7 @@
   let visibleSky = [];
   let realItokawa = null;
   let refreshThreeSky = () => {};
+  // 願いの星の置き場を背景と同じ座標で保ち、描画がずれないようにする。
   const northSky = new Map();
   function refreshSky() {
     const {lat, lon} = pendingLocation;
@@ -160,13 +185,13 @@
   }
   async function loadSkyData() {
     const results = await Promise.allSettled(['/sky-stars.json', '/itokawa-radec.json'].map(async path => {
-      const response = await fetch(path, {signal: AbortSignal.timeout(8000)});
+      const response = await fetch(path, {signal: requestTimeout()});
       if (!response.ok) throw new Error(`星空データ ${response.status}`);
       return response.json();
     }));
     if (results[0].status === 'fulfilled' && Array.isArray(results[0].value.stars)) catalog = results[0].value;
     if (results[1].status === 'fulfilled' && Array.isArray(results[1].value.days)) radecTable = results[1].value;
-    if (!catalog) observerReading.textContent = '恒星データを読み込めません。ネットにつながったときに再読み込みしてください';
+    if (!catalog) observerReading.textContent = '星のデータを読めませんでした';
     refreshSky();
   }
   let database;
@@ -176,7 +201,7 @@
   const growthQueue = KeyedQueue.createKeyedQueue();
   const growthDrafts = new Map();
   let archiveListStale = false;
-  // 押したボタンは押せなくなるとブラウザがフォーカスを外すので、押した操作を覚えておいて描き直しのあとに戻す
+  // 押したボタンは押せなくなるとブラウザーがフォーカスを外すので、押した操作を覚えておいて描き直しのあとに戻す
   let growthFocusKey = null;
   // 一覧の中を押している最中（指やマウスが下りてから click まで）。この間に描き直すと、
   // iPhone の Safari のようにボタンへフォーカスを移さないブラウザーでは click が届かなくなる
@@ -235,10 +260,12 @@
   async function cloudRequest(method, item) {
     const response = await fetch('/api/wishes', {
       method,
+      signal: requestTimeout(),
       headers: method === 'GET' ? {} : {'Content-Type': 'application/json'},
-      body: item ? JSON.stringify(item) : undefined,
+      // 自分だけの観測地は、同期を使う環境でも端末の外へ出さない。
+      body: item ? JSON.stringify(item, (key, value) => key === 'observedAt' ? undefined : value) : undefined,
     });
-    if (!response.ok) throw Error(response.status === 401 ? 'ログインし直してください。' : '通信を確認してください。');
+    if (!response.ok) throw Error(`cloud ${response.status}`);
     return response.json();
   }
 
@@ -292,15 +319,13 @@
       landed = false;
       returnCard.hidden = true;
       returnCard.classList.remove('card-open');
-      sampleButton.hidden = true;
-      sampleButton.classList.remove('sample-arrived');
       setMissionStep('deposit');
     }
     if (all || removed.has(launchFlight?.wish.id)) launchFlight = null;
     refreshInterface();
   }
 
-  // 軌道に描く星（帰還が始まる日の前の願いも含む）
+  // 軌道に描く星（帰ってくる日の前の願いも含む）
   function orbiting() {
     return WishState.orbitingWishes(wishes);
   }
@@ -311,14 +336,14 @@
     return readStorage(TRIAL_KEY) === '1';
   }
 
-  // 今、帰還させられる星（#7 帰還が始まる日を過ぎたもの。#27 はじめての1回を含む）
+  // 今、帰還させられる星（#7 帰ってくる日を過ぎたもの。#27 はじめての1回を含む）
   function readyToReturn() {
     return WishState.candidatesWithTrial(wishes, Date.now(), trialUsed());
   }
 
   function waitingForStartMessage() {
     const next = WishState.nextReturnFrom(wishes, Date.now());
-    return next == null ? '' : `${WishState.returnFromLabel(next)}から、帰還が始まります`;
+    return next == null ? '' : `${WishState.returnFromLabel(next)}から、帰ってくることがあります`;
   }
 
   // 3つのタブはやめた（2026-10-07、帰還のタブで行き止まりになったため）。
@@ -333,7 +358,6 @@
     const canReturn = readyToReturn().length > 0 || capsuleWaiting || Boolean(returnFlight);
     $('#step-panel-deposit').hidden = false;
     $('#step-panel-receive').hidden = !canReturn;
-    $('#step-panel-choose').hidden = true;
     requestAnimationFrame(alignTelemetryToDock);
   }
 
@@ -349,7 +373,7 @@
   }
 
   function dispositionLabel(status) {
-    return ({returned: '帰還・未整理', doing: 'やってみる', later: '保留', expired: '手放した', done: 'アーカイブ'})[status] || '地球に保管';
+    return ({returned: '帰ってきた', doing: 'やってみる', later: '保留', expired: '手放した', done: 'しまった'})[status] || '手元';
   }
 
   function refreshArchiveControls(archiveItems) {
@@ -375,12 +399,11 @@
     const capsuleWaiting = landed && Boolean(returningWish) && !returnFlight;
     $('#shake').disabled = count === 0 || Boolean(returningWish) || Boolean(returnFlight);
     $('#fallback').disabled = capsuleWaiting ? false : $('#shake').disabled;
-    $('#fallback').textContent = capsuleWaiting ? 'カプセルを開く' : 'タップで帰還';
+    $('#fallback').textContent = capsuleWaiting ? 'カプセルを開く' : 'ひとつ帰す';
     updateDockPanels();
-    $('#choose-status').textContent = landed ? '帰還カプセルを回収しました' : 'カプセルの帰還を待っています';
     $('#gesture-hint').textContent = landed
-      ? 'カプセルが着地しています。「カプセルを開く」から、あの日の言葉を受け取ってください'
-      : count ? 'シグナルを探すと、想いがひとつ地球へ帰還します'
+      ? 'カプセルが届いています'
+      : count ? '願いが1つ、帰ってこられます'
         : orbiting().length ? `星が待っています。${waitingForStartMessage()}`
           : '願いを預けると、星がひとつ灯ります';
     const list = $('#archive-list');
@@ -502,10 +525,11 @@
       growthFocusKey = fulfilled.dataset.growthKey;
       fulfilled.disabled = true;
       saveFirstStepDraft(wish.id);
-      updateGrowth(wish.id, current => WishState.markFulfilled(current, Date.now()), 'おめでとうございます。叶った星になりました。');
+      updateGrowth(wish.id, current => WishState.markFulfilled(current, Date.now()), '叶った星になりました。');
     });
     const receipt = document.createElement('button');
     receipt.type = 'button';
+    receipt.dataset.growthKey = `${wish.id}:receipt`;
     receipt.className = 'archive-growth-receipt';
     receipt.textContent = '帰還票';
     receipt.addEventListener('click', () => {
@@ -545,7 +569,8 @@
           next = change(current);
         } catch (error) {
           // 1日1回・文字数などのルールで受け付けなかった（保存の失敗とは分けて伝える）
-          return {rule: error.message};
+          console.error('growth rule', error);
+          return {rule: error.message === '今日の一歩は、もう記録しています' ? '今日の一歩は、もう記録しています' : [...String(growthDrafts.get(id) ?? '')].length > WishState.GROWTH.firstStepMax ? '最初の一歩は60字までです' : 'この操作はできませんでした。ページを開き直してください'};
         }
         if (next === current) return {skipped: true};
         await store('readwrite', object => object.put(next));
@@ -562,8 +587,8 @@
     if (outcome.next) status.textContent = typeof message === 'function' ? message(outcome.next) : message;
     else if (outcome.rule) status.textContent = outcome.rule;
     else if (outcome.failed) status.textContent = growthDrafts.has(id)
-      ? '保存できませんでした。書いた一歩は残してあります。もう一度お試しください'
-      : '保存できませんでした。もう一度お試しください';
+      ? '保存できませんでした。書いた一歩は残してあります。もう一度押してください'
+      : '保存できませんでした。もう一度押してください';
     return {ok: Boolean(outcome.next || outcome.skipped), error: outcome.rule || (outcome.failed ? status.textContent : '')};
   }
 
@@ -621,7 +646,7 @@
   function homeIsVisible() {
     return !document.hidden && !openingCard && !returnFlight && !launchFlight &&
       (!splashScreen || !splashScreen.isConnected) && $('#intro-screen').hidden && locationModal.classList.contains('is-hidden') &&
-      !app.querySelector('.sheet:not([hidden]), .archive-sheet:not([hidden]), .return-card:not([hidden]), .stars-backdrop:not([hidden]), .policy-backdrop:not([hidden]), .account-sheet:not([hidden])');
+      !app.querySelector('.sheet:not([hidden]), .archive-sheet:not([hidden]), .return-card:not([hidden]), .stars-backdrop:not([hidden]), .policy-backdrop:not([hidden])');
   }
 
   function wishStarPoints() {
@@ -653,7 +678,8 @@
     }
     floatingText.className = 'floating-wish' + (point.star ? ' floating-wish-other' : '') + (chance ? ' floating-wish-chance' : '');
     floatingText.style.left = `${Math.max(110, Math.min(width - 110, point.x))}px`;
-    floatingText.style.top = `${Math.max(40, Math.min(height - 100, point.y - 20))}px`;
+    const dockTop = missionDock.getBoundingClientRect().top - app.getBoundingClientRect().top;
+    floatingText.style.top = `${Math.max(40, Math.min(dockTop - 12, point.y - 20))}px`;
     floatingText.hidden = false;
     // 同じ星を続けて触っても、前の言葉が途中から再生されないようにする。
     void floatingText.offsetWidth;
@@ -691,15 +717,18 @@
     }
   }
 
+  let locationCloseTimer;
   function applyLocation(latitude, longitude, message = null) {
     const lat = Math.max(-90, Math.min(90, latitude));
     const lon = ((longitude + 180) % 360 + 360) % 360 - 180;
     pendingLocation = {lat, lon};
     refreshSky();
-    locationStatus.textContent = message ?? `星空を現在地に合わせました（緯度 ${lat.toFixed(1)}°）。`;
-    setTimeout(() => {
+    locationStatus.textContent = message ?? '今いる場所の空にしました。';
+    clearTimeout(locationCloseTimer);
+    locationCloseTimer = setTimeout(() => {
       locationModal.classList.add('is-hidden');
-      openDepositAfterIntro();
+      if (depositAfterIntro) openDepositAfterIntro();
+      else restoreSheetFocus(locationModal);
     }, message ? 1600 : 650);
   }
 
@@ -973,18 +1002,6 @@
       hayabusaCraft.rotation.z = Math.atan2(tangentY, tangentX);
     }
 
-    function updateLabel() {
-      const worldPosition = itokawaMesh.getWorldPosition(new THREE.Vector3());
-      worldPosition.y += 8.5;
-      const projected = worldPosition.project(threeCamera);
-      const visible = projected.z > -1 && projected.z < 1;
-      itokawaLabel.hidden = !visible;
-      if (visible) {
-        itokawaLabel.style.left = `${(projected.x * 0.5 + 0.5) * window.innerWidth}px`;
-        itokawaLabel.style.top = `${(-projected.y * 0.5 + 0.5) * window.innerHeight - 12}px`;
-      }
-    }
-
     updateSize();
     threeReady = true;
     window.addEventListener('resize', updateSize, {passive: true});
@@ -1001,7 +1018,6 @@
         hayabusaCraft.rotation.y += 0.0007;
       }
       renderer.render(threeScene, threeCamera);
-      updateLabel();
     }
     animate();
   }
@@ -1022,7 +1038,7 @@
       {enableHighAccuracy: false, timeout: 10000, maximumAge: 300000},
     );
   });
-  locationSkip.addEventListener('click', () => { applyLocation(35.68, 139.76); locationModal.classList.add('is-hidden'); openDepositAfterIntro(); });
+  locationSkip.addEventListener('click', () => applyLocation(35.68, 139.76, '東京の星空にしました。'));
 
   function drawSpace(time) {
     const sky = context.createLinearGradient(0, 0, width * 0.65, height);
@@ -1080,9 +1096,6 @@
     context.beginPath();
     context.ellipse(width * 0.5, earthY + height * 0.32, width * 0.91, height * 0.31, 0, Math.PI, Math.PI * 2);
     context.stroke();
-    context.fillStyle = 'rgba(207, 232, 226, .78)';
-    context.textAlign = 'center';
-    context.font = '9px ui-monospace, monospace';
   }
 
   function drawItokawa(time) {
@@ -1123,10 +1136,6 @@
       context.stroke();
     }
     context.restore();
-    context.fillStyle = 'rgba(240, 223, 188, .82)';
-    context.textAlign = 'center';
-    context.font = '9px ui-monospace, monospace';
-    context.fillText('25143 ITOKAWA', centerX, centerY + asteroid + 23);
   }
 
   function drawWishStars(time) {
@@ -1356,21 +1365,21 @@
         wishes = wishes.map(item => item.id === wish.id ? next : item);
         return next;
       });
-      if (!returned) return;
+      if (!returned) { returningWish = null; refreshInterface(); return; }
       // 着地前の再読み込みや保存失敗で、試しの帰還だけが使えなくなるのを防ぐ。
       if (wasTrial) writeStorage(TRIAL_KEY, '1');
       returningWish = returned;
       if (returned.publicStarId) { queueStarAction('return', returned.publicStarId); flushStarActions(); }
       landed = true;
-      sampleButton.hidden = false;
-      setTimeout(() => sampleButton.classList.add('sample-arrived'), 20);
-      setMissionStep('choose');
+      setMissionStep('receive');
       $('#mission-status').textContent = 'カプセルが地球に着きました';
       refreshInterface();
       playRecoveryTone();
-    } catch {
+    } catch (error) {
+      console.error('save return', error);
       returningWish = null;
-      $('#mission-status').textContent = '帰還記録を保存できません。通信を確認してください';
+      refreshInterface();
+      $('#mission-status').textContent = '保存できませんでした。もう一度押してください';
     }
   }
 
@@ -1532,21 +1541,18 @@
       startedAt: performance.now(),
     };
     playReturnWhoosh();
-    setTimeout(() => finishReturn(returningWish), reducedMotion ? 60 : 2700);
+    const wish = returningWish;
+    setTimeout(() => finishReturn(wish), reducedMotion ? 60 : 2700);
     landed = false;
-    sampleButton.hidden = true;
     $('#mission-status').textContent = '';
     $('#gesture-hint').textContent = '願いがひとつ、地球へ帰ってきます';
-    setTimeout(() => {
-    }, 1150);
-    setTimeout(() => {
-    }, 2050);
     refreshInterface();
   }
 
   function openCard() {
     if (!returningWish || !landed || openingCard || !returnCard.hidden) return;
     hideFloatingWish();
+    rememberSheetFocus(returnCard);
     if (reducedMotion) {
       revealCard();
       return;
@@ -1559,10 +1565,10 @@
     floatingText.style.top = '42%';
     floatingText.hidden = false;
     // カプセルを連打しても、同じ帰還カードを重ねて開かない。
-    sampleButton.disabled = true;
+    $('#fallback').disabled = true;
     setTimeout(() => {
       openingCard = false;
-      sampleButton.disabled = false;
+      $('#fallback').disabled = false;
       hideFloatingWish();
       if (returningWish?.id === wishId && landed) revealCard();
     }, 1200);
@@ -1620,16 +1626,16 @@
       if (updated.status === WishState.STATUS.DOING) openReceiptSheet(updated, {thenFulfilled: starsEnabled});
       if (!backToOrbit) {
         // 受け取った願いは回収記録に入る。回収記録のボタンを一度だけ光らせて知らせる
-        $('#mission-status').textContent = '願いを受け取りました。回収記録で「一歩ふみ出した」を押すと、星が育ちます';
+        $('#mission-status').textContent = '受け取りました。一歩ふみ出すと、星が明るくなります';
         const archiveTrigger = $('#archive-open');
-        archiveTrigger.classList.remove('constellation-grew');
+        archiveTrigger.classList.remove('archive-glow');
         void archiveTrigger.offsetWidth;
-        archiveTrigger.classList.add('constellation-grew');
+        archiveTrigger.classList.add('archive-glow');
       }
       refreshInterface();
     } catch (error) {
       console.error('save disposition', error);
-      $('#mission-status').textContent = '保存できませんでした。もう一度お試しください';
+      $('#mission-status').textContent = '保存できませんでした。もう一度押してください';
     } finally {
       actions.forEach(button => { button.disabled = false; });
     }
@@ -1640,8 +1646,13 @@
   async function saveImage(blob, fileName, title, savedMessage) {
     const file = new File([blob], fileName, {type: 'image/png'});
     if (typeof navigator.canShare === 'function' && navigator.canShare({files: [file]})) {
-      await navigator.share({files: [file], title});
-      return '共有シートを開きました。「画像を保存」で端末に残せます';
+      try {
+        await navigator.share({files: [file], title});
+        return '共有シートを開きました。「画像を保存」で端末に残せます';
+      } catch (error) {
+        // Safari が操作の直後と認めない場合も、端末に保存できる出口を残す。
+        if (error?.name !== 'NotAllowedError') throw error;
+      }
     }
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -1750,10 +1761,6 @@
     }
     context.putImageData(image, 0, 0);
   }
-
-
-
-
 
   // 1行に収まるように折り返す（日本語は1文字ずつ測る）
   function wrapLines(context, text, maxWidth) {
@@ -1919,12 +1926,14 @@
   let receiptPreviewTimer = null;
   let receiptRevealPending = false;
   let receiptPreviewVersion = 0;
+  let receiptImage = null;
 
   function receiptWish() {
     return wishes.find(wish => wish.id === receiptWishId) ?? null;
   }
 
   function openReceiptSheet(wish, {thenFulfilled = false} = {}) {
+    rememberSheetFocus(receiptSheet, sheetFocus.get(returnCard) ?? document.activeElement);
     receiptWishId = wish.id;
     receiptThenFulfilled = thenFulfilled;
     $('#receipt-first-step').value = growthDrafts.get(wish.id) ?? wish.firstStep ?? '';
@@ -1936,19 +1945,20 @@
     receiptSheet.hidden = false;
     renderReceiptPreview();
     // 帰還票が主役なので、入力欄には自動で入らない（スマホでキーボードが開いて帰還票が隠れるため）。フォーカスは閉じるボタンへ
-    setTimeout(() => $('#receipt-x').focus({preventScroll: true}), 320);
+    setTimeout(() => { if (!receiptSheet.hidden) $('#receipt-x').focus({preventScroll: true}); }, 320);
   }
 
   function closeReceiptSheet() {
     receiptSheet.hidden = true;
     clearTimeout(receiptPreviewTimer);
     receiptPreviewVersion++;
+    receiptImage = null;
     receiptRevealPending = false;
     $('#receipt-preview').classList.remove('receipt-developing');
     const wish = receiptWish();
     receiptWishId = null;
     if (receiptThenFulfilled && wish?.status === WishState.STATUS.DOING) openFulfilledSheet();
-    else $('#deposit-open').focus({preventScroll: true});
+    else restoreSheetFocus(receiptSheet);
   }
 
   // 書いた一歩を、帰還票に使う前にアプリへ記録する（星を育てる記録の正本はアプリ）
@@ -1966,7 +1976,7 @@
       }
       if (growthDrafts.get(wish.id) === value) growthDrafts.delete(wish.id);
     }
-    return receiptWish();
+    return currentWish(wish.id);
   }
 
   function receiptContentFor(wish) {
@@ -1988,21 +1998,35 @@
 
   function renderReceiptPreview() {
     clearTimeout(receiptPreviewTimer);
+    receiptImage = null;
+    $('#receipt-save').disabled = true;
     const version = ++receiptPreviewVersion;
     receiptPreviewTimer = setTimeout(async () => {
-      const wish = receiptWish();
-      if (!wish) return;
-      await document.fonts?.ready;
-      // 待っている間に閉じたり書き直した場合、古いプレビューで上書きしない。
-      if (version !== receiptPreviewVersion || receiptSheet.hidden) return;
-      const content = receiptContentFor(wish);
-      const preview = $('#receipt-preview');
-      preview.classList.remove('receipt-developing');
-      preview.src = drawReceipt(content).toDataURL('image/png');
-      if (receiptRevealPending) {
-        receiptRevealPending = false;
-        void preview.offsetWidth;
-        preview.classList.add('receipt-developing');
+      try {
+        const wish = await commitReceiptFirstStep();
+        if (!wish) return;
+        await document.fonts?.ready;
+        // 保存と画像生成を先に済ませ、保存ボタンから共有まで待たないようにする。
+        if (version !== receiptPreviewVersion || receiptSheet.hidden) return;
+        const content = receiptContentFor(wish);
+        const canvas = drawReceipt(content);
+        const blob = await canvasBlob(canvas);
+        if (version !== receiptPreviewVersion || receiptSheet.hidden) return;
+        receiptImage = {blob, fileName: content.fileName};
+        const preview = $('#receipt-preview');
+        preview.classList.remove('receipt-developing');
+        preview.src = canvas.toDataURL('image/png');
+        $('#receipt-status').textContent = '';
+        if (receiptRevealPending) {
+          receiptRevealPending = false;
+          void preview.offsetWidth;
+          preview.classList.add('receipt-developing');
+        }
+      } catch (error) {
+        console.error('receipt preview', error);
+        if (version === receiptPreviewVersion) $('#receipt-status').textContent = '帰還票を作れませんでした。もう一度押してください';
+      } finally {
+        if (version === receiptPreviewVersion) $('#receipt-save').disabled = false;
       }
     }, 200);
   }
@@ -2016,20 +2040,18 @@
   async function saveReceipt() {
     const status = $('#receipt-status');
     const button = $('#receipt-save');
+    if (!receiptImage) {
+      renderReceiptPreview();
+      return;
+    }
     button.disabled = true;
-    status.textContent = '帰還票を描いています…';
     try {
-      const wish = await commitReceiptFirstStep();
-      if (!wish) return;
-      await document.fonts?.ready;
-      const content = receiptContentFor(wish);
-      const blob = await canvasBlob(drawReceipt(content));
-      status.textContent = await saveImage(blob, content.fileName, 'MORUNE 25143 帰還票', '帰還票を保存しました。感熱プリンターなどで印刷できます');
+      status.textContent = await saveImage(receiptImage.blob, receiptImage.fileName, 'MORUNE 25143 帰還票', '保存しました');
     } catch (error) {
       if (error?.name === 'AbortError') status.textContent = '';
       else {
         console.error('receipt', error);
-        status.textContent = '帰還票を保存できませんでした。もう一度お試しください';
+        status.textContent = '帰還票を保存できませんでした。もう一度押してください';
       }
     } finally {
       button.disabled = false;
@@ -2037,7 +2059,7 @@
   }
 
   // シェアは X だけにする（2026-10-07、本人の判断）。OS の共有シートは PC では X が出ず、
-  // 画像を描いてから（await のあと）開くと、ブラウザが「押した直後」と見なさず投稿画面が開かなかった。
+  // 画像を描いてから（await のあと）開くと、ブラウザーが「押した直後」と見なさず投稿画面が開かなかった。
   // そのため投稿画面は押した瞬間に開く。画像は付けない（2026-10-11、本人の判断：文とリンクだけでよい）
   // シェアの文は「やると決めた」宣言にする。アプリの中の言葉（25143・願い星）は外の人に通じないので入れない（2026-10-07、本人と決定）
   function shareReceipt() {
@@ -2053,7 +2075,6 @@
     commitReceiptFirstStep().catch(error => console.error('share first step', error?.name));
   }
 
-
   // 判断せずに閉じたときは、願いを判断待ちのまま手元に残す（以前はここが行き止まりだった）。
   // × ボタンからはクリックイベントが渡るので、decided は明示したときだけ true になる。
   function closeCard({decided = false} = {}) {
@@ -2061,7 +2082,7 @@
     clearTimeout(cardHideTimer);
     cardHideTimer = setTimeout(() => {
       returnCard.hidden = true;
-      (decided ? $('#deposit-open') : sampleButton).focus({preventScroll: true});
+      restoreSheetFocus(returnCard);
     }, 300);
     if (!decided && returningWish && landed) {
       $('#mission-status').textContent = '帰ってきた願いは、ここで待っています';
@@ -2070,15 +2091,15 @@
     }
     returningWish = null;
     landed = false;
-    sampleButton.hidden = true;
-    sampleButton.classList.remove('sample-arrived');
     $('#mission-status').textContent = '';
     refreshInterface();
   }
 
   function openDeposit() {
+    rememberSheetFocus(depositSheet);
+    if (starsEnabled && readStorage(PROMISE_KEY) === '0') publishCheckbox.checked = true;
     unlockAudioFromGesture();
-    // #17 帰還が始まる日は、翌日から1年後まで
+    // #17 帰ってくる日は、翌日から1年後まで
     const range = WishState.returnFromRange(Date.now());
     $('#return-from').min = range.min;
     $('#return-from').max = range.max;
@@ -2088,6 +2109,7 @@
     depositSheet.hidden = false;
     setTimeout(() => depositSheet.classList.add('sheet-open'), 20);
     setTimeout(() => {
+      if (depositSheet.hidden) return;
       wishInput.focus({preventScroll: true});
       syncVisualViewport();
       setTimeout(() => wishInput.scrollIntoView({block: 'nearest', behavior: 'smooth'}), 160);
@@ -2096,13 +2118,13 @@
 
   function closeDeposit() {
     depositSheet.classList.remove('sheet-open');
-    setTimeout(() => { depositSheet.hidden = true; }, 330);
+    setTimeout(() => { depositSheet.hidden = true; restoreSheetFocus(depositSheet); }, 330);
   }
 
   async function launchWish() {
     const text = wishInput.value.trim();
     if (!text) {
-      depositStatus.textContent = '未来へ預ける言葉を入力してください。';
+      depositStatus.textContent = '願いを書いてください。';
       wishInput.focus();
       return;
     }
@@ -2152,10 +2174,10 @@
       const notice = Care.careNotice(text);
       if (notice) {
         const paragraph = document.createElement('p');
-        paragraph.append(document.createTextNode('つらい気持ちのときは、話せる場所があります。'));
+        paragraph.append(document.createTextNode(Care.CARE_TEXT));
         const link = document.createElement('a');
         link.href = Care.CARE_URL;
-        link.textContent = 'まもろうよ こころ（厚生労働省）';
+        link.textContent = Care.CARE_LINK_TEXT;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
         paragraph.append(link);
@@ -2179,17 +2201,21 @@
         setTimeout(() => {
           if (returnFlight || returningWish) return;
           setMissionStep('receive');
-          $('#mission-status').textContent = '試しに1つ帰せます。スマホを振るか「タップで帰還」を押すと帰ってきます';
+          $('#mission-status').textContent = 'ためしに1つ、帰してみる？';
         }, 2600);
       }
     } catch (error) {
       // 端末への保存が済むまでは公開せず、入力を残してやり直せるようにする。
-      depositStatus.textContent = `保存できませんでした。入力は残しています。${error.message || ''}`;
+      console.error('deposit', error);
+      depositStatus.textContent = '保存できませんでした。入力は残しています。もう一度押してください';
     } finally {
       launchButton.disabled = false;
     }
   }
 
+  let motionTimer;
+  let motionSeen = false;
+  $('#shake').hidden = matchMedia('(pointer: fine)').matches;
   async function enableMotion() {
     if (!readyToReturn().length || returningWish || returnFlight) return;
     try {
@@ -2202,19 +2228,25 @@
       if (!motionActive) {
         window.addEventListener('devicemotion', event => {
           const acceleration = event.acceleration;
-          if (!acceleration) return;
+          if (!acceleration || ![acceleration.x, acceleration.y, acceleration.z].some(Number.isFinite)) return;
+          motionSeen = true;
+          clearTimeout(motionTimer);
           const magnitude = Math.hypot(acceleration.x || 0, acceleration.y || 0, acceleration.z || 0);
           if (magnitude >= 15 && Date.now() - lastShakeAt > 1500) {
             lastShakeAt = Date.now();
-            returnOne();
+            if (homeIsVisible()) returnOne();
           }
         });
         motionActive = true;
       }
-      $('#mission-status').textContent = '探査機との接続完了。シグナルを探してください';
+      $('#mission-status').textContent = 'スマホを振ると、1つ帰ってきます';
       $('#shake').classList.add('motion-enabled');
+      clearTimeout(motionTimer);
+      if (!motionSeen) motionTimer = setTimeout(() => {
+        if (!motionSeen && !returnFlight && !returningWish && homeIsVisible()) $('#mission-status').textContent = 'この端末では振れません。「ひとつ帰す」を押してください';
+      }, 3000);
     } catch {
-      $('#mission-status').textContent = 'この端末では振動センサーが使えません。カプセルを開いて回収できます';
+      $('#mission-status').textContent = 'この端末では振れません。「ひとつ帰す」を押してください';
       $('#fallback').classList.add('fallback-ready');
     }
   }
@@ -2222,12 +2254,13 @@
   $('#deposit-open').addEventListener('click', openDeposit);
   $('#deposit-close').addEventListener('click', closeDeposit);
   policyOpen.addEventListener('click', () => {
+    rememberSheetFocus(policySheet);
     policySheet.hidden = false;
     policyClose.focus({preventScroll: true});
   });
   function closePolicy() {
     policySheet.hidden = true;
-    policyOpen.focus({preventScroll: true});
+    restoreSheetFocus(policySheet);
   }
   policyClose.addEventListener('click', closePolicy);
   policySheet.addEventListener('click', event => {
@@ -2238,7 +2271,6 @@
   $('#shake').addEventListener('click', enableMotion);
   // カプセルが着地して待っているときは開き、そうでなければ1つ帰す
   $('#fallback').addEventListener('click', () => (landed && returningWish && !returnFlight ? openCard() : returnOne()));
-  sampleButton.addEventListener('click', openCard);
   $('#card-close').addEventListener('click', closeCard);
   $('#try-wish').addEventListener('click', () => chooseDisposition('try'));
   $('#return-to-orbit').addEventListener('click', () => chooseDisposition('later'));
@@ -2249,11 +2281,14 @@
 
   // 窓の中だけで Tab を回す（窓の外の見えない操作へフォーカスが抜けないように）
   function trapFocus(event, dialog) {
-    const focusable = [...dialog.querySelectorAll('button:not([disabled]), textarea, input:not([disabled])')].filter(element => element.offsetParent !== null);
+    const focusable = [...dialog.querySelectorAll('button:not([disabled]), textarea, input:not([disabled]), a[href], [tabindex="0"], summary')].filter(element => !element.closest('[hidden], [inert]') && element.getClientRects().length);
     if (!focusable.length) return;
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
+    if (!dialog.contains(document.activeElement)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    } else if (event.shiftKey && document.activeElement === first) {
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && document.activeElement === last) {
@@ -2261,11 +2296,22 @@
       first.focus();
     }
   }
-  $('#receipt-first-step').addEventListener('input', event => { if (!event.isComposing) renderReceiptPreview(); });
+  $('#receipt-first-step').addEventListener('input', event => {
+    if (receiptWishId) growthDrafts.set(receiptWishId, event.target.value);
+    if (!event.isComposing) renderReceiptPreview();
+    else {
+      // 変換中の文字を保存せず、前の画像も使わないようにする。
+      clearTimeout(receiptPreviewTimer);
+      receiptPreviewVersion++;
+      receiptImage = null;
+      $('#receipt-save').disabled = true;
+    }
+  });
   $('#receipt-first-step').addEventListener('compositionend', renderReceiptPreview);
   $('#receipt-include-text').addEventListener('change', renderReceiptPreview);
   // 回収記録を開いている間は、下の操作バー（見えなくしている）をキーボードでも選べないようにし、閉じたら元の場所へ戻す
   function openArchive() {
+    rememberSheetFocus($('#archive-sheet'));
     $('#archive-sheet').hidden = false;
     missionDock.inert = true;
     $('#archive-close').focus({preventScroll: true});
@@ -2273,9 +2319,15 @@
   function closeArchive({restoreFocus = true} = {}) {
     $('#archive-sheet').hidden = true;
     missionDock.inert = false;
-    if (restoreFocus) $('#archive-open').focus({preventScroll: true});
+    if (restoreFocus) restoreSheetFocus($('#archive-sheet'));
+    else sheetFocus.delete($('#archive-sheet'));
   }
   $('#archive-open').addEventListener('click', openArchive);
+  publishCheckbox.addEventListener('change', async () => {
+    if (starsEnabled && !publishCheckbox.checked && !promiseAgreed()) {
+      publishCheckbox.checked = !(await askPromise({retry: true}));
+    }
+  });
   $('#promise-agree').addEventListener('click', () => closePromise(true));
   $('#promise-decline').addEventListener('click', () => closePromise(false));
   $('#others-read').addEventListener('click', () => {
@@ -2357,7 +2409,8 @@
       await deleteWishes(ids);
       $('#archive-status').textContent = `${ids.length}件の願いを削除しました。`;
     } catch (error) {
-      $('#archive-status').textContent = `削除できませんでした。${error.message || '時間をおいて再度お試しください'}`;
+      console.error('delete wishes', error);
+      $('#archive-status').textContent = '削除できませんでした。もう一度押してください';
     } finally {
       refreshArchiveControls(recovered());
     }
@@ -2369,9 +2422,10 @@
     button.disabled = true;
     try {
       await deleteWishes([], true);
-      $('#archive-status').textContent = 'すべての願いをリセットしました。';
+      $('#archive-status').textContent = 'すべて消しました。';
     } catch (error) {
-      $('#archive-status').textContent = `リセットできませんでした。${error.message || '時間をおいて再度お試しください'}`;
+      console.error('clear wishes', error);
+      $('#archive-status').textContent = '消せませんでした。もう一度押してください';
     } finally {
       refreshArchiveControls(recovered());
     }
@@ -2405,41 +2459,24 @@
       }
       return;
     }
-    if (!policySheet.hidden && event.key === 'Tab') {
-      const focusable = [...policySheet.querySelectorAll('button:not([disabled]), [tabindex="0"]')];
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
+    const dialog = [policySheet, returnCard, depositSheet, $('#archive-sheet')].find(element => !element.hidden);
+    if (!locationModal.classList.contains('is-hidden')) {
+      if (event.key === 'Tab') trapFocus(event, locationModal);
+      return;
+    }
+    if (dialog) {
+      if (event.key === 'Tab') trapFocus(event, dialog);
+      if (event.key === 'Escape') {
+        if (dialog === policySheet) closePolicy();
+        else if (dialog === returnCard) closeCard();
+        else if (dialog === depositSheet) closeDeposit();
+        else if (!$('#archive-sheet').hidden) closeArchive();
       }
       return;
     }
-    if (event.key === 'Tab' && !returnCard.hidden) {
-      const focusable = [...returnCard.querySelectorAll('button:not([disabled])')];
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-      return;
-    }
-    if (event.code === 'Space' && !event.repeat && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+    if (event.code === 'Space' && !event.repeat && !document.activeElement.closest('input, textarea, button, a, select, summary, [contenteditable], [role="button"], [role="checkbox"]')) {
       event.preventDefault();
       returnOne();
-    }
-    if (event.key === 'Escape') {
-      if (!returnCard.hidden) closeCard();
-      else if (!depositSheet.hidden) closeDeposit();
-      else if (!policySheet.hidden) closePolicy();
-      else closeArchive();
     }
   });
   window.addEventListener('resize', syncVisualViewport);
@@ -2463,7 +2500,7 @@
         const local = await localStore('readonly', object => object.getAll());
         const remoteIds = new Set(remote.map(item => item.id));
         for (const item of local.filter(candidate => !remoteIds.has(candidate.id))) {
-          await cloudRequest('POST', {id: item.id, text: item.text || '以前、声で預けた願い', status: item.status, createdAt: item.createdAt, updatedAt: item.updatedAt});
+          await cloudRequest('POST', {id: item.id, text: item.text, status: item.status, createdAt: item.createdAt, updatedAt: item.updatedAt});
         }
       }
       wishes = await store('readonly', object => object.getAll());
@@ -2471,19 +2508,15 @@
       if (pending) {
         returningWish = pending;
         landed = true;
-        sampleButton.hidden = false;
-        setTimeout(() => sampleButton.classList.add('sample-arrived'), 20);
       }
       refreshInterface();
-      setMissionStep(pending ? 'choose' : 'deposit');
+      setMissionStep(pending ? 'receive' : 'deposit');
       syncVisualViewport();
       requestAnimationFrame(render);
-      if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission !== 'function') {
-        $('#shake').addEventListener('click', () => $('#mission-status').textContent = 'シグナルを探すと、ひとつの想いが帰還します', {once: true});
-      }
       $('#mission-status').textContent = '';
     } catch (error) {
-      $('#mission-status').textContent = cloud ? `同期できません。${error.message || '通信を確認してください'}` : '願いを読み込めません。ブラウザを確認してください';
+      console.error('load wishes', error);
+      $('#mission-status').textContent = cloud ? '同期できませんでした。もう一度押してください' : '願いを読み込めませんでした。ページを開き直してください';
       launchButton.disabled = $('#shake').disabled = $('#fallback').disabled = true;
     }
   }
@@ -2588,7 +2621,7 @@
     if (numbering || readStorage(NUMBER_KEY) || !wishes.length || !navigator.onLine) return;
     numbering = true;
     try {
-      const response = await fetch('/api/orbits', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({orbitId: orbitId()})});
+      const response = await fetch('/api/orbits', {signal: requestTimeout(), method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({orbitId: orbitId()})});
       if (!response.ok) return;
       const data = await response.json();
       if (data.enabled && data.number) {
@@ -2626,8 +2659,8 @@
   // はじめて流す前の約束。confirm() ではなく画面の中で聞く。同意したら端末に覚える
   let promiseResolve = null;
   let promiseReturnFocus = null;
-  function askPromise() {
-    if (readStorage(PROMISE_KEY) !== null) return Promise.resolve(promiseAgreed());
+  function askPromise({retry = false} = {}) {
+    if (!retry && readStorage(PROMISE_KEY) !== null) return Promise.resolve(promiseAgreed());
     promiseReturnFocus = document.activeElement;
     promiseSheet.hidden = false;
     $('#promise-agree').focus({preventScroll: true});
@@ -2639,14 +2672,14 @@
     promiseSheet.hidden = true;
     promiseResolve?.(agreed);
     promiseResolve = null;
-    promiseReturnFocus?.focus?.({preventScroll: true});
+    if (promiseReturnFocus && !promiseReturnFocus.closest('[hidden], [inert]')) promiseReturnFocus.focus({preventScroll: true});
   }
 
   // 他の人の星を受け取る。読めないとき（ネットなし・一時的な失敗）は、端末に控えた星をそのまま見せる
   async function loadOtherStars() {
     if (!navigator.onLine) return;
     try {
-      const response = await fetch(`/api/stars?orbit=${encodeURIComponent(orbitId())}${requestedStarId ? `&star=${encodeURIComponent(requestedStarId)}` : ''}`, {signal: AbortSignal.timeout(8000)});
+      const response = await fetch(`/api/stars?orbit=${encodeURIComponent(orbitId())}${requestedStarId ? `&star=${encodeURIComponent(requestedStarId)}` : ''}`, {signal: requestTimeout()});
       if (!response.ok) return;
       const data = await response.json();
       if (!data.enabled) {
@@ -2686,7 +2719,7 @@
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({orbitId: orbitId(), kind, text, ...(publishId ? {starId: publishId} : {})}),
-      signal: AbortSignal.timeout(8000),
+      signal: requestTimeout(),
     });
     const data = await response.json().catch(() => ({}));
     if (response.ok) saveNumber(data.number);
@@ -2728,7 +2761,7 @@
           if (!id) {
             const {response, data} = await postStar(item.kind, item.text, item.publishId);
             if (!response.ok) {
-              results.set(item.wishId ?? item.kind + ':' + item.text, {done: false, message: data.error || '星空に出せませんでした'});
+              results.set(item.wishId ?? item.kind + ':' + item.text, {done: false, message: '星空に出せませんでした。もう一度押してください'});
               done = response.status >= 400 && response.status < 500 && response.status !== 429 && data.enabled !== false;
               continue;
             }
@@ -2770,7 +2803,7 @@
         // 途中で削除が追加された星には帰還を送らず、次の削除を残す。
         if (!readJson(STAR_ACTIONS_KEY, []).some(entry => entry.starId === item.starId && entry.action === item.action)) continue;
         try {
-          const response = await fetch('/api/stars/' + item.action, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({starId: item.starId, orbitId: orbitId()}), signal: AbortSignal.timeout(8000)});
+          const response = await fetch('/api/stars/' + item.action, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({starId: item.starId, orbitId: orbitId()}), signal: requestTimeout()});
           const data = await response.json();
           if (response.ok || (response.status === 404 && data.enabled !== false)) {
             writeStorage(STAR_ACTIONS_KEY, JSON.stringify(readJson(STAR_ACTIONS_KEY, []).filter(entry => !(entry.starId === item.starId && entry.action === item.action))));
@@ -2786,9 +2819,10 @@
   }
 
   function openStarCard(star) {
+    rememberSheetFocus(starCard);
     openStar = star;
     lastShownStarId = star.id;
-    $('#star-card-kicker').textContent = star.kind === 'fulfilled' ? 'SHOOTING STAR / 叶ったよ' : "SOMEONE'S WISH";
+    $('#star-card-kicker').textContent = star.kind === 'fulfilled' ? '叶ったよ' : "だれかの願い";
     $('#star-card-text').textContent = star.text;
     $('#star-card-actions').hidden = false;
     $('#star-report-confirm').hidden = true;
@@ -2800,8 +2834,7 @@
   function closeStarCard() {
     starCard.hidden = true;
     openStar = null;
-    const trigger = $('#others-read');
-    if (!trigger.hidden) trigger.focus({preventScroll: true});
+    restoreSheetFocus(starCard);
   }
 
   // 通報した星や、もう空にない星は、この端末の星空から外す
@@ -2827,11 +2860,13 @@
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({starId: star.id, reporterOrbitId: orbitId()}),
+        signal: requestTimeout(),
       });
       const data = await response.json().catch(() => ({}));
       // 404 はすでに空にない星。通報したのと同じ扱いで、この端末の空から外す
       if (!response.ok && response.status !== 404) {
-        status.textContent = data.error || '通報を送れませんでした。少し待ってから、もう一度お試しください';
+        console.error('star report', response.status, data.error);
+        status.textContent = '通報を送れませんでした。少し待ってから、もう一度押してください';
         return;
       }
       // この端末からは同じ星へ二度通報しない。通報した星は、この端末の空にはもう出さない
@@ -2850,6 +2885,8 @@
   }
 
   function openFulfilledSheet() {
+    rememberSheetFocus(fulfilledSheet, sheetFocus.get(receiptSheet) ?? document.activeElement);
+    sheetFocus.delete(receiptSheet);
     $('#fulfilled-text').value = '';
     $('#fulfilled-length').textContent = '0';
     $('#fulfilled-status').textContent = '';
@@ -2858,12 +2895,12 @@
     $('#fulfilled-skip').textContent = '今は流さない';
     fulfilledSheet.hidden = false;
     // 受け取りのカードが閉じ終わってから、入力欄に移る
-    setTimeout(() => $('#fulfilled-text').focus({preventScroll: true}), 320);
+    setTimeout(() => { if (!fulfilledSheet.hidden) $('#fulfilled-text').focus({preventScroll: true}); }, 320);
   }
 
   function closeFulfilledSheet() {
     fulfilledSheet.hidden = true;
-    $('#deposit-open').focus({preventScroll: true});
+    restoreSheetFocus(fulfilledSheet);
   }
 
   async function sendFulfilled() {
@@ -2892,15 +2929,12 @@
     }
   }
 
-  // #6 同梱した JPL Horizons の暦から、今日のイトカワまでの距離を名札に添える。
-  // 読めなくても演出は止めない（名札は「25143 ITOKAWA」のまま）。
+  // 帰還票に距離を添えるため、同梱した暦を読む。読めなくても願いを使えるようにする。
   async function loadItokawaDistance() {
     try {
       const response = await fetch('/itokawa-distance.json');
       if (!response.ok) return;
       distanceTable = await response.json();
-      const km = Itokawa.distanceKmOn(distanceTable, Date.now());
-      if (km != null) itokawaLabel.textContent = `25143 ITOKAWA · ${Itokawa.formatDistanceJa(km)}`;
     } catch {
       distanceTable = null;
     }
@@ -2917,9 +2951,7 @@
     ensureNumber();
   });
 
-  initializeThreeBackground().catch(() => {
-    locationStatus.textContent = '3D星空を読み込めません。簡易表示で続けます。';
-  });
+  initializeThreeBackground().catch(error => console.error('3D background', error));
   // 同梱カタログの読み込み待ちでも、願いの星と飛行の座標は計算できる。
   refreshSky();
   loadSkyData();
@@ -2928,6 +2960,8 @@
   loadItokawaDistance();
   recordOpenDay();
   await init();
+  rememberSheetFocus(locationModal);
+  locationAllow.focus({preventScroll: true});
   showIntroIfFirstTime();
   await fixWishSeq();
   ensureNumber();
@@ -2935,7 +2969,7 @@
   registerOfflineSupport();
   refreshStarsInterface();
   loadOtherStars();
-  // 開いたまま「帰還が始まる日」を迎えたり、日付が変わったりしたときに、ボタンと案内を今の状態に合わせる
+  // 開いたまま「帰ってくる日」を迎えたり、日付が変わったりしたときに、ボタンと案内を今の状態に合わせる
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) { refreshInterface(); refreshSky(); }
   });

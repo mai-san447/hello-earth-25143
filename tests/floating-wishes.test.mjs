@@ -38,7 +38,7 @@ test('自分の星は空のタップだけで浮かび、ボタン・シート�
     app, canvas, homeIsVisible: () => home, wishStarPoints: () => [star],
     FloatingWishes: {nearestStar}, homeSince: null, performance: {now: () => 0},
     showFloatingWish: point => shown.push(point), otherStarPoints: [],
-    otherStarPoints: [], PublicStars: {nearestStar: () => null}, openStarCard: () => {},
+    PublicStars: {nearestStar: () => null}, openStarCard: () => {},
   };
   vm.createContext(sandbox);
   const start = source.indexOf("  app.addEventListener('click', event => {");
@@ -64,7 +64,8 @@ function capsule(reducedMotion = false) {
   const sandbox = {
     returningWish: {id: 'wish', text: '<b>海を見る</b>'}, landed: true,
     openingCard: false, reducedMotion, returnCard: {hidden: true},
-    floatingText: {style: {}, hidden: true}, sampleButton: {},
+    floatingText: {style: {}, hidden: true}, fallback: {},
+    rememberSheetFocus: () => {}, $: () => sandbox.fallback,
     hideFloatingWish: () => {}, revealCard: () => { sandbox.reveals++; },
     reveals: 0, setTimeout: (fn, ms) => timers.push({fn, ms}),
   };
@@ -81,11 +82,11 @@ test('カプセルの連打でも1.2秒後にカードを1度だけ開く', () =
   assert.equal(timers[0].ms, 1200);
   assert.equal(sandbox.reveals, 0);
   assert.equal(sandbox.floatingText.textContent, '<b>海を見る</b>');
-  assert.equal(sandbox.sampleButton.disabled, true);
+  assert.equal(sandbox.fallback.disabled, true);
   timers[0].fn();
   assert.equal(sandbox.reveals, 1);
   assert.equal(sandbox.openingCard, false);
-  assert.equal(sandbox.sampleButton.disabled, false);
+  assert.equal(sandbox.fallback.disabled, false);
 });
 
 test('動きを減らす設定では待たずにカードを開き、取り消された願いは開かない', () => {
@@ -135,6 +136,7 @@ test('帰還票は最初の描画だけ現像し、入力更新では再生し�
   const sandbox = {
     receiptPreviewTimer: null, receiptPreviewVersion: 0, receiptRevealPending: true,
     receiptSheet: {hidden: false}, receiptWish: () => ({id: 'wish'}),
+    commitReceiptFirstStep: async () => ({id: 'wish'}), canvasBlob: async () => ({}), receiptImage: null,
     document: {fonts: {ready: Promise.resolve()}},
     receiptContentFor: wish => wish, drawReceipt: () => ({toDataURL: () => 'data:image/png;base64,test'}),
     $: () => preview, clearTimeout: () => {}, setTimeout: fn => timers.push(fn),
