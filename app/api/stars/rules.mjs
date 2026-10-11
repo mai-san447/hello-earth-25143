@@ -15,7 +15,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const KINDS = Object.freeze(['wish', 'fulfilled']);
 export const STATUS = Object.freeze({VISIBLE: 'visible', HELD: 'held', HIDDEN: 'hidden'});
 
-// 1行で読める長さ。願いは預ける画面と同じ60字、「叶ったよ」はひとことなので40字
+// 新しい言葉は画面で12字まで（2026-10-12）。前に預けた長い願いや、端末に控えた送信も受け取れるよう、サーバーは60字のまま。「叶ったよ」はひとことなので40字
 export const MAX_LENGTH = Object.freeze({wish: 60, fulfilled: 40});
 // 1つの軌道（端末）が1日（直近24時間）に流せる数。連投で星空が1人の言葉で埋まらないように
 export const DAILY_WINDOW_MS = DAY_MS;
@@ -50,8 +50,8 @@ export const CAUTION_WORDS = Object.freeze([
   'line id', 'lineid', 'ライン id', 'dm', '住所', '電話番号',
 ]);
 
-// 病院名らしい並び（「○○病院」「○○クリニック」など、前に2文字以上）。約束「病院名は書きません」を守るため
-// ひらがなは含めない（「近くの病院」まで保留にしないため）。「大学病院」は保留になるが、人が見て表示に戻せる
+// 施設の名前らしい並び（前に2文字以上）は、だれの言葉か分かりやすくなるので保留にする。
+// ひらがなは含めない（ふつうの言い方まで保留にしないため）。保留になっても、人が見て表示に戻せる
 const HOSPITAL_NAME = /[\p{Script=Han}\p{Script=Katakana}A-Za-z0-9ー]{2,}(病院|医院|クリニック|医療センター)/u;
 const URL_LIKE = /(https?:\/\/|www\.|[a-z0-9-]+\.(com|net|org|jp|io|me|co|ly|app|dev|xyz|info|link|site)\b)/i;
 const EMAIL_LIKE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;

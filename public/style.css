@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600&family=Zen+Kaku+Gothic+New:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600&family=Shippori+Mincho+B1:wght@500&family=Cormorant+Garamond:wght@500&family=Zen+Kaku+Gothic+New:wght@400;500;600;700&display=swap");
 :root{color-scheme:dark;--night:#0c1230;--navy:#171e44;--ink:#fff9f1;--muted:#c1c9e6;--gold:#ffc66d;--coral:#fa8f76;--line:rgba(255,255,255,.2)}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
@@ -33,7 +33,6 @@ footer{max-width:800px;margin:30px auto 0;color:#aeb9d8;text-align:center;font-s
 .mission-title{top:clamp(84px,13vh,142px);left:clamp(27px,9vw,124px);pointer-events:none;text-shadow:0 2px 24px #050812}
 .sheet-kicker{margin:0 0 12px;color:#e6c889;font:600 9px/1.5 ui-monospace,"SFMono-Regular",monospace;letter-spacing:.19em}
 .mission-title h1{margin:0;font-family:"Yu Mincho","Hiragino Mincho ProN",serif;font-size:clamp(30px,5.8vw,56px);font-weight:500;line-height:1.42;letter-spacing:.035em}
-.mission-title h1 span{color:#d1ded9}
 .telemetry{top:clamp(86px,12vh,120px);right:clamp(22px,6vw,80px);display:flex;align-items:center;gap:8px;max-width:220px;color:#aab8b9;font:500 9px/1.5 ui-monospace,"SFMono-Regular",monospace;text-align:right}
 .telemetry-dot{flex:none;width:5px;height:5px;border-radius:50%;background:#9ed8c8;box-shadow:0 0 11px #9ed8c8;animation:telemetryPulse 2.4s ease-in-out infinite}
 .mission-controls{left:50%;bottom:max(55px,calc(env(safe-area-inset-bottom) + 48px));display:flex;flex-direction:column;align-items:center;gap:10px;width:min(340px,calc(100% - 48px));transform:translateX(-50%)}
@@ -217,8 +216,7 @@ body:has(.mission-app){background:transparent}
 .mission-header{top:max(24px,env(safe-area-inset-top));left:clamp(22px,5vw,72px);right:clamp(22px,5vw,72px);font-size:10px;letter-spacing:.18em}
 .mission-brand{font-family:"Inter",sans-serif;font-size:13px;font-weight:600;letter-spacing:.16em}
 .mission-title{top:clamp(92px,14vh,148px);left:clamp(28px,8vw,116px);max-width:min(680px,75vw);text-shadow:0 3px 38px rgba(2,7,17,.72)}
-.mission-title h1{font-family:"Zen Kaku Gothic New",sans-serif;font-size:clamp(42px,6.1vw,76px);font-weight:500;line-height:1.28;letter-spacing:0}
-.mission-title h1 span{color:#edf1f4}
+.mission-title h1{font-family:"Shippori Mincho B1","Yu Mincho","Hiragino Mincho ProN",serif;font-size:clamp(34px,4.4vw,56px);font-weight:500;line-height:1.6;letter-spacing:.14em;font-feature-settings:"palt"}
 .telemetry{top:clamp(94px,13vh,132px);right:clamp(22px,6vw,78px);max-width:250px;padding:10px 14px;border:1px solid rgba(255,255,255,.1);border-radius:999px;background:rgba(255,255,255,.035);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);font:500 10px/1.5 "Zen Kaku Gothic New",sans-serif;letter-spacing:.02em}
 .mission-dock{position:absolute;z-index:3;left:50%;bottom:max(16px,calc(env(safe-area-inset-bottom) + 12px));display:grid;gap:13px;width:min(520px,calc(100% - 36px));padding:16px 18px 13px;border:1px solid rgba(255,255,255,.12);border-radius:28px;background:rgba(255,255,255,.045);box-shadow:0 24px 90px rgba(0,0,0,.34),inset 0 1px rgba(255,255,255,.09);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);transform:translateX(-50%);transition:opacity .28s,transform .28s}
 .mission-controls{position:static;left:auto;right:auto;bottom:auto;display:grid;gap:10px;width:100%;align-items:stretch;transform:none}
@@ -252,7 +250,7 @@ body:has(.mission-app){background:transparent}
 .mission-app.keyboard-open .mission-dock,.mission-app.keyboard-open .observer-pill{visibility:hidden;opacity:0;pointer-events:none}
 @media (max-width:900px){
   .mission-title{left:clamp(26px,7vw,80px);max-width:min(620px,76vw)}
-  .mission-title h1{font-size:clamp(40px,6.8vw,64px)}
+  .mission-title h1{font-size:clamp(32px,5vw,48px)}
   .mission-dock{width:min(500px,calc(100% - 32px))}
   .telemetry{top:clamp(104px,16vh,150px);right:22px}
 }
@@ -260,7 +258,7 @@ body:has(.mission-app){background:transparent}
   .mission-header{top:max(17px,env(safe-area-inset-top));left:18px;right:18px}
   .mission-brand{font-size:11px}
   .mission-title{top:clamp(82px,12vh,108px);left:22px;max-width:calc(100% - 44px)}
-  .mission-title h1{font-size:clamp(30px,8vw,36px);line-height:1.34}
+  .mission-title h1{font-size:clamp(26px,7.4vw,32px)}
   .telemetry{top:auto;right:16px;bottom:calc(max(16px,env(safe-area-inset-bottom) + 12px) + 228px);max-width:190px;padding:7px 10px;font-size:9px}
   .mission-dock{bottom:max(10px,env(safe-area-inset-bottom));gap:10px;width:calc(100% - 24px);padding:13px 13px 10px;border-radius:24px}
   .mission-controls{gap:9px}
@@ -276,7 +274,7 @@ body:has(.mission-app){background:transparent}
 }
 @media (max-width:360px){
   .mission-title{max-width:60vw}
-  .mission-title h1{font-size:30px}
+  .mission-title h1{font-size:25px}
   .mission-dock{width:calc(100% - 20px);padding:12px 11px 9px}
   .shake-control,.fallback-control{font-size:10px}
   .gesture-hint{max-width:145px}
@@ -289,7 +287,7 @@ body:has(.mission-app){background:transparent}
   .shake-control,.fallback-control{min-height:40px}
   .mission-dock-meta{padding-top:6px}
   .mission-title{top:76px}
-  .mission-title h1{font-size:34px}
+  .mission-title h1{font-size:28px}
   .telemetry{bottom:190px}
 }
 @media (prefers-reduced-motion:reduce){
@@ -535,8 +533,8 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 .intro-inner{box-sizing:border-box;width:min(100%,440px);min-height:100%;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) 24px max(32px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:22px}
 .intro-brand{margin:0;font:700 14px/1 "Zen Kaku Gothic New",sans-serif;letter-spacing:.14em}
 .intro-brand span{color:#e3bd72}
-.intro-screen h2{margin:24px 0 0;font:800 clamp(30px,8.5vw,36px)/1.45 "Zen Kaku Gothic New",sans-serif}
-.intro-lead{margin:0;font-size:14px;line-height:1.8;color:#c3ccd5}
+.intro-screen h2{margin:0;font:500 clamp(28px,8vw,34px)/1.6 "Shippori Mincho B1","Yu Mincho",serif;letter-spacing:.14em;font-feature-settings:"palt"}
+.intro-lead{margin:-6px 0 0;font-size:14px;line-height:1.8;letter-spacing:.08em;color:#c3ccd5}
 .intro-sample{display:flex;gap:16px;align-items:center;padding:14px;border:1px solid #2a3546;border-radius:16px;background:#141d2c}
 .intro-sample img{width:96px;flex:none;transform:rotate(-3deg);box-shadow:0 8px 18px rgba(0,0,0,.5)}
 .intro-sample p{margin:0;font-size:14px;line-height:1.7}
@@ -558,3 +556,16 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 /* 利用規約のルールの箇条書き */
 .policy-content ul{margin:8px 0 0;padding-left:1.2em;display:grid;gap:6px}
 .policy-content li{font-size:inherit;line-height:1.75}
+
+/* 見出しの上の英語と、下の一行（2026-10-12） */
+.title-kicker{margin:0 0 14px;color:#edcb8c;font:500 13px/1.6 "Cormorant Garamond","Times New Roman",serif;letter-spacing:.3em;text-transform:uppercase}
+.title-sub{margin:14px 0 0;color:#c4cdcf;font:400 13px/1.8 "Zen Kaku Gothic New",sans-serif;letter-spacing:.08em}
+.intro-screen .title-kicker{margin:24px 0 -10px}
+@media (max-width:640px){.title-kicker{font-size:12px;letter-spacing:.26em;margin-bottom:10px}.title-sub{font-size:12px;margin-top:10px}}
+@media (max-height:650px) and (max-width:900px){.title-sub{display:none}}
+@media (max-width:380px){.title-kicker{font-size:11px;letter-spacing:.16em;white-space:nowrap}}
+
+/* 触れて出した言葉：動かさずに6秒（押しやすく、読みやすく） */
+.floating-wish-held{animation:wish-hold 6s ease-out both}
+@keyframes wish-hold{0%{opacity:0}6%,88%{opacity:1}100%{opacity:0}}
+.floating-wish:has(.floating-star-menu:hover),.floating-wish:has(.floating-star-menu:focus-visible){animation-play-state:paused}
