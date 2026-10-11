@@ -613,11 +613,12 @@
   function geometry() {
     const unit = Math.min(width, height);
     return {
-      centerX: width * 0.51,
-      centerY: height * 0.455,
-      orbitX: Math.min(width * 0.405, unit * 0.52),
-      orbitY: unit * 0.295,
-      asteroid: Math.min(130, Math.max(64, unit * 0.17)),
+      // イトカワは右上の隅に小さく置く。願いの星（天の北極のまわり、短辺の約36%以内）と重ならないため（2026-10-12）
+      centerX: width * 0.86,
+      centerY: height * 0.25,
+      orbitX: Math.min(width * 0.2, unit * 0.26),
+      orbitY: unit * 0.15,
+      asteroid: Math.min(65, Math.max(32, unit * 0.085)),
       earthY: height * 0.91,
     };
   }
@@ -946,7 +947,7 @@
     const samplerHorn = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.19, 0.48, 14), samplerMaterial);
     samplerHorn.position.y = -0.61;
     hayabusaCraft.add(samplerHorn);
-    hayabusaCraft.scale.setScalar(1.12);
+    hayabusaCraft.scale.setScalar(0.62);
     const spacecraftBeacon = new THREE.PointLight(0x9dc9df, 1.8, 11, 2);
     spacecraftBeacon.position.set(0, 1.1, 1.4);
     hayabusaCraft.add(spacecraftBeacon);
@@ -992,7 +993,7 @@
       depthTest: false,
     }));
     glowSprite.position.copy(itokawaMesh.position);
-    glowSprite.scale.set(23, 23, 1);
+    glowSprite.scale.set(12, 12, 1);
     skyGroup.add(glowSprite);
     threeScene.add(new THREE.AmbientLight(0x9aa9ba, 0.32));
     const asteroidKey = new THREE.DirectionalLight(0xd8e2eb, 1.1);
@@ -1008,13 +1009,15 @@
       renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
       renderer.setSize(width, height, false);
       const halfViewWidth = 68 * Math.tan(THREE.MathUtils.degToRad(threeCamera.fov / 2)) * width / height;
-      const asteroidX = Math.min(width < 560 ? 12 : 36, halfViewWidth * 0.52);
-      itokawaMesh.position.set(asteroidX, width < 560 ? -4.5 : -3, -68);
+      const halfViewHeight = 68 * Math.tan(THREE.MathUtils.degToRad(threeCamera.fov / 2));
+      // 右上の隅（横 86%・縦 25% のあたり）へ。2D の代わりの絵（geometry）と同じ場所
+      itokawaMesh.scale.setScalar(0.5);
+      itokawaMesh.position.set(halfViewWidth * 0.72, halfViewHeight * 0.5, -68);
       asteroidLight.position.copy(itokawaMesh.position).add(new THREE.Vector3(-8, 9, 14));
       hayabusaOrbit.position.copy(itokawaMesh.position);
       glowSprite.position.copy(itokawaMesh.position);
-      const radiusX = width < 560 ? 13 : width < 900 ? 12 : 24;
-      const radiusY = width < 560 ? 8 : width < 900 ? 10 : 14;
+      const radiusX = width < 560 ? 6.5 : width < 900 ? 6 : 12;
+      const radiusY = width < 560 ? 4 : width < 900 ? 5 : 7;
       const startAngle = 2.2;
       const tangentX = -radiusX * Math.sin(startAngle);
       const tangentY = radiusY * Math.cos(startAngle);
