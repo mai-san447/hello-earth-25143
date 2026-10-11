@@ -9,6 +9,7 @@
 | `demo-phone.mp4` | デモの予備の録画（約60秒、縦長）。スライド「04 デモ」に埋め込み済み |
 | `demo-16x9.mp4` | 同じ録画を 16:9 の夜空色の背景に置いたもの（画面いっぱいで流すとき） |
 | `system-and-demo.html` | 画面とシステム設計の1枚（https://claude.ai/artifact/NsTvM3fLQ51Vc5T8tWucgx）|
+| `star-seats-simulation.html` ・ `sim.mjs` ・ `sim-result.json` | 星の席・距離・1年の重なり・ガチャの確率のシミュレーション（https://claude.ai/artifact/X2LhUutmsALMNDvVxZpKVm）。`node sim.mjs <リポジトリ>` で再計算 |
 | `想定問答.md` | 審査の3項目ごとの質問17と、30秒の答え |
 | `img/` | スライドに使った画面（スマホ 390×844 の2倍、展示用 1920×1080） |
 | `build_deck.py` | スライドをつくり直すスクリプト（`python build_deck.py`） |

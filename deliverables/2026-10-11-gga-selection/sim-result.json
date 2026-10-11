@@ -1,0 +1,703 @@
+{
+ "geometry": {
+  "phone": {
+   "w": 390,
+   "h": 844,
+   "pxPerDeg": 3.51,
+   "minPx": 9.8,
+   "minPair": [
+    "Zeta UMi",
+    "Eta UMi"
+   ],
+   "under48": [
+    {
+     "a": "Zeta UMi",
+     "b": "Eta UMi",
+     "px": 9.8,
+     "deg": 2.79
+    },
+    {
+     "a": "Pherkad",
+     "b": "Kochab",
+     "px": 11.3,
+     "deg": 3.2
+    },
+    {
+     "a": "Gamma Cas",
+     "b": "Ruchbah",
+     "px": 13.2,
+     "deg": 3.61
+    },
+    {
+     "a": "Polaris",
+     "b": "Delta UMi",
+     "px": 13.9,
+     "deg": 3.97
+    },
+    {
+     "a": "Alioth",
+     "b": "Mizar",
+     "px": 16.2,
+     "deg": 4.36
+    },
+    {
+     "a": "Phecda",
+     "b": "Megrez",
+     "px": 16.4,
+     "deg": 4.53
+    },
+    {
+     "a": "Delta UMi",
+     "b": "Epsilon UMi",
+     "px": 16.4,
+     "deg": 4.67
+    },
+    {
+     "a": "Schedar",
+     "b": "Gamma Cas",
+     "px": 16.6,
+     "deg": 4.68
+    },
+    {
+     "a": "Zeta UMi",
+     "b": "Kochab",
+     "px": 17.1,
+     "deg": 4.84
+    },
+    {
+     "a": "Ruchbah",
+     "b": "Segin",
+     "px": 17.2,
+     "deg": 4.8
+    },
+    {
+     "a": "Epsilon UMi",
+     "b": "Zeta UMi",
+     "px": 17.6,
+     "deg": 5
+    },
+    {
+     "a": "Caph",
+     "b": "Schedar",
+     "px": 17.9,
+     "deg": 4.92
+    },
+    {
+     "a": "Dubhe",
+     "b": "Merak",
+     "px": 18.9,
+     "deg": 5.38
+    },
+    {
+     "a": "Eta UMi",
+     "b": "Pherkad",
+     "px": 19.6,
+     "deg": 5.55
+    },
+    {
+     "a": "Megrez",
+     "b": "Alioth",
+     "px": 20.1,
+     "deg": 5.43
+    },
+    {
+     "a": "Eta UMi",
+     "b": "Kochab",
+     "px": 20.6,
+     "deg": 5.82
+    },
+    {
+     "a": "Zeta UMi",
+     "b": "Pherkad",
+     "px": 21.6,
+     "deg": 6.15
+    },
+    {
+     "a": "Caph",
+     "b": "Gamma Cas",
+     "px": 22.5,
+     "deg": 6.15
+    },
+    {
+     "a": "Epsilon UMi",
+     "b": "Eta UMi",
+     "px": 22.5,
+     "deg": 6.42
+    },
+    {
+     "a": "Mizar",
+     "b": "Alkaid",
+     "px": 24,
+     "deg": 6.68
+    },
+    {
+     "a": "Schedar",
+     "b": "Ruchbah",
+     "px": 25.4,
+     "deg": 6.98
+    },
+    {
+     "a": "Gamma Cas",
+     "b": "Segin",
+     "px": 26.6,
+     "deg": 7.32
+    },
+    {
+     "a": "Merak",
+     "b": "Phecda",
+     "px": 29.3,
+     "deg": 7.91
+    },
+    {
+     "a": "Polaris",
+     "b": "Epsilon UMi",
+     "px": 30.1,
+     "deg": 8.59
+    },
+    {
+     "a": "Delta UMi",
+     "b": "Zeta UMi",
+     "px": 32.7,
+     "deg": 9.3
+    },
+    {
+     "a": "Phecda",
+     "b": "Alioth",
+     "px": 33.3,
+     "deg": 8.94
+    },
+    {
+     "a": "Epsilon UMi",
+     "b": "Kochab",
+     "px": 33.9,
+     "deg": 9.64
+    },
+    {
+     "a": "Caph",
+     "b": "Ruchbah",
+     "px": 35.6,
+     "deg": 9.69
+    },
+    {
+     "a": "Megrez",
+     "b": "Mizar",
+     "px": 36.3,
+     "deg": 9.78
+    },
+    {
+     "a": "Dubhe",
+     "b": "Megrez",
+     "px": 37.3,
+     "deg": 10.23
+    },
+    {
+     "a": "Dubhe",
+     "b": "Phecda",
+     "px": 37.4,
+     "deg": 10.44
+    },
+    {
+     "a": "Merak",
+     "b": "Megrez",
+     "px": 37.4,
+     "deg": 10.09
+    },
+    {
+     "a": "Alioth",
+     "b": "Alkaid",
+     "px": 38.3,
+     "deg": 10.46
+    },
+    {
+     "a": "Delta UMi",
+     "b": "Eta UMi",
+     "px": 38.8,
+     "deg": 11.06
+    },
+    {
+     "a": "Epsilon UMi",
+     "b": "Pherkad",
+     "px": 39.1,
+     "deg": 11.12
+    },
+    {
+     "a": "Schedar",
+     "b": "Segin",
+     "px": 41.8,
+     "deg": 11.57
+    },
+    {
+     "a": "Polaris",
+     "b": "Zeta UMi",
+     "px": 45.3,
+     "deg": 12.92
+    },
+    {
+     "a": "Delta UMi",
+     "b": "Kochab",
+     "px": 47.1,
+     "deg": 13.42
+    }
+   ],
+   "maxRadiusPx": 143,
+   "maxRadiusShare": 0.366
+  },
+  "pc": {
+   "w": 1440,
+   "h": 900,
+   "pxPerDeg": 8.1,
+   "minPx": 22.7,
+   "minPair": [
+    "Zeta UMi",
+    "Eta UMi"
+   ],
+   "under48": [
+    {
+     "a": "Zeta UMi",
+     "b": "Eta UMi",
+     "px": 22.7,
+     "deg": 2.79
+    },
+    {
+     "a": "Pherkad",
+     "b": "Kochab",
+     "px": 26.1,
+     "deg": 3.2
+    },
+    {
+     "a": "Gamma Cas",
+     "b": "Ruchbah",
+     "px": 30.6,
+     "deg": 3.61
+    },
+    {
+     "a": "Polaris",
+     "b": "Delta UMi",
+     "px": 32.1,
+     "deg": 3.97
+    },
+    {
+     "a": "Alioth",
+     "b": "Mizar",
+     "px": 37.4,
+     "deg": 4.36
+    },
+    {
+     "a": "Phecda",
+     "b": "Megrez",
+     "px": 37.8,
+     "deg": 4.53
+    },
+    {
+     "a": "Delta UMi",
+     "b": "Epsilon UMi",
+     "px": 37.8,
+     "deg": 4.67
+    },
+    {
+     "a": "Schedar",
+     "b": "Gamma Cas",
+     "px": 38.3,
+     "deg": 4.68
+    },
+    {
+     "a": "Zeta UMi",
+     "b": "Kochab",
+     "px": 39.3,
+     "deg": 4.84
+    },
+    {
+     "a": "Ruchbah",
+     "b": "Segin",
+     "px": 39.6,
+     "deg": 4.8
+    },
+    {
+     "a": "Epsilon UMi",
+     "b": "Zeta UMi",
+     "px": 40.6,
+     "deg": 5
+    },
+    {
+     "a": "Caph",
+     "b": "Schedar",
+     "px": 41.4,
+     "deg": 4.92
+    },
+    {
+     "a": "Dubhe",
+     "b": "Merak",
+     "px": 43.5,
+     "deg": 5.38
+    },
+    {
+     "a": "Eta UMi",
+     "b": "Pherkad",
+     "px": 45.3,
+     "deg": 5.55
+    },
+    {
+     "a": "Megrez",
+     "b": "Alioth",
+     "px": 46.5,
+     "deg": 5.43
+    },
+    {
+     "a": "Eta UMi",
+     "b": "Kochab",
+     "px": 47.6,
+     "deg": 5.82
+    }
+   ],
+   "maxRadiusPx": 330,
+   "maxRadiusShare": 0.366
+  }
+ },
+ "seatTable": [
+  {
+   "seat": 1,
+   "name": "Dubhe",
+   "group": "big-dipper",
+   "decDeg": 61.75,
+   "altitudeTokyoMin": 7.4
+  },
+  {
+   "seat": 2,
+   "name": "Merak",
+   "group": "big-dipper",
+   "decDeg": 56.38,
+   "altitudeTokyoMin": 2.1
+  },
+  {
+   "seat": 3,
+   "name": "Phecda",
+   "group": "big-dipper",
+   "decDeg": 53.69,
+   "altitudeTokyoMin": -0.6
+  },
+  {
+   "seat": 4,
+   "name": "Megrez",
+   "group": "big-dipper",
+   "decDeg": 57.03,
+   "altitudeTokyoMin": 2.7
+  },
+  {
+   "seat": 5,
+   "name": "Alioth",
+   "group": "big-dipper",
+   "decDeg": 55.96,
+   "altitudeTokyoMin": 1.6
+  },
+  {
+   "seat": 6,
+   "name": "Mizar",
+   "group": "big-dipper",
+   "decDeg": 54.93,
+   "altitudeTokyoMin": 0.6
+  },
+  {
+   "seat": 7,
+   "name": "Alkaid",
+   "group": "big-dipper",
+   "decDeg": 49.31,
+   "altitudeTokyoMin": -5
+  },
+  {
+   "seat": 8,
+   "name": "Caph",
+   "group": "cassiopeia",
+   "decDeg": 59.15,
+   "altitudeTokyoMin": 4.8
+  },
+  {
+   "seat": 9,
+   "name": "Schedar",
+   "group": "cassiopeia",
+   "decDeg": 56.54,
+   "altitudeTokyoMin": 2.2
+  },
+  {
+   "seat": 10,
+   "name": "Gamma Cas",
+   "group": "cassiopeia",
+   "decDeg": 60.72,
+   "altitudeTokyoMin": 6.4
+  },
+  {
+   "seat": 11,
+   "name": "Ruchbah",
+   "group": "cassiopeia",
+   "decDeg": 60.24,
+   "altitudeTokyoMin": 5.9
+  },
+  {
+   "seat": 12,
+   "name": "Segin",
+   "group": "cassiopeia",
+   "decDeg": 63.67,
+   "altitudeTokyoMin": 9.4
+  },
+  {
+   "seat": 13,
+   "name": "Polaris",
+   "group": "little-dipper",
+   "decDeg": 89.26,
+   "altitudeTokyoMin": 34.9
+  },
+  {
+   "seat": 14,
+   "name": "Delta UMi",
+   "group": "little-dipper",
+   "decDeg": 86.59,
+   "altitudeTokyoMin": 32.3
+  },
+  {
+   "seat": 15,
+   "name": "Epsilon UMi",
+   "group": "little-dipper",
+   "decDeg": 82.04,
+   "altitudeTokyoMin": 27.7
+  },
+  {
+   "seat": 16,
+   "name": "Zeta UMi",
+   "group": "little-dipper",
+   "decDeg": 77.79,
+   "altitudeTokyoMin": 23.5
+  },
+  {
+   "seat": 17,
+   "name": "Eta UMi",
+   "group": "little-dipper",
+   "decDeg": 75.76,
+   "altitudeTokyoMin": 21.4
+  },
+  {
+   "seat": 18,
+   "name": "Pherkad",
+   "group": "little-dipper",
+   "decDeg": 71.83,
+   "altitudeTokyoMin": 17.5
+  },
+  {
+   "seat": 19,
+   "name": "Kochab",
+   "group": "little-dipper",
+   "decDeg": 74.16,
+   "altitudeTokyoMin": 19.8
+  }
+ ],
+ "below": [
+  {
+   "name": "Dubhe",
+   "belowShare": 0
+  },
+  {
+   "name": "Merak",
+   "belowShare": 0
+  },
+  {
+   "name": "Phecda",
+   "belowShare": 0.069
+  },
+  {
+   "name": "Megrez",
+   "belowShare": 0
+  },
+  {
+   "name": "Alioth",
+   "belowShare": 0
+  },
+  {
+   "name": "Mizar",
+   "belowShare": 0
+  },
+  {
+   "name": "Alkaid",
+   "belowShare": 0.184
+  },
+  {
+   "name": "Caph",
+   "belowShare": 0
+  },
+  {
+   "name": "Schedar",
+   "belowShare": 0
+  },
+  {
+   "name": "Gamma Cas",
+   "belowShare": 0
+  },
+  {
+   "name": "Ruchbah",
+   "belowShare": 0
+  },
+  {
+   "name": "Segin",
+   "belowShare": 0
+  },
+  {
+   "name": "Polaris",
+   "belowShare": 0
+  },
+  {
+   "name": "Delta UMi",
+   "belowShare": 0
+  },
+  {
+   "name": "Epsilon UMi",
+   "belowShare": 0
+  },
+  {
+   "name": "Zeta UMi",
+   "belowShare": 0
+  },
+  {
+   "name": "Eta UMi",
+   "belowShare": 0
+  },
+  {
+   "name": "Pherkad",
+   "belowShare": 0
+  },
+  {
+   "name": "Kochab",
+   "belowShare": 0
+  }
+ ],
+ "others": [
+  {
+   "K": 6,
+   "pAnyOtherNearOwn": 0.802,
+   "meanNear": 1.4
+  },
+  {
+   "K": 24,
+   "pAnyOtherNearOwn": 0.999,
+   "meanNear": 5.53
+  }
+ ],
+ "lifeResults": {
+  "休職前にまとめて預ける人": {
+   "old": {
+    "overlapDaysMean": 363,
+    "usersWithOverlap": 1,
+    "maxSkyMean": 61.69,
+    "sameInRowShare": 0.18,
+    "blockedMean": 0
+   },
+   "new": {
+    "overlapDaysMean": 0,
+    "usersWithOverlap": 0,
+    "maxSkyMean": 18.79,
+    "sameInRowShare": 0.14,
+    "blockedMean": 4.86
+   }
+  },
+  "毎日すこしずつ使う人": {
+   "old": {
+    "overlapDaysMean": 320.84,
+    "usersWithOverlap": 1,
+    "maxSkyMean": 148.72,
+    "sameInRowShare": 0.08,
+    "blockedMean": 0.46
+   },
+   "new": {
+    "overlapDaysMean": 0,
+    "usersWithOverlap": 0,
+    "maxSkyMean": 15.45,
+    "sameInRowShare": 0.02,
+    "blockedMean": 3.1
+   }
+  },
+  "たくさん預けて、あまり帰さない人": {
+   "old": {
+    "overlapDaysMean": 338.24,
+    "usersWithOverlap": 1,
+    "maxSkyMean": 67.51,
+    "sameInRowShare": 0.02,
+    "blockedMean": 174.7
+   },
+   "new": {
+    "overlapDaysMean": 0,
+    "usersWithOverlap": 0,
+    "maxSkyMean": 19,
+    "sameInRowShare": 0,
+    "blockedMean": 185.71
+   }
+  }
+ },
+ "gachaResults": [
+  {
+   "N": 2,
+   "mode": "old",
+   "pSameNext": 0.506,
+   "drawsToMeetAll": 3.02,
+   "theoryOld": 3
+  },
+  {
+   "N": 2,
+   "mode": "new",
+   "pSameNext": 0,
+   "drawsToMeetAll": 2,
+   "theoryOld": 3
+  },
+  {
+   "N": 3,
+   "mode": "old",
+   "pSameNext": 0.335,
+   "drawsToMeetAll": 5.54,
+   "theoryOld": 5.5
+  },
+  {
+   "N": 3,
+   "mode": "new",
+   "pSameNext": 0,
+   "drawsToMeetAll": 4.01,
+   "theoryOld": 5.5
+  },
+  {
+   "N": 5,
+   "mode": "old",
+   "pSameNext": 0.202,
+   "drawsToMeetAll": 11.54,
+   "theoryOld": 11.42
+  },
+  {
+   "N": 5,
+   "mode": "new",
+   "pSameNext": 0,
+   "drawsToMeetAll": 9.44,
+   "theoryOld": 11.42
+  },
+  {
+   "N": 10,
+   "mode": "old",
+   "pSameNext": 0.101,
+   "drawsToMeetAll": 29.78,
+   "theoryOld": 29.29
+  },
+  {
+   "N": 10,
+   "mode": "new",
+   "pSameNext": 0,
+   "drawsToMeetAll": 26.8,
+   "theoryOld": 29.29
+  },
+  {
+   "N": 19,
+   "mode": "old",
+   "pSameNext": 0.053,
+   "drawsToMeetAll": 68.69,
+   "theoryOld": 67.41
+  },
+  {
+   "N": 19,
+   "mode": "new",
+   "pSameNext": 0,
+   "drawsToMeetAll": 64.98,
+   "theoryOld": 67.41
+  }
+ ]
+}

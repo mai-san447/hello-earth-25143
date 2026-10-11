@@ -1,0 +1,229 @@
+<title>星の席シミュレーション</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+/* 夜空の観測ノート：設計とデモのページと同じ夜空色と金色。数字は等幅でそろえる */
+:root {
+  --night: #0b1020;
+  --panel: #151c2f;
+  --line: #2a3350;
+  --text: #f2eee6;
+  --muted: #9aa3b5;
+  --gold: #e2b867;
+  --good: #7fd1a8;
+  --warn: #f0a46b;
+  --display: "Shippori Mincho B1", "Yu Mincho", serif;
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--night); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.75; margin: 0; }
+.wrap { max-width: 1000px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 80px; display: grid; gap: 56px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(28px, 4.6vw, 40px); letter-spacing: .06em; }
+h2 { font-size: clamp(21px, 3vw, 26px); }
+h3 { font-size: 16px; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+.sec { display: grid; gap: 18px; min-width: 0; }
+.sec > header { display: grid; gap: 6px; }
+.label { color: var(--gold); letter-spacing: .2em; font-size: 12px; }
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.card .n { font-family: var(--display); font-size: 30px; color: var(--gold); font-variant-numeric: tabular-nums; }
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; min-width: 600px; font-size: 14px; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 400; font-size: 13px; background: var(--panel); }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ok { color: var(--good); }
+.ng { color: var(--warn); }
+.plotbox { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 10px; position: relative; }
+.plotbox svg { width: 100%; max-width: 560px; height: auto; justify-self: center; display: block; }
+.legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.tip { position: absolute; pointer-events: none; background: #0b1020ee; border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 13px; white-space: nowrap; }
+.formula { font-family: ui-monospace, Consolas, monospace; font-size: 13px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; overflow-x: auto; white-space: pre; }
+@media (max-width: 720px) { .cards { grid-template-columns: 1fr; } }
+</style>
+
+<div class="wrap">
+
+<section class="sec">
+  <p class="label">MORUNE 25143 · SIMULATION · 2026-10-12</p>
+  <h1>星の席シミュレーション</h1>
+  <p class="muted">願いの星をどこに置くか、帰ってくる願いをどう選ぶかを、アプリの計算コード（sky.js・wish-state.js）をそのまま動かして確かめました。見比べるのは、本番の今の方式（旧）と、ブランチ feat/nineteen-seats の方式（新）です。東京、2026年10月14日 19:00 の空で計算しています。</p>
+  <div class="cards">
+    <div class="card"><span class="n">0日</span><h3>星が重なる日（新）</h3><p class="muted">旧は、1年のうち約320〜360日、どこかで2つの願いが同じ星に重なる。新は、どの使い方でも0日</p></div>
+    <div class="card"><span class="n">0%</span><h3>同じ願いが続けて帰る（新）</h3><p class="muted">旧は、候補が2つなら50%、3つなら33%。「何度やっても同じものが戻る」の正体</p></div>
+    <div class="card"><span class="n">9.8px</span><h3>いちばん近い2つの星（スマホ）</h3><p class="muted">指で触れる範囲（半径24px）より近い組が21組ある。タップでは近くの別の星を拾うことがある</p></div>
+  </div>
+</section>
+
+<section class="sec">
+  <header>
+    <p class="label">1 · GEOMETRY</p>
+    <h2>19の席は、画面の中央から短辺の37%以内に並ぶ</h2>
+    <p class="muted">星図は天の北極を中心に、赤緯40度が短辺の45%になる縮尺です（スマホの幅390pxで1度＝3.51px）。時刻が変わっても回転するだけなので、星どうしの距離は変わりません。点線の円は、指で触れたときに星を拾う範囲（半径24px）です。</p>
+  </header>
+  <div class="plotbox">
+    <svg id="plot" viewBox="-170 -130 340 260" role="img" aria-label="19の席の星の位置。スマホの画面のピクセルで、中心が北極">
+    </svg>
+    <div class="legend"><span><i style="background:var(--gold)"></i>願いの席の星（19）</span><span><i style="border:1px dashed var(--muted)"></i>指で拾う範囲（半径24px）</span><span>× 天の北極（画面の中心）</span></div>
+    <div class="tip" id="tip" hidden></div>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>画面</th><th class="num">1度あたり</th><th class="num">いちばん近い2つ</th><th>その組</th><th class="num">24px より近い組</th><th class="num">中心からいちばん遠い星</th></tr></thead>
+      <tbody>
+        <tr><td>スマホ 390×844</td><td class="num">3.51px</td><td class="num ng">9.8px</td><td>こぐま座 ゼータ星とエータ星（角度 2.79°）</td><td class="num ng">21組</td><td class="num">143px（短辺の36.6%）</td></tr>
+        <tr><td>パソコン 1440×900</td><td class="num">8.10px</td><td class="num">22.7px</td><td>同じ組</td><td class="num">1組</td><td class="num">330px（短辺の36.6%）</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">読み方：スマホでは星が密に並ぶので、タップは「いちばん近い星」を拾います。違う星を拾っても、言葉が出てから「帰す」を押す2段階なので、押し間違いで別の願いが帰ることはありません。旧方式の2周目は、同じ星から5pxしか離れず、指では見分けられませんでした。</p>
+</section>
+
+<section class="sec">
+  <header>
+    <p class="label">2 · PHYSICS</p>
+    <h2>席の星までの、本当の距離</h2>
+    <p class="muted">画面では同じ金色の点でも、本物の星までの距離は55光年から約550光年まで、10倍ちがいます。いま見ている光は、その年数だけ前に星を出た光です。距離は文献の概算値で、発表や帰還票で使う前に出典を確かめてください。東京で地平線の下にいる時間は、アプリの計算で求めました。</p>
+  </header>
+  <div class="tbl">
+    <table>
+      <thead><tr><th class="num">席</th><th>星</th><th>星座</th><th class="num">赤緯</th><th class="num">距離（光年・概算）</th><th class="num">光が出た年</th><th class="num">東京で沈む時間</th></tr></thead>
+      <tbody id="seat-rows"></tbody>
+    </table>
+  </div>
+  <p class="muted">北斗七星の柄の先（アルカイド）は1日の18%、フェクダは7%だけ地平線の下に入ります。アプリでは消さずに少し暗く描くので、願いが見えなくなることはありません。</p>
+</section>
+
+<section class="sec">
+  <header>
+    <p class="label">3 · LIFECYCLE</p>
+    <h2>1年使うと、旧方式では星が重なり、空の星が増え続ける</h2>
+    <p class="muted">3通りの使い方を、それぞれ300人ぶん1年間動かしました（預ける・ときどき消す・帰す・受け取るか戻すか）。旧＝番号で星を決め、上限30、受け取った星も空に残る。新＝空いている席に置き、上限19、受け取ると空から消える。</p>
+  </header>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>使い方</th><th>方式</th><th class="num">重なる日（年）</th><th class="num">重なりが出た人</th><th class="num">空の星の最大</th><th class="num">満杯で預けられなかった回数（年）</th></tr></thead>
+      <tbody>
+        <tr><td rowspan="2">休職前にまとめて預ける<br><span class="muted">最初の3日で24個、あとはときどき</span></td><td>旧</td><td class="num ng">363日</td><td class="num ng">100%</td><td class="num">62個</td><td class="num">0回</td></tr>
+        <tr><td>新</td><td class="num ok">0日</td><td class="num ok">0%</td><td class="num">19個</td><td class="num">4.9回</td></tr>
+        <tr><td rowspan="2">毎日すこしずつ<br><span class="muted">10日に4個預け、ほぼ毎日帰す</span></td><td>旧</td><td class="num ng">321日</td><td class="num ng">100%</td><td class="num">149個</td><td class="num">0.5回</td></tr>
+        <tr><td>新</td><td class="num ok">0日</td><td class="num ok">0%</td><td class="num">15個</td><td class="num">3.1回</td></tr>
+        <tr><td rowspan="2">たくさん預けて、あまり帰さない<br><span class="muted">10日に7個預け、5日に1回帰す</span></td><td>旧</td><td class="num ng">338日</td><td class="num ng">100%</td><td class="num">68個</td><td class="num">175回</td></tr>
+        <tr><td>新</td><td class="num ok">0日</td><td class="num ok">0%</td><td class="num">19個</td><td class="num">186回</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">消した場合：旧方式は番号を使い回さないので、消した星の場所は空いたままになり、新しい願いが別の星に重なっていきます。新方式は消すと席が空き、次の願いがそこに入ります。満杯で預けられない回数は新方式のほうが少し多くなります。多い人は「1つ帰すと、また預けられます」の案内を何度も見ることになります。</p>
+</section>
+
+<section class="sec">
+  <header>
+    <p class="label">4 · GACHA</p>
+    <h2>「同じ願いばかり戻る」は、候補が少ないときの確率どおりだった</h2>
+    <p class="muted">「もう少し預ける」を続けたときの、次も同じ願いが帰る確率と、すべての願いに一度ずつ会うまでの回数。2万回ずつ試しました。</p>
+  </header>
+  <div class="formula">旧（完全なランダム）  同じ願いが続く確率 = 1 / N      全部に会うまで = N × (1 + 1/2 + … + 1/N)
+新（前回を除いて選ぶ）同じ願いが続く確率 = 0          全部に会うまで = 少し早くなる</div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th class="num">候補の数 N</th><th class="num">続けて同じ（旧）</th><th class="num">続けて同じ（新）</th><th class="num">全部に会うまで（旧）</th><th class="num">全部に会うまで（新）</th></tr></thead>
+      <tbody>
+        <tr><td class="num">2</td><td class="num ng">50.6%</td><td class="num ok">0%</td><td class="num">3.0回</td><td class="num">2.0回</td></tr>
+        <tr><td class="num">3</td><td class="num ng">33.5%</td><td class="num ok">0%</td><td class="num">5.5回</td><td class="num">4.0回</td></tr>
+        <tr><td class="num">5</td><td class="num">20.2%</td><td class="num ok">0%</td><td class="num">11.5回</td><td class="num">9.4回</td></tr>
+        <tr><td class="num">10</td><td class="num">10.1%</td><td class="num ok">0%</td><td class="num">29.8回</td><td class="num">26.8回</td></tr>
+        <tr><td class="num">19</td><td class="num">5.3%</td><td class="num ok">0%</td><td class="num">68.7回</td><td class="num">65.0回</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted">ほかに同じ願いが戻る理由が2つあります。① カプセルを開いて選ばずに閉じると、その願いが次も先に出ます（行き止まりをつくらないための決まり）。② 帰ってくる日を決めた願いはその日まで候補に入らないので、候補が1つしかないことがあります。新方式では、ガチャ（振る・ひとつ帰す）とは別に、自分の星をタップして「帰す」で選べます。</p>
+</section>
+
+<section class="sec">
+  <header>
+    <p class="label">5 · OTHERS</p>
+    <h2>みんなの星は、自分の星のすぐそばにも来る</h2>
+    <p class="muted">ほかの人の星は、願いごとのランダムな番号で北の空の1点に置かれます（赤緯40〜85度）。4,000回試したところ、1回に出す24個のうち平均5.5個が、どれかの自分の星から24px以内に入りました。6個にしても80%の確率で1個以上が入ります。タップで拾うのは「いちばん近い星」なので、自分の星を押したつもりで他の人の言葉が出ることがあります。他の人の星には「帰す」は出ないので、間違って帰ることはありません。</p>
+  </header>
+</section>
+
+<section class="sec">
+  <header>
+    <p class="label">NEXT</p>
+    <h2>この結果から、次に決めること</h2>
+  </header>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>課題</th><th>案</th></tr></thead>
+      <tbody>
+        <tr><td>スマホでは星が近すぎて、タップで狙いにくい</td><td>自分の星を優先して拾う（他の人の星より少し広い範囲で）。または、タップした場所の近くに星が複数あれば、言葉を順に出す</td></tr>
+        <tr><td>パソコンでは星の円が大きく、見出しやボタンに重なる</td><td>縮尺の基準を短辺から「見出しとボタンの間の高さ」に変える</td></tr>
+        <tr><td>星までの距離を見せるか</td><td>帰還票や、星をタップしたときに「ドゥーベ・123光年」のように出すと、本物とのつながりが伝わる。文字を減らす方針とは要相談</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+</div>
+
+<script>
+// 席の星の位置（スマホ 390×844、北極が中心、単位 px）。sim.mjs と同じ計算で出した値
+const seats = [
+  ["Dubhe","ドゥーベ","北斗七星",61.75,123,-54.3,83],["Merak","メラク","北斗七星",56.38,79,-63.8,99.3],
+  ["Phecda","フェクダ","北斗七星",53.69,84,-91.3,89],["Megrez","メグレズ","北斗七星",57.03,81,-90.1,72.6],
+  ["Alioth","アリオト","北斗七星",55.96,83,-104.3,58.3],["Mizar","ミザール","北斗七星",54.93,83,-114.3,45.6],
+  ["Alkaid","アルカイド","北斗七星",49.31,104,-137.4,39],
+  ["Caph","カフ","カシオペヤ座",59.15,55,82.4,-70.2],["Schedar","シェダル","カシオペヤ座",56.54,228,98.9,-63.3],
+  ["Gamma Cas","ガンマ星","カシオペヤ座",60.72,550,90.3,-49.1],["Ruchbah","ルクバー","カシオペヤ座",60.24,99,97.3,-37.9],
+  ["Segin","セギン","カシオペヤ座",63.67,440,89.6,-22.6],
+  ["Polaris","北極星","こぐま座",89.26,433,2.6,-0.2],["Delta UMi","デルタ星","こぐま座",86.59,183,-9.1,-7.7],
+  ["Epsilon UMi","イプシロン星","こぐま座",82.04,347,-24.5,-13.4],["Zeta UMi","ゼータ星","こぐま座",77.79,380,-41.7,-9.8],
+  ["Eta UMi","エータ星","こぐま座",75.76,97,-46.5,-18.4],["Pherkad","フェルカド","こぐま座",71.83,487,-63.2,-8.3],
+  ["Kochab","コカブ","こぐま座",74.16,131,-55.6,0],
+];
+const below = {Phecda: 7, Alkaid: 18};
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('plot');
+const tip = document.getElementById('tip');
+const el = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e; };
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const ring = el('circle', {cx: 0, cy: 0, r: 143, fill: 'none', stroke: css('--line'), 'stroke-width': 1});
+svg.append(ring);
+svg.append(el('text', {x: 0, y: -148 + 0, 'text-anchor': 'middle', fill: css('--muted'), 'font-size': 9}));
+const cross = el('path', {d: 'M-4 -4 L4 4 M-4 4 L4 -4', stroke: css('--muted'), 'stroke-width': 1});
+svg.append(cross);
+seats.forEach(([, , , , , x, y]) => svg.append(el('circle', {cx: x, cy: y, r: 24, fill: 'none', stroke: css('--muted'), 'stroke-dasharray': '2 3', 'stroke-width': .7, opacity: .55})));
+seats.forEach((s, i) => {
+  const [, ja, group, , ly, x, y] = s;
+  const nearest = Math.min(...seats.filter(o => o !== s).map(o => Math.hypot(o[5] - x, o[6] - y)));
+  const dot = el('circle', {cx: x, cy: y, r: 4, fill: css('--gold'), stroke: css('--panel'), 'stroke-width': 2, tabindex: 0});
+  const hit = el('circle', {cx: x, cy: y, r: 9, fill: 'transparent', tabindex: -1});
+  const show = () => {
+    tip.hidden = false;
+    tip.textContent = `席${i + 1} ${ja}（${group}）· 約${ly}光年 · いちばん近い星まで ${nearest.toFixed(1)}px`;
+    const box = svg.getBoundingClientRect(), host = svg.parentElement.getBoundingClientRect();
+    const scale = box.width / 340;
+    const left = box.left - host.left + (x + 170) * scale;
+    tip.style.left = Math.max(8, Math.min(host.width - tip.offsetWidth - 8, left - tip.offsetWidth / 2)) + 'px';
+    tip.style.top = (box.top - host.top + (y + 130) * scale - 40) + 'px';
+    dot.setAttribute('r', 6);
+  };
+  const hide = () => { tip.hidden = true; dot.setAttribute('r', 4); };
+  for (const t of [hit, dot]) { t.addEventListener('mouseenter', show); t.addEventListener('mouseleave', hide); t.addEventListener('focus', show); t.addEventListener('blur', hide); }
+  svg.append(dot, hit);
+});
+const label = (x, y, text) => svg.append(Object.assign(el('text', {x, y, fill: css('--muted'), 'font-size': 10, 'text-anchor': 'middle'}), {textContent: text}));
+label(-100, 125, '北斗七星'); label(120, -95, 'カシオペヤ座'); label(-25, 32, 'こぐま座');
+const rows = document.getElementById('seat-rows');
+seats.forEach(([en, ja, group, dec, ly], i) => {
+  const tr = document.createElement('tr');
+  const year = 2026 - ly;
+  tr.innerHTML = `<td class="num">${i + 1}</td><td>${ja} <span class="muted">${en}</span></td><td>${group}</td><td class="num">${dec.toFixed(1)}°</td><td class="num">約${ly}</td><td class="num">${year > 0 ? '約' + year + '年' : '紀元前'}</td><td class="num">${below[en] ? below[en] + '%' : '0%（沈まない）'}</td>`;
+  rows.append(tr);
+});
+</script>
