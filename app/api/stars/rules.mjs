@@ -15,7 +15,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export const KINDS = Object.freeze(['wish', 'fulfilled']);
 export const STATUS = Object.freeze({VISIBLE: 'visible', HELD: 'held', HIDDEN: 'hidden'});
 
-// 新しい願いは預ける画面で12字まで（2026-10-12）。前に預けた長い願いや、端末に控えた送信も受け取れるよう、サーバーは60字のまま。「叶ったよ」はひとことなので40字
+// 新しい言葉は画面で12字まで（2026-10-12）。前に預けた長い願いや、端末に控えた送信も受け取れるよう、サーバーは60字のまま。「叶ったよ」はひとことなので40字
 export const MAX_LENGTH = Object.freeze({wish: 60, fulfilled: 40});
 // 1つの軌道（端末）が1日（直近24時間）に流せる数。連投で星空が1人の言葉で埋まらないように
 export const DAILY_WINDOW_MS = DAY_MS;

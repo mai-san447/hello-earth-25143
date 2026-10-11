@@ -22,8 +22,8 @@ export const LIMITS = Object.freeze({
   // 軌道に置ける願い。1日1つ帰すと約1か月分。
   // 多すぎると「やりたいことリストが重荷になる」という出発点の課題に戻る
   orbit: 30,
-  // 願いの文字数。星空に浮かんだとき1行で読め、帰還票でも1行におさまる長さ（2026-10-12 本人と決定。以前は60字）
-  wishLength: 12,
+  // 書く言葉（願い・最初の一歩・叶ったよ）の文字数。星空に浮かんでも帰還票でも1行で読める長さ（2026-10-12 本人と決定。以前は60字と40字）
+  textLength: 12,
   // 帰ってくる日は、翌日から1年後まで。打ち間違いを防ぎ、端末の保存が消えるリスクも抑える
   returnFromMaxDays: 365,
   // 星空へ戻した回数がこの回数になったら、一度だけ「手放してもいい」と伝える。戻すこと自体は止めない
@@ -248,7 +248,7 @@ export function waitedMessage(days) {
 export const GROWTH = Object.freeze({
   faintest: 6,     // 受け取ったばかりの願い
   brightest: 1,    // 一歩ごとに1等級ずつ明るくなり、ここで止まる
-  firstStepMax: 60, // 「最初の小さな一歩」の文字数（願いと同じ）
+  firstStepMax: 12, // 「最初の小さな一歩」の文字数（願いと同じ）
 });
 
 const DAY_KEY = time => new Date(time).toLocaleDateString('sv-SE');
