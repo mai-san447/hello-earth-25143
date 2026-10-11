@@ -116,7 +116,7 @@ text(s, 0.8, 3.9, 7, 0.5, "預けた願いは　いつか帰ってくる", size=
 text(s, 0.8, 5.0, 7, 0.6, [[("MORUNE ", {"bold": True}), ("25143", {"color": GOLD, "bold": True})]], size=26)
 panel(s, 0.8, 5.8, 7.0, 0.8, line=GOLD)
 text(s, 1.0, 5.85, 6.6, 0.7, "出場の目的：この体験を、展示として届ける仲間を探しています", size=16, anchor=MSO_ANCHOR.MIDDLE)
-text(s, 0.8, 6.85, 7, 0.4, "［氏名］　G's ACADEMY 卒業制作", size=12, color=MUTED)
+text(s, 0.8, 6.85, 7, 0.4, "中村 舞衣子　G's ACADEMY 卒業制作", size=12, color=MUTED)
 picture(s, "01-home.png", 9.3, 0.4, h=6.7)
 
 # 1 Why me -------------------------------------------------------------------
