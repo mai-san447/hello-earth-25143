@@ -1022,7 +1022,33 @@
     animate();
   }
 
+  // 場所の選び方を覚えて、次からは聞かない（開くたびに聞くと、毎日使うのに手間がかかるため。2026-10-11）。
+  // 「今いる場所」を選んだ人は、許可が残っていれば黙って今の位置に合わせ、取れなければ前回の場所のまま
+  const LOCATION_KEY = 'morune-25143-location-choice';
+  function rememberLocation(mode) { writeStorage(LOCATION_KEY, mode); }
+  function restoreLocationChoice() {
+    const mode = readStorage(LOCATION_KEY);
+    if (mode !== 'here' && mode !== 'tokyo') return false;
+    locationModal.classList.add('is-hidden');
+    if (mode === 'tokyo' || !navigator.geolocation) {
+      pendingLocation = {lat: 35.68, lon: 139.76};
+      refreshSky();
+      return true;
+    }
+    // 開くたびに許可を聞く画面が出ないよう、許可が残っているときだけ位置を取る
+    const locate = () => navigator.geolocation.getCurrentPosition(
+      ({coords}) => { pendingLocation = {lat: coords.latitude, lon: ((coords.longitude + 180) % 360 + 360) % 360 - 180}; refreshSky(); },
+      () => { /* 取れなければ東京のまま（何も出さない） */ },
+      {enableHighAccuracy: false, timeout: 10000, maximumAge: 600000},
+    );
+    if (navigator.permissions?.query) {
+      navigator.permissions.query({name: 'geolocation'}).then(state => { if (state.state === 'granted') locate(); }).catch(() => {});
+    }
+    return true;
+  }
+
   locationAllow.addEventListener('click', () => {
+    rememberLocation('here');
     if (!navigator.geolocation) {
       fallBackToTokyo();
       return;
@@ -1038,7 +1064,7 @@
       {enableHighAccuracy: false, timeout: 10000, maximumAge: 300000},
     );
   });
-  locationSkip.addEventListener('click', () => applyLocation(35.68, 139.76, '東京の星空にしました。'));
+  locationSkip.addEventListener('click', () => { rememberLocation('tokyo'); applyLocation(35.68, 139.76, '東京の星空にしました。'); });
 
   function drawSpace(time) {
     const sky = context.createLinearGradient(0, 0, width * 0.65, height);
@@ -2960,8 +2986,10 @@
   loadItokawaDistance();
   recordOpenDay();
   await init();
-  rememberSheetFocus(locationModal);
-  locationAllow.focus({preventScroll: true});
+  if (!restoreLocationChoice()) {
+    rememberSheetFocus(locationModal);
+    locationAllow.focus({preventScroll: true});
+  }
   showIntroIfFirstTime();
   await fixWishSeq();
   ensureNumber();
