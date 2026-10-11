@@ -185,3 +185,7 @@ test('#27 ふつうの候補があれば、そちらだけを出す', () => {
   const wishes = [wish({id: '1'}), wish({id: '2', returnFrom: at(2026, 10, 20, 0)})];
   assert.deepEqual(candidatesWithTrial(wishes, now, false).map(item => item.id), ['1']);
 });
+
+test('願いは12字まで（星空で1行・帰還票で1行におさまる長さ）', () => {
+  assert.equal(LIMITS.wishLength, 12);
+});

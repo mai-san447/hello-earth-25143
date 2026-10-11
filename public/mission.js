@@ -2205,6 +2205,11 @@
       wishInput.focus();
       return;
     }
+    if ([...text].length > WishState.LIMITS.wishLength) {
+      depositStatus.textContent = `願いは${WishState.LIMITS.wishLength}字までです。`;
+      wishInput.focus();
+      return;
+    }
     const now = Date.now();
     // #17 軌道に置ける願いは30個まで。いっぱいのときは預けず、入力は残す
     if (!WishState.canDeposit(wishes)) {
@@ -2344,7 +2349,14 @@
     if (event.target === policySheet) closePolicy();
   });
   launchButton.addEventListener('click', launchWish);
-  wishInput.addEventListener('input', () => { $('#wish-length').textContent = String(wishInput.value.length); });
+  // 絵文字も1字として数える（maxLength は UTF-16 で数えるので、ここで切りそろえる）
+  const keepWishLength = () => {
+    const chars = [...wishInput.value];
+    if (chars.length > WishState.LIMITS.wishLength) wishInput.value = chars.slice(0, WishState.LIMITS.wishLength).join('');
+    $('#wish-length').textContent = String([...wishInput.value].length);
+  };
+  wishInput.addEventListener('input', event => { if (!event.isComposing) keepWishLength(); });
+  wishInput.addEventListener('compositionend', keepWishLength);
   $('#shake').addEventListener('click', enableMotion);
   // カプセルが着地して待っているときは開き、そうでなければ1つ帰す
   $('#fallback').addEventListener('click', () => (landed && returningWish && !returnFlight ? openCard() : returnOne()));

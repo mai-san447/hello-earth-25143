@@ -54,9 +54,9 @@ export function MissionExperience({
           <div className="sheet-grip" aria-hidden="true" />
           <button className="sheet-close" id="deposit-close" type="button" aria-label="閉じる">×</button>
           <h2 className="deposit-question">いつか、何をしたい？</h2>
-          <label className="wish-label" htmlFor="wish">願い（60字まで）</label>
-          <textarea id="wish" maxLength={60} placeholder="例：天文台に行く" />
-          <div className="input-meta"><span /><span><b id="wish-length">0</b> / 60</span></div>
+          <label className="wish-label" htmlFor="wish">願い（12字まで）</label>
+          <textarea id="wish" maxLength={24} placeholder="例：天文台に行く" />
+          <div className="input-meta"><span /><span><b id="wish-length">0</b> / 12</span></div>
           <div className="return-from-field">
             <label htmlFor="return-from">帰ってくる日（任意）</label>
             <input id="return-from" type="date" aria-describedby="return-from-hint" />
@@ -142,7 +142,7 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>入力内容と保存</h3>
-                <p>願いは60文字以内で入力できます。預けられる願いは30個まで、帰ってくる日は翌日から1年後までです。願いと回収記録はこのブラウザーのIndexedDBに保存されます。みんなの星空が開いている環境では、公開する願いの言葉をサーバーにも送ります。「自分だけの星にする」を選んだ願いは送りません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないとサイトの保存が消えることがあります）。</p>
+                <p>願いは12文字以内で入力できます。預けられる願いは30個まで、帰ってくる日は翌日から1年後までです。願いと回収記録はこのブラウザーのIndexedDBに保存されます。みんなの星空が開いている環境では、公開する願いの言葉をサーバーにも送ります。「自分だけの星にする」を選んだ願いは送りません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないとサイトの保存が消えることがあります）。</p>
                 <p>ほかの人に見られたくない内容を書くときは、端末の画面ロックをお使いください。パスワードや、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
               </section>
               <section>
