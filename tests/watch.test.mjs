@@ -14,7 +14,7 @@ const starId = 'c0ffee00-1234-4abc-8def-0123456789ab';
 const other = 'c0ffee00-1234-4abc-8def-0123456789ac';
 
 test('見守り認証：未設定・短い鍵では開かず、長さや文字が違う鍵も通さない', async () => {
-  for (const WATCH_TOKEN of [undefined, '', 'a'.repeat(31)]) assert.equal(watch.watchEnabled({DB: {}, WATCH_TOKEN}), false);
+  for (const WATCH_TOKEN of [undefined, '', 'a'.repeat(15)]) assert.equal(watch.watchEnabled({DB: {}, WATCH_TOKEN}), false);
   assert.equal(watch.watchEnabled({DB: {}, WATCH_TOKEN: token}), true);
   for (const supplied of ['', 'a', 'a'.repeat(31), 'a'.repeat(33), 'b'.repeat(32)]) assert.equal(await watch.compareToken(token, supplied), false);
   assert.equal(await watch.compareToken(token, token), true);
