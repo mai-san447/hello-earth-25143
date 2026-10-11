@@ -12,7 +12,8 @@ function reply(body: unknown, status = 200) {
 }
 async function guard(request: Request) {
   if (!watchEnabled(env)) return reply({error: "見つかりません。"}, 404);
-  // 合言葉を試せるのは、同じ回線から1分5回まで（当て推量を止める）
+  // 当て推量を止める：同じ回線からの回数制限（Cloudflare）と、全体で1分5回までのまちがい回数（データベース）を重ねる。
+  // Cloudflare の制限は本番で止まらないことがあったため、データベースの数を正とする（2026-10-12）
   const limited = await rateLimit(request, "/api/watch", {STARS_LIMITER: env.WATCH_LIMITER});
   if (limited) return limited;
   const now = Date.now();
