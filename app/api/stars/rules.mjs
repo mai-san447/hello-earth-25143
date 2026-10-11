@@ -20,6 +20,14 @@ export const MAX_LENGTH = Object.freeze({wish: 60, fulfilled: 40});
 // 1つの軌道（端末）が1日（直近24時間）に流せる数。連投で星空が1人の言葉で埋まらないように
 export const DAILY_WINDOW_MS = DAY_MS;
 export const DAILY_LIMIT = Object.freeze({wish: 10, fulfilled: 3});
+export const GLOBAL_DAILY_LIMIT = Object.freeze({wish: 500, fulfilled: 200});
+
+/** @param {{kind: Kind, globalCount: number}} input @returns {{ok: true} | Rejected} */
+export function acceptGlobal({kind, globalCount}) {
+  return globalCount >= GLOBAL_DAILY_LIMIT[kind]
+    ? {ok: false, status: 429, error: '今日は星空がいっぱいです。また明日どうぞ。'}
+    : {ok: true};
+}
 // 翌年の帰還にも間に合うよう、願いを400日残す。
 export const TTL_MS = Object.freeze({wish: 400 * DAY_MS, fulfilled: DAY_MS});
 export const RETURN_TTL_MS = 30 * DAY_MS;

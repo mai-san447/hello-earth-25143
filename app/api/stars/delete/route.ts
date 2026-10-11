@@ -1,3 +1,4 @@
+import { rateLimit } from "../../rate-limit";
 import {env} from "cloudflare:workers";
 import {and, eq, sql} from "drizzle-orm";
 import {getDb} from "../../../../db";
@@ -6,6 +7,8 @@ import {errorKind} from "../../error-kind.mjs";
 import {canDelete, DELETE_LIMIT, ownsStar, parseDelete, publicStarsEnabled} from "../rules.mjs";
 
 export async function POST(request: Request) {
+  const limited = await rateLimit(request, '/api/stars/delete', env);
+  if (limited) return limited;
   if (!publicStarsEnabled(env)) return Response.json({enabled: false}, {status: 404});
   let body: unknown;
   try { body = await request.json(); } catch { return Response.json({error: "消す星を確認してください。"}, {status: 400}); }

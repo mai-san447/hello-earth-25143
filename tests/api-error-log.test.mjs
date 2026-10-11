@@ -32,6 +32,7 @@ function loadRoute(file, error) {
   const fail = () => {throw error;};
   const env = {DB: {}, AI: {}, ART_ENABLED: 'true', PUBLIC_STARS_ENABLED: 'true'};
   const require = specifier => {
+    if (specifier.endsWith('rate-limit')) return {rateLimit: async () => null};
     if (specifier === 'cloudflare:workers') return {env};
     if (specifier.endsWith('error-kind.mjs')) return {errorKind};
     if (specifier.endsWith('/watch/settings')) return {readPaused: async () => true};
