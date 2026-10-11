@@ -564,3 +564,8 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 @media (max-width:640px){.title-kicker{font-size:12px;letter-spacing:.26em;margin-bottom:10px}.title-sub{font-size:12px;margin-top:10px}}
 @media (max-height:650px) and (max-width:900px){.title-sub{display:none}}
 @media (max-width:380px){.title-kicker{font-size:11px;letter-spacing:.16em;white-space:nowrap}}
+
+/* 触れて出した言葉：動かさずに6秒（押しやすく、読みやすく） */
+.floating-wish-held{animation:wish-hold 6s ease-out both}
+@keyframes wish-hold{0%{opacity:0}6%,88%{opacity:1}100%{opacity:0}}
+.floating-wish:has(.floating-star-menu:hover),.floating-wish:has(.floating-star-menu:focus-visible){animation-play-state:paused}
