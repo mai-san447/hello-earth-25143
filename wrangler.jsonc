@@ -5,6 +5,7 @@
   "compatibility_date": "2026-09-26",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  // 回数制限は補助（場所ごとに数えるため本番では止まらないことがある）。量の上限は1日の上限、見守りはデータベースのまちがい回数で守る
   "ratelimits": [{"name": "STARS_LIMITER", "namespace_id": "25143", "simple": {"limit": 20, "period": 60}}, {"name": "WATCH_LIMITER", "namespace_id": "25144", "simple": {"limit": 5, "period": 60}}],
   "assets": {
     "directory": "./dist/client"
