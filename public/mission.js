@@ -2705,7 +2705,9 @@
   async function loadOtherStars() {
     if (!navigator.onLine) return;
     try {
-      const response = await fetch(`/api/stars?orbit=${encodeURIComponent(orbitId())}${requestedStarId ? `&star=${encodeURIComponent(requestedStarId)}` : ''}`, {signal: requestTimeout()});
+      // 星空を読むときは、端末の軌道ID を送らない（みんなの星空が止まっている間も毎回届いてしまうため。2026-10-12）。
+      // 自分の星は、端末に控えた公開 id で除く
+      const response = await fetch(`/api/stars${requestedStarId ? `?star=${encodeURIComponent(requestedStarId)}` : ''}`, {signal: requestTimeout()});
       if (!response.ok) return;
       const data = await response.json();
       if (!data.enabled) {
@@ -2719,9 +2721,10 @@
       }
       starsEnabled = true;
       writeStorage(STARS_ENABLED_KEY, '1');
-      otherStars = PublicStars.sanitizeStars(data.stars, Date.now(), reportedStars);
+      const ownStarIds = new Set(wishes.map(wish => wish.publicStarId).filter(Boolean));
+      const served = Array.isArray(data.stars) ? data.stars.filter(star => star?.focus || !ownStarIds.has(star?.id)) : [];
+      otherStars = PublicStars.sanitizeStars(served, Date.now(), reportedStars);
       writeStorage(STARS_CACHE_KEY, JSON.stringify(otherStars));
-      saveNumber(data.number);
       refreshStarsInterface();
       flushPublishQueue().then(results => {
         const messages = results ? [...results.values()].map(result => result.message) : [];
