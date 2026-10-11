@@ -1,4 +1,4 @@
-// Service Worker がリクエストをどう扱うかを決める（#5 ネットがない場所で使えるようにする）。
+// Service Worker がリクエストをどう扱うかを決める（#5 オフラインで使えるようにする）。
 // Service Worker からは importScripts で、テストからは node:vm で読み込むため、
 // モジュール構文を使わず self.offlineRoute に置く。
 (function (root) {

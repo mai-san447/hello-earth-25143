@@ -50,8 +50,8 @@ export const CAUTION_WORDS = Object.freeze([
   'line id', 'lineid', 'ライン id', 'dm', '住所', '電話番号',
 ]);
 
-// 病院名らしい並び（「○○病院」「○○クリニック」など、前に2文字以上）。約束「病院名は書きません」を守るため
-// ひらがなは含めない（「近くの病院」まで保留にしないため）。「大学病院」は保留になるが、人が見て表示に戻せる
+// 施設の名前らしい並び（前に2文字以上）は、だれの言葉か分かりやすくなるので保留にする。
+// ひらがなは含めない（ふつうの言い方まで保留にしないため）。保留になっても、人が見て表示に戻せる
 const HOSPITAL_NAME = /[\p{Script=Han}\p{Script=Katakana}A-Za-z0-9ー]{2,}(病院|医院|クリニック|医療センター)/u;
 const URL_LIKE = /(https?:\/\/|www\.|[a-z0-9-]+\.(com|net|org|jp|io|me|co|ly|app|dev|xyz|info|link|site)\b)/i;
 const EMAIL_LIKE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
