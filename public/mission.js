@@ -588,7 +588,7 @@
         } catch (error) {
           // 1日1回・文字数などのルールで受け付けなかった（保存の失敗とは分けて伝える）
           console.error('growth rule', error);
-          return {rule: error.message === '今日の一歩は、もう記録しています' ? '今日の一歩は、もう記録しています' : [...String(growthDrafts.get(id) ?? '')].length > WishState.GROWTH.firstStepMax ? '最初の一歩は60字までです' : 'この操作はできませんでした。ページを開き直してください'};
+          return {rule: error.message === '今日の一歩は、もう記録しています' ? '今日の一歩は、もう記録しています' : [...String(growthDrafts.get(id) ?? '')].length > WishState.GROWTH.firstStepMax ? `最初の一歩は${WishState.GROWTH.firstStepMax}字までです` : 'この操作はできませんでした。ページを開き直してください'};
         }
         if (next === current) return {skipped: true};
         await store('readwrite', object => object.put(next));
@@ -2198,6 +2198,17 @@
     setTimeout(() => { depositSheet.hidden = true; restoreSheetFocus(depositSheet); }, 330);
   }
 
+  // 書く言葉は12字まで。絵文字も1字として数える（maxLength は UTF-16 で数えるので、ここで切りそろえる）
+  function limitTextLength(input, counter = null) {
+    const keep = () => {
+      const chars = [...input.value];
+      if (chars.length > WishState.LIMITS.textLength) input.value = chars.slice(0, WishState.LIMITS.textLength).join('');
+      if (counter) counter.textContent = String([...input.value].length);
+    };
+    input.addEventListener('input', event => { if (!event.isComposing) keep(); });
+    input.addEventListener('compositionend', keep);
+  }
+
   async function launchWish() {
     const text = wishInput.value.trim();
     if (!text) {
@@ -2205,8 +2216,8 @@
       wishInput.focus();
       return;
     }
-    if ([...text].length > WishState.LIMITS.wishLength) {
-      depositStatus.textContent = `願いは${WishState.LIMITS.wishLength}字までです。`;
+    if ([...text].length > WishState.LIMITS.textLength) {
+      depositStatus.textContent = `願いは${WishState.LIMITS.textLength}字までです。`;
       wishInput.focus();
       return;
     }
@@ -2349,14 +2360,7 @@
     if (event.target === policySheet) closePolicy();
   });
   launchButton.addEventListener('click', launchWish);
-  // 絵文字も1字として数える（maxLength は UTF-16 で数えるので、ここで切りそろえる）
-  const keepWishLength = () => {
-    const chars = [...wishInput.value];
-    if (chars.length > WishState.LIMITS.wishLength) wishInput.value = chars.slice(0, WishState.LIMITS.wishLength).join('');
-    $('#wish-length').textContent = String([...wishInput.value].length);
-  };
-  wishInput.addEventListener('input', event => { if (!event.isComposing) keepWishLength(); });
-  wishInput.addEventListener('compositionend', keepWishLength);
+  limitTextLength(wishInput, $('#wish-length'));
   $('#shake').addEventListener('click', enableMotion);
   // カプセルが着地して待っているときは開き、そうでなければ1つ帰す
   $('#fallback').addEventListener('click', () => (landed && returningWish && !returnFlight ? openCard() : returnOne()));
@@ -2397,6 +2401,7 @@
     }
   });
   $('#receipt-first-step').addEventListener('compositionend', renderReceiptPreview);
+  limitTextLength($('#receipt-first-step'));
   $('#receipt-include-text').addEventListener('change', renderReceiptPreview);
   // 回収記録を開いている間は、下の操作バー（見えなくしている）をキーボードでも選べないようにし、閉じたら元の場所へ戻す
   function openArchive() {
@@ -2468,7 +2473,7 @@
     $('#star-report').focus({preventScroll: true});
   });
   $('#star-report-send').addEventListener('click', sendStarReport);
-  $('#fulfilled-text').addEventListener('input', () => { $('#fulfilled-length').textContent = String($('#fulfilled-text').value.length); });
+  limitTextLength($('#fulfilled-text'), $('#fulfilled-length'));
   $('#fulfilled-send').addEventListener('click', sendFulfilled);
   $('#fulfilled-skip').addEventListener('click', closeFulfilledSheet);
   $('#my-record-copy').addEventListener('click', copyMyRecord);
@@ -3030,6 +3035,11 @@
     const status = $('#fulfilled-status');
     if (!text) {
       status.textContent = 'ひとことを書いてください。流さないときは「今は流さない」を押してください';
+      $('#fulfilled-text').focus();
+      return;
+    }
+    if ([...text].length > WishState.LIMITS.textLength) {
+      status.textContent = `ひとことは${WishState.LIMITS.textLength}字までです`;
       $('#fulfilled-text').focus();
       return;
     }

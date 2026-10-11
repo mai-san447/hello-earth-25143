@@ -186,6 +186,6 @@ test('#27 ふつうの候補があれば、そちらだけを出す', () => {
   assert.deepEqual(candidatesWithTrial(wishes, now, false).map(item => item.id), ['1']);
 });
 
-test('願いは12字まで（星空で1行・帰還票で1行におさまる長さ）', () => {
-  assert.equal(LIMITS.wishLength, 12);
+test('書く言葉は12字まで（星空で1行・帰還票で1行におさまる長さ）', () => {
+  assert.equal(LIMITS.textLength, 12);
 });
