@@ -11,7 +11,8 @@ export const RECEIPT_VARIANTS = Object.freeze([
   {id: 'dusk', name: '夕方の一番星', rare: false},
   {id: 'night', name: '満天の星', rare: false},
   {id: 'dawn', name: '夜明け', rare: false},
-  {id: 'meteor', name: '流れ星', rare: true},
+  // 流れ星は「だれかの願いが叶った知らせ」に使うので、帰還票のレアは別の絵（二重星）にする（2026-10-12、本人と決定）
+  {id: 'double', name: '二重星', rare: true},
 ]);
 
 function hash(text) {
