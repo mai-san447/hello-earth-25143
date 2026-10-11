@@ -57,13 +57,14 @@ function load(file, {db, env = {}, readPaused = async () => true} = {}) {
   const exports = {};
   const logs = [];
   const require = specifier => {
+    if (specifier.endsWith('rate-limit')) return {rateLimit: async () => null};
     if (specifier === 'cloudflare:workers') return {env};
     if (specifier.endsWith('/db')) return {getDb: () => db};
     if (specifier.endsWith('/schema')) return {publicStars: {}, starReports: {}, watchSettings: {}, orbits: {}};
     if (specifier.endsWith('error-kind.mjs')) return {errorKind};
     if (specifier.endsWith('/settings')) return {readPaused};
     if (specifier.endsWith('rules.mjs')) return file.startsWith('watch/') && specifier === './rules.mjs' ? watch : stars;
-    if (specifier === 'drizzle-orm') return new Proxy({}, {get: () => () => ({})});
+    if (specifier === 'drizzle-orm') return new Proxy({}, {get: (_, key) => key === 'sql' ? (strings, ...values) => ({strings, values}) : () => ({})});
     throw new Error(specifier);
   };
   const source = readFileSync(new URL(`../app/api/${file}`, import.meta.url), 'utf8');
@@ -102,9 +103,14 @@ test('一時停止の表が読めなくても、安全側にする', async () =>
 test('投稿API：一時停止ならふつうの言葉もheldで保存・応答する', async () => {
   for (const paused of [true, false]) {
     let saved;
-    let selects = 0;
-    const chain = {from: () => chain, where: () => chain, limit: async () => [{number: 1}], then: resolve => resolve(selects === 1 ? [{value: 0}] : [])};
-    const db = {select: () => {selects++; return chain;}, run: async () => {}, insert: () => ({values: async value => {saved = value;}})};
+    let selection;
+    const chain = {from: () => chain, where: () => chain, limit: async () => saved ? [saved] : [{number: 1}], then: resolve => resolve(selection?.value ? [{value: 0}] : [])};
+    const db = {select: value => {selection = value; return chain;}, run: async statement => {
+      if (statement.strings[0].includes('INSERT OR IGNORE INTO public_stars')) {
+        const [id, orbitId, kind, text, status, createdAt, expiresAt] = statement.values;
+        saved = {id, orbitId, kind, text, status, createdAt, expiresAt};
+      }
+    }};
     const {exports} = load('stars/route.ts', {db, env: {DB: {}, PUBLIC_STARS_ENABLED: 'true'}, readPaused: async () => paused});
     const response = await exports.POST(new Request('https://example.com/api/stars', {method: 'POST', body: JSON.stringify({orbitId, kind: 'wish', text: '散歩したい'})}));
     assert.equal(response.status, 200);

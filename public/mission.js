@@ -53,6 +53,8 @@
   const NUMBER_KEY = 'morune-25143-orbit-number';
   // 願いの番号（25143-0007-03 の「03」）を、これまでいくつまで出したか。消した番号を使い回さないため
   const WISH_SEQ_KEY = 'morune-25143-wish-seq';
+  // 同じミリ秒の保存も別タブへ知らせるため、時刻に識別値を添える。
+  const CHANGED_KEY = 'morune-25143-changed';
   const REPORTED_KEY = 'morune-25143-reported-stars';
   const PUBLISH_QUEUE_KEY = 'morune-25143-publish-queue';
   const STAR_ACTIONS_KEY = 'morune-25143-star-actions';
@@ -254,7 +256,10 @@
       const request = operation(transaction.objectStore('wishes'));
       let result;
       request.onsuccess = () => { result = request.result; };
-      transaction.oncomplete = () => resolve(result);
+      transaction.oncomplete = () => {
+        if (mode === 'readwrite') writeStorage(CHANGED_KEY, String(Date.now()) + ':' + Math.random());
+        resolve(result);
+      };
       transaction.onerror = () => reject(transaction.error);
       transaction.onabort = () => reject(transaction.error);
     });
@@ -284,7 +289,10 @@
       const objectStore = transaction.objectStore('wishes');
       if (all) objectStore.clear();
       else ids.forEach(id => objectStore.delete(id));
-      transaction.oncomplete = resolve;
+      transaction.oncomplete = () => {
+        writeStorage(CHANGED_KEY, String(Date.now()) + ':' + Math.random());
+        resolve();
+      };
       transaction.onerror = () => reject(transaction.error);
       transaction.onabort = () => reject(transaction.error);
     });
@@ -392,6 +400,7 @@
   }
 
   function refreshInterface() {
+    void drainWishReload();
     const count = readyToReturn().length;
     const archiveItems = recovered();
     const archiveIds = new Set(archiveItems.map(wish => wish.id));
@@ -2025,6 +2034,7 @@
     $('#receipt-preview').classList.remove('receipt-developing');
     receiptWishId = null;
     restoreSheetFocus(receiptSheet);
+    void drainWishReload();
   }
 
   // 書いた一歩を、帰還票に使う前にアプリへ記録する（星を育てる記録の正本はアプリ）
@@ -2149,6 +2159,7 @@
     cardHideTimer = setTimeout(() => {
       returnCard.hidden = true;
       restoreSheetFocus(returnCard);
+      void drainWishReload();
     }, 300);
     if (!decided && returningWish && landed) {
       $('#mission-status').textContent = '帰ってきた願いは、ここで待っています';
@@ -2210,8 +2221,6 @@
     unlockAudioFromGesture();
     launchButton.disabled = true;
     depositStatus.textContent = '預けています…';
-    const seq = WishState.nextWishSeq(wishes, Number(readStorage(WISH_SEQ_KEY)) || 0);
-    const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time, seq});
     const firstWish = wishes.length === 0 && !trialUsed();
     // 同意しない場合も、端末だけに預けられるようにする。
     let publish = starsEnabled && !publishCheckbox.checked;
@@ -2220,9 +2229,11 @@
       if (!publish) publishCheckbox.checked = true;
     }
     try {
+      const seq = WishState.nextWishSeq(wishes, Number(readStorage(WISH_SEQ_KEY)) || 0);
+      writeStorage(WISH_SEQ_KEY, String(seq));
+      const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time, seq});
       await store('readwrite', object => object.put(wish));
       wishes = [...wishes, wish];
-      writeStorage(WISH_SEQ_KEY, String(seq));
       // 最初に預けたとき、人の番号を受け取る（ネットがなければ、つながったときに）
       ensureNumber();
       refreshInterface();
@@ -2560,6 +2571,40 @@
   if (window.visualViewport) window.visualViewport.addEventListener('resize', alignTelemetryToDock, {passive: true});
   requestAnimationFrame(alignTelemetryToDock);
 
+  async function reloadWishes() {
+    const loaded = await store('readonly', object => object.getAll());
+    // 読んでいる間に帰還を始めた場合も、表示を途中で変えない。
+    if (!reloadAllowed()) { reloadPending = true; return; }
+    wishes = loaded;
+    returningWish = WishState.pendingReturn(wishes) ?? null;
+    landed = Boolean(returningWish);
+    refreshInterface();
+    setMissionStep(returningWish ? 'receive' : 'deposit');
+  }
+
+  let reloadPending = false;
+  let reloading = false;
+  function reloadAllowed() {
+    return WishState.canReloadWishes({flying: Boolean(returnFlight), cardOpen: !returnCard.hidden, receiptOpen: !receiptSheet.hidden});
+  }
+  async function drainWishReload() {
+    if (!database || !reloadPending || reloading || !reloadAllowed()) return;
+    reloadPending = false;
+    reloading = true;
+    let succeeded = false;
+    try { await reloadWishes(); succeeded = true; }
+    catch {
+      reloadPending = true;
+      $('#mission-status').textContent = '願いを読み込めませんでした。ページを開き直してください';
+    } finally { reloading = false; }
+    if (succeeded && reloadPending) void drainWishReload();
+  }
+  window.addEventListener('storage', event => {
+    if (event.key !== CHANGED_KEY || event.storageArea !== localStorage) return;
+    reloadPending = true;
+    void drainWishReload();
+  });
+
   async function init() {
     try {
       database = await openDatabase();
@@ -2571,14 +2616,7 @@
           await cloudRequest('POST', {id: item.id, text: item.text, status: item.status, createdAt: item.createdAt, updatedAt: item.updatedAt});
         }
       }
-      wishes = await store('readonly', object => object.getAll());
-      const pending = WishState.pendingReturn(wishes);
-      if (pending) {
-        returningWish = pending;
-        landed = true;
-      }
-      refreshInterface();
-      setMissionStep(pending ? 'receive' : 'deposit');
+      await reloadWishes();
       syncVisualViewport();
       requestAnimationFrame(render);
       $('#mission-status').textContent = '';
@@ -2677,7 +2715,8 @@
       for (const wish of updated) await store('readwrite', object => object.put(wish));
       const byId = new Map(updated.map(wish => [wish.id, wish]));
       wishes = wishes.map(wish => byId.get(wish.id) ?? wish);
-      writeStorage(WISH_SEQ_KEY, String(counter));
+      // 保存を待つ間に別タブが採番していても、最大番号を巻き戻さない。
+      writeStorage(WISH_SEQ_KEY, String(Math.max(counter, Number(readStorage(WISH_SEQ_KEY)) || 0)));
     } catch (error) {
       console.error('fix wish seq', error);
     }

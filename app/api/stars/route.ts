@@ -1,9 +1,10 @@
+import { rateLimit } from "../rate-limit";
 import { errorKind } from "../error-kind.mjs";
 import { env } from "cloudflare:workers";
 import { and, count, eq, gt, gte, inArray, lt, ne, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { orbits, publicStars, starReports } from "../../../db/schema";
-import { DAILY_WINDOW_MS, SKY_LIMIT, STATUS, acceptPublish, publicStarsEnabled, expiresAt, formatNumber, isOrbitId, isStarId, parsePublish, focusedStars, publishStatus } from "./rules.mjs";
+import { DAILY_WINDOW_MS, SKY_LIMIT, STATUS, GLOBAL_DAILY_LIMIT, acceptGlobal, acceptPublish, publicStarsEnabled, expiresAt, formatNumber, isOrbitId, isStarId, parsePublish, focusedStars, publishStatus } from "./rules.mjs";
 import { readPaused } from "../watch/settings";
 
 // みんなの星（#22）。公開を選んだ言葉（60字まで）と軌道IDだけを受け取る。名前・IPアドレスは保存しない。
@@ -51,6 +52,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const limited = await rateLimit(request, '/api/stars', env);
+  if (limited) return limited;
   if (!enabled()) return Response.json({ enabled: false }, { status: 404 });
   let body: unknown;
   try { body = await request.json(); } catch { return Response.json({ error: "流す言葉を確認してください。" }, { status: 400 }); }
@@ -68,6 +71,9 @@ export async function POST(request: Request) {
         return Response.json({ok: true, id: existing.id, status: existing.status, number: await orbitNumber(orbitId), expiresAt: existing.expiresAt});
       }
     }
+    const [global] = await db.select({value: count()}).from(publicStars).where(and(eq(publicStars.kind, kind), gte(publicStars.createdAt, now - DAILY_WINDOW_MS)));
+    const globalVerdict = acceptGlobal({kind, globalCount: global?.value ?? 0});
+    if (!globalVerdict.ok) return Response.json({error: globalVerdict.error}, {status: globalVerdict.status});
     const [daily] = await db
       .select({ value: count() })
       .from(publicStars)
@@ -83,16 +89,15 @@ export async function POST(request: Request) {
     let status = publishStatus(text, await readPaused());
     const id = starId ?? crypto.randomUUID();
     let expires = expiresAt(kind, now);
-    const insertion = db.insert(publicStars).values({ id, orbitId, kind, text, status, reports: 0, createdAt: now, expiresAt: expires });
-    if (starId) {
-      await insertion.onConflictDoNothing({target: publicStars.id});
-      const [saved] = await db.select().from(publicStars).where(eq(publicStars.id, id)).limit(1);
-      if (!saved || saved.orbitId !== orbitId || saved.kind !== kind || saved.text !== text) return Response.json({error: "この星は使えません。"}, {status: 404});
-      status = saved.status;
-      expires = saved.expiresAt;
-    } else {
-      await insertion;
-    }
+    // 数えた直後に別の投稿が入っても、1つのSQL内で上限を守る。
+    await db.run(sql`INSERT OR IGNORE INTO public_stars (id, orbit_id, kind, text, status, reports, created_at, expires_at)
+      SELECT ${id}, ${orbitId}, ${kind}, ${text}, ${status}, 0, ${now}, ${expires}
+      WHERE (SELECT COUNT(*) FROM public_stars WHERE kind = ${kind} AND created_at >= ${now - DAILY_WINDOW_MS}) < ${GLOBAL_DAILY_LIMIT[kind]}`);
+    const [saved] = await db.select().from(publicStars).where(eq(publicStars.id, id)).limit(1);
+    if (!saved) return Response.json({error: "今日は星空がいっぱいです。また明日どうぞ。"}, {status: 429});
+    if (saved.orbitId !== orbitId || saved.kind !== kind || saved.text !== text) return Response.json({error: "この星は使えません。"}, {status: 404});
+    status = saved.status;
+    expires = saved.expiresAt;
 
     // 期限を過ぎたこの軌道の星は、次に公開したときに消す（持ちすぎない）
     const expired = await db

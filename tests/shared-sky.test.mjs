@@ -106,6 +106,7 @@ function loadRoute(file, db, enabled = true) {
   const table = new Proxy({}, {get: (_, key) => key});
   const op = {eq: (key, value) => row => row[key] === value, ne: (key, value) => row => row[key] !== value, gt: (key, value) => row => row[key] > value, gte: (key, value) => row => row[key] >= value, lt: (key, value) => row => row[key] < value, count: () => 'count', and: (...conditions) => row => conditions.every(c => c(row)), sql: (strings, ...values) => ({strings, values})};
   const require = name => {
+    if (name.endsWith('rate-limit')) return {rateLimit: async () => null};
     if (name === 'cloudflare:workers') return {env: {DB: {}, PUBLIC_STARS_ENABLED: enabled ? 'true' : 'false'}};
     if (name === 'drizzle-orm') return op;
     if (name.endsWith('/db')) return {getDb: () => db};
@@ -154,15 +155,20 @@ test('帰還APIは本人だけを更新し、回数制限では星も読まな�
 test('投稿の応答が失われたあとの再送は、同じIDの星を増やさず、他人のIDは使わせない', async () => {
   const stars = [];
   let inserts = 0;
+  let full = false;
   const db = {
     select: selection => {
       let condition = () => true;
-      const items = () => selection?.number ? [{id: orbitId, number: 1}] : selection?.value ? [{value: 0}] : stars.filter(condition);
+      const items = () => selection?.number ? [{id: orbitId, number: 1}] : selection?.value ? [{value: full ? 500 : 0}] : stars.filter(condition);
       const chain = {from: () => chain, where: value => {condition = value; return chain;}, limit: async n => items().slice(0, n), then: resolve => resolve(items())};
       return chain;
     },
-    run: async () => {},
-    insert: () => ({values: item => ({onConflictDoNothing: async () => {if (!stars.some(star => star.id === item.id)) {stars.push(item); inserts++;}}})}),
+    run: async statement => {
+      if (statement.strings[0].includes('INSERT OR IGNORE INTO public_stars')) {
+        const [id, orbitId, kind, text, status, createdAt, expiresAt] = statement.values;
+        if (!stars.some(star => star.id === id)) {stars.push({id, orbitId, kind, text, status, createdAt, expiresAt}); inserts++;}
+      }
+    },
   };
   const route = loadRoute('route.ts', db);
   const post = body => route.POST(new Request('https://example.com/api/stars', {method: 'POST', body: JSON.stringify(body)}));
@@ -170,11 +176,49 @@ test('投稿の応答が失われたあとの再送は、同じIDの星を増や
   const first = await post(body);
   assert.equal(first.status, 200);
   assert.equal((await first.json()).id, id(5));
+  full = true;
   assert.equal((await post(body)).status, 200);
+  const rejected = await post({...body, starId: id(6)});
+  assert.equal(rejected.status, 429);
+  assert.equal((await rejected.json()).error, '今日は星空がいっぱいです。また明日どうぞ。');
   assert.equal(inserts, 1);
   assert.equal((await post({...body, orbitId: otherId})).status, 404);
   assert.equal((await post({...body, text: '別の願い'})).status, 404);
   assert.equal((await post({...body, starId: 'bad'})).status, 400);
+});
+
+test('数えたあとに別の投稿が入ってもSQLiteの挿入で全体上限を越えない', async () => {
+  const sqlite = new DatabaseSync(':memory:');
+  try {
+    sqlite.exec('CREATE TABLE public_stars (id TEXT PRIMARY KEY, orbit_id TEXT, kind TEXT, text TEXT, status TEXT, reports INTEGER, created_at INTEGER, expires_at INTEGER)');
+    const now = Date.now();
+    const seed = sqlite.prepare('INSERT INTO public_stars VALUES (?, ?, ?, ?, ?, 0, ?, ?)');
+    for (let i = 0; i < 499; i++) seed.run(`seed-${i}`, otherId, 'wish', '海へ', 'held', now, now + 86400000);
+    const db = {
+      select: selection => {
+        let condition = () => true;
+        const items = () => {
+          if (selection?.number) return [{number: 1}];
+          // 両方の投稿が上限の手前で数えた場合を再現する。
+          if (selection?.value) return [{value: 0}];
+          if (selection?.id) return [];
+          return sqlite.prepare('SELECT id, orbit_id AS orbitId, kind, text, status, created_at AS createdAt, expires_at AS expiresAt FROM public_stars').all().filter(condition);
+        };
+        const chain = {from: () => chain, where: value => {condition = value; return chain;}, limit: async n => items().slice(0, n), then: resolve => resolve(items())};
+        return chain;
+      },
+      run: async statement => {
+        if (statement.strings[0].includes('INSERT OR IGNORE INTO public_stars')) sqlite.prepare(statement.strings.join('?')).run(...statement.values);
+      },
+    };
+    const route = loadRoute('route.ts', db);
+    const post = starId => route.POST(new Request('https://example.com/api/stars', {method: 'POST', body: JSON.stringify({orbitId, kind: 'wish', text: '海へ', starId})}));
+    const responses = await Promise.all([post(id(5)), post(id(6))]);
+    assert.deepEqual(responses.map(r => r.status).sort(), [200, 429]);
+    assert.equal(sqlite.prepare('SELECT COUNT(*) AS n FROM public_stars').get().n, 500);
+    const acceptedId = responses[0].status === 200 ? id(5) : id(6);
+    assert.equal((await post(acceptedId)).status, 200);
+  } finally {sqlite.close();}
 });
 
 function queueScene() {
@@ -298,3 +342,4 @@ test('他人の星も同じ北極中心の投影で描き、帰還後は薄く�
   sandbox.drawOtherStars(0);
   assert.equal(sandbox.otherStarPoints.length, 0);
 });
+import {DatabaseSync} from 'node:sqlite';
