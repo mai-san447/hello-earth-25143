@@ -525,7 +525,9 @@
       growthFocusKey = fulfilled.dataset.growthKey;
       fulfilled.disabled = true;
       saveFirstStepDraft(wish.id);
-      updateGrowth(wish.id, current => WishState.markFulfilled(current, Date.now()), '叶った星になりました。');
+      // 「叶ったよ」のひとことは、本当に叶ったときにだけ、任意で流せる
+      updateGrowth(wish.id, current => WishState.markFulfilled(current, Date.now()), '叶った星になりました。')
+        .then(result => { if (result?.ok && starsEnabled) openFulfilledSheet(); });
     });
     const receipt = document.createElement('button');
     receipt.type = 'button';
@@ -1649,7 +1651,8 @@
       if (gentle) $('#mission-status').textContent = gentle;
       // #22 想いを受け取ったら、任意で「叶ったよ」のひとことを流せる
       // 受け取ったら、帰還票（紙・シェア）をつくるシートを出す。みんなの星が開いている環境では、閉じたあと「叶ったよ」へ
-      if (updated.status === WishState.STATUS.DOING) openReceiptSheet(updated, {thenFulfilled: starsEnabled});
+      // 受け取った直後は、これから始める人が多い。「叶ったよ」は聞かず、帰還票で終わりにする（2026-10-12、本人の判断）
+      if (updated.status === WishState.STATUS.DOING) openReceiptSheet(updated);
       if (!backToOrbit) {
         // 受け取った願いは回収記録に入る。回収記録のボタンを一度だけ光らせて知らせる
         $('#mission-status').textContent = '受け取りました。一歩ふみ出すと、星が明るくなります';
@@ -1948,7 +1951,6 @@
   // ---- 帰還票をつくるシート。アプリが正本（一歩の記録）、紙とシェアは出口 ----
   const receiptSheet = $('#receipt-sheet');
   let receiptWishId = null;
-  let receiptThenFulfilled = false;
   let receiptPreviewTimer = null;
   let receiptRevealPending = false;
   let receiptPreviewVersion = 0;
@@ -1958,10 +1960,9 @@
     return wishes.find(wish => wish.id === receiptWishId) ?? null;
   }
 
-  function openReceiptSheet(wish, {thenFulfilled = false} = {}) {
+  function openReceiptSheet(wish) {
     rememberSheetFocus(receiptSheet, sheetFocus.get(returnCard) ?? document.activeElement);
     receiptWishId = wish.id;
-    receiptThenFulfilled = thenFulfilled;
     $('#receipt-first-step').value = growthDrafts.get(wish.id) ?? wish.firstStep ?? '';
     $('#receipt-include-text').checked = true;
     $('#receipt-status').textContent = '';
@@ -1981,10 +1982,8 @@
     receiptImage = null;
     receiptRevealPending = false;
     $('#receipt-preview').classList.remove('receipt-developing');
-    const wish = receiptWish();
     receiptWishId = null;
-    if (receiptThenFulfilled && wish?.status === WishState.STATUS.DOING) openFulfilledSheet();
-    else restoreSheetFocus(receiptSheet);
+    restoreSheetFocus(receiptSheet);
   }
 
   // 書いた一歩を、帰還票に使う前にアプリへ記録する（星を育てる記録の正本はアプリ）
