@@ -3,6 +3,7 @@ import {desc, eq, inArray} from "drizzle-orm";
 import {getDb} from "../../../db";
 import {publicStars, starReports, watchSettings} from "../../../db/schema";
 import {errorKind} from "../error-kind.mjs";
+import {rateLimit} from "../rate-limit";
 import {authorized, parseWatch, watchEnabled} from "./rules.mjs";
 import {readPaused} from "./settings";
 
@@ -11,6 +12,9 @@ function reply(body: unknown, status = 200) {
 }
 async function guard(request: Request) {
   if (!watchEnabled(env)) return reply({error: "見つかりません。"}, 404);
+  // 合言葉を試せるのは、同じ回線から1分5回まで（当て推量を止める）
+  const limited = await rateLimit(request, "/api/watch", {STARS_LIMITER: env.WATCH_LIMITER});
+  if (limited) return limited;
   if (!await authorized(env.WATCH_TOKEN!, request.headers.get("Authorization"))) {
     const error = new Error();
     console.error("watch authentication", errorKind(error));

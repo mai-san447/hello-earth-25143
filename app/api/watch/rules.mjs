@@ -1,7 +1,9 @@
 import {isStarId} from '../stars/rules.mjs';
 
+// 合言葉は16文字以上。試す回数を1分5回までに止めるので、覚えやすい長さでも機械で当てられない（2026-10-12、本人と決定）
+export const WATCH_TOKEN_MIN = 16;
 export function watchEnabled(env) {
-  return Boolean(env?.DB) && typeof env?.WATCH_TOKEN === 'string' && env.WATCH_TOKEN.length >= 32;
+  return Boolean(env?.DB) && typeof env?.WATCH_TOKEN === 'string' && env.WATCH_TOKEN.length >= WATCH_TOKEN_MIN;
 }
 
 // 長さが違っても両方を固定長のハッシュにし、最後まで比較する。
