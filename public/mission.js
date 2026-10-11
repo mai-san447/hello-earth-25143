@@ -695,14 +695,16 @@
       floatingText.append(menu);
     }
     floatingText.className = 'floating-wish' + (point.star ? ' floating-wish-other' : '') + (chance ? ' floating-wish-chance' : '');
+    // 自分で触れて出した言葉は、動かさずに長めに出す（「…」から通報できるよう、押せる時間と止まった的をつくる。2026-10-12）
+    const held = !chance;
     floatingText.style.left = `${Math.max(110, Math.min(width - 110, point.x))}px`;
     const dockTop = missionDock.getBoundingClientRect().top - app.getBoundingClientRect().top;
     floatingText.style.top = `${Math.max(40, Math.min(dockTop - 12, point.y - 20))}px`;
     floatingText.hidden = false;
     // 同じ星を続けて触っても、前の言葉が途中から再生されないようにする。
     void floatingText.offsetWidth;
-    floatingText.classList.add('floating-wish-visible');
-    floatingTimer = setTimeout(hideFloatingWish, 2500);
+    floatingText.classList.add(held ? 'floating-wish-held' : 'floating-wish-visible');
+    floatingTimer = setTimeout(hideFloatingWish, held ? 6000 : 2500);
   }
 
   function updateFloatingWish(time) {
