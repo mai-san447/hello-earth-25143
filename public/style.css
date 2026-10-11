@@ -555,3 +555,6 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 }
 #shake[hidden]{display:none}
 #shake[hidden]{display:none}
+/* 利用規約のルールの箇条書き */
+.policy-content ul{margin:8px 0 0;padding-left:1.2em;display:grid;gap:6px}
+.policy-content li{font-size:inherit;line-height:1.75}
