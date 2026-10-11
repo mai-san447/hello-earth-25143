@@ -46,8 +46,8 @@ test('ふつうの絵3種類とレアがどれも出て、レアは少ない', (
     counts.set(variant.id, counts.get(variant.id) + 1);
   }
   for (const variant of RECEIPT_VARIANTS) assert.ok(counts.get(variant.id) > 0, variant.id);
-  assert.ok(counts.get('meteor') < counts.get('night'));
-  assert.ok(counts.get('meteor') / 2000 < 0.2);
+  assert.ok(counts.get('double') < counts.get('night'));
+  assert.ok(counts.get('double') / 2000 < 0.2);
 });
 
 test('願いの言葉は、選んだときだけ入れる', () => {
@@ -96,7 +96,7 @@ test('紙の文字は最小限（あいさつ・説明の文は入れない）',
 test('観測の記録：場所（小数1桁）・帰ってきた日時・絵柄・番号を1行に。帰ってきたときの場所を優先する', () => {
   const time = new Date(2026, 9, 11, 21, 30).getTime();
   assert.equal(observationLine({observer: {lat: 35.68, lon: 139.76}, time, variant: {name: '夕方の一番星'}, serial: 412}), '観測 35.7°N 139.8°E 2026.10.11 21:30 ／ 夕方の一番星 No.0412');
-  assert.equal(observationLine({observer: {lat: -33.87, lon: -70.6}, time, variant: {name: '流れ星'}, serial: 7}), '観測 33.9°S 70.6°W 2026.10.11 21:30 ／ 流れ星 No.0007');
+  assert.equal(observationLine({observer: {lat: -33.87, lon: -70.6}, time, variant: {name: '二重星'}, serial: 7}), '観測 33.9°S 70.6°W 2026.10.11 21:30 ／ 二重星 No.0007');
   assert.equal(observationLine({observer: null, time, variant: {name: '夜明け'}, serial: 1}), '観測 2026.10.11 21:30 ／ 夜明け No.0001');
   const content = returnReceiptContent({wish: {...wish, returnedAt: time, observedAt: {lat: 43.06, lon: 141.36}}, now, observer: {lat: 35.68, lon: 139.76}});
   assert.match(content.observation, /^観測 43\.1°N 141\.4°E 2026\.10\.11 21:30 ／ /);

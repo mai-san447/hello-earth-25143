@@ -212,6 +212,9 @@
   let returningWish = null;
   let cardHideTimer;
   let openingCard = false;
+  // 叶った願いの流れ星（回収記録を閉じたときに1度だけ流す）
+  let pendingMeteorWishId = null;
+  let ownMeteor = null;
   let floatingTimer;
   let lastAutoWishId = null;
   let homeSince = null;
@@ -527,7 +530,11 @@
       saveFirstStepDraft(wish.id);
       // 「叶ったよ」のひとことは、本当に叶ったときにだけ、任意で流せる
       updateGrowth(wish.id, current => WishState.markFulfilled(current, Date.now()), '叶った星になりました。')
-        .then(result => { if (result?.ok && starsEnabled) openFulfilledSheet(); });
+        .then(result => {
+          if (!result?.ok) return;
+          pendingMeteorWishId = wish.id;
+          if (starsEnabled) openFulfilledSheet();
+        });
     });
     const receipt = document.createElement('button');
     receipt.type = 'button';
@@ -1226,12 +1233,13 @@
       let headY = y;
       context.save();
       if (star.kind === 'fulfilled') {
-        // 星ごとにずらして、12秒に1度だけ短く流れる（動きを減らす設定では、尾だけを描いて止める）
-        const cycle = reducedMotion ? 1 : (time / 12000 + seed.phase) % 1;
-        const streak = cycle < 0.14 ? cycle / 0.14 : 0;
-        headX = x + streak * 34;
-        headY = y + streak * 15;
-        const tail = 16 + streak * 30;
+        // 流れ星は「だれかの願いが叶った知らせ」（2026-10-12）。星ごとにずらして、14秒に1度、長めに流れる
+        // （動きを減らす設定では、尾だけを描いて止める）
+        const cycle = reducedMotion ? 1 : (time / 14000 + seed.phase) % 1;
+        const streak = cycle < 0.12 ? cycle / 0.12 : 0;
+        headX = x + streak * 110;
+        headY = y + streak * 46;
+        const tail = 18 + streak * 70;
         const tailGradient = context.createLinearGradient(headX - tail, headY - tail * .45, headX, headY);
         tailGradient.addColorStop(0, 'rgba(176, 212, 255, 0)');
         tailGradient.addColorStop(1, `rgba(214, 234, 255, ${0.5 + streak * 0.45})`);
@@ -1259,6 +1267,37 @@
       context.fill();
       context.restore();
     }
+  }
+
+  // 自分の願いが叶ったときの流れ星（1度だけ、約1.8秒）。叶った星は回収記録にあり星空には出ないので、
+  // 星空の上のほうから斜めに流す
+  function drawOwnMeteor(time) {
+    if (!ownMeteor || reducedMotion) { ownMeteor = null; return; }
+    const progress = (time - ownMeteor.startedAt) / 1800;
+    if (progress < 0) return;
+    if (progress >= 1) { ownMeteor = null; return; }
+    const startX = width * 0.18, startY = height * 0.16, endX = width * 0.78, endY = height * 0.42;
+    const ease = 1 - (1 - progress) ** 3;
+    const x = startX + (endX - startX) * ease, y = startY + (endY - startY) * ease;
+    const tail = 160 * (1 - progress * 0.5);
+    const angle = Math.atan2(endY - startY, endX - startX);
+    const gradient = context.createLinearGradient(x - Math.cos(angle) * tail, y - Math.sin(angle) * tail, x, y);
+    gradient.addColorStop(0, 'rgba(255, 228, 166, 0)');
+    gradient.addColorStop(1, `rgba(255, 246, 220, ${0.95 * (1 - progress * 0.6)})`);
+    context.save();
+    context.strokeStyle = gradient;
+    context.lineWidth = 2.2;
+    context.beginPath();
+    context.moveTo(x - Math.cos(angle) * tail, y - Math.sin(angle) * tail);
+    context.lineTo(x, y);
+    context.stroke();
+    context.fillStyle = '#fff6dc';
+    context.shadowColor = '#ffe3a0';
+    context.shadowBlur = 14;
+    context.beginPath();
+    context.arc(x, y, 2.6, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
   }
 
   function drawHayabusa(x, y, rotation, scale = 1) {
@@ -1372,6 +1411,7 @@
     else drawSpace(time);
     drawEarth();
     drawWishStars(time);
+    drawOwnMeteor(time);
     drawFlight(time);
     updateFloatingWish(time);
     if (!threeReady) drawItokawa(time);
@@ -1705,7 +1745,7 @@
     const context = canvas.getContext('2d', {willReadFrequently: true});
     const gray = value => `rgb(${value},${value},${value})`;
     const sky = context.createLinearGradient(0, 0, 0, height);
-    const tones = {dusk: [70, 210], night: [18, 85], dawn: [40, 225], meteor: [14, 70]}[variant.id];
+    const tones = {dusk: [70, 210], night: [18, 85], dawn: [40, 225], double: [10, 60]}[variant.id];
     sky.addColorStop(0, gray(tones[0]));
     sky.addColorStop(1, gray(tones[1]));
     context.fillStyle = sky;
@@ -1713,7 +1753,7 @@
     // 星は決まった並びで描く（同じ願いなら同じ絵）
     let seed = 7;
     const random = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
-    const starCount = {dusk: 14, night: 120, dawn: 30, meteor: 110}[variant.id];
+    const starCount = {dusk: 14, night: 120, dawn: 30, double: 110}[variant.id];
     context.fillStyle = gray(255);
     for (let index = 0; index < starCount; index += 1) {
       const radius = random() < 0.12 ? 2.6 : 1.4;
@@ -1743,17 +1783,18 @@
       context.fillRect(0, 0, width, height);
     }
     if (variant.rare) {
-      context.strokeStyle = gray(255);
-      context.lineWidth = 5;
-      context.beginPath();
-      context.moveTo(width * 0.08, height * 0.12);
-      context.lineTo(width * 0.42, height * 0.4);
-      context.stroke();
+      // 二重星：願いの星のすぐそばに、寄り添うもう1つの星
+      const pair = {x: star.x + 30, y: star.y + 18};
       context.lineWidth = 2;
+      for (const [dx, dy] of [[1, 0], [0, 1]]) {
+        context.beginPath();
+        context.moveTo(pair.x - dx * 16, pair.y - dy * 16);
+        context.lineTo(pair.x + dx * 16, pair.y + dy * 16);
+        context.stroke();
+      }
       context.beginPath();
-      context.moveTo(width * 0.03, height * 0.1);
-      context.lineTo(width * 0.42, height * 0.4);
-      context.stroke();
+      context.arc(pair.x, pair.y, 5, 0, Math.PI * 2);
+      context.fill();
     }
     // 丘と、空を見上げる人
     context.fillStyle = gray(variant.id === 'dusk' || variant.id === 'dawn' ? 30 : 5);
@@ -2343,6 +2384,8 @@
   }
   function closeArchive({restoreFocus = true} = {}) {
     $('#archive-sheet').hidden = true;
+    // 叶った願いがあれば、星空に戻ったときに、その星から流れ星を1本流す
+    if (pendingMeteorWishId) { ownMeteor = {wishId: pendingMeteorWishId, startedAt: performance.now() + 400}; pendingMeteorWishId = null; }
     missionDock.inert = false;
     if (restoreFocus) restoreSheetFocus($('#archive-sheet'));
     else sheetFocus.delete($('#archive-sheet'));
