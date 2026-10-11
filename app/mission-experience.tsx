@@ -212,7 +212,7 @@ export function MissionExperience({
             <p className="stars-status" id="star-card-status" role="status" aria-live="polite" />
           </div>
         </section>
-        {/* #22 想いを受け取ったあとの「叶ったよ」（任意・24時間の流れ星） */}
+        {/* #22 「叶った」と押したあとの「叶ったよ」（任意・24時間の流れ星）。流れ星は、だれかの願いが叶った知らせ */}
         <section className="stars-backdrop receipt-backdrop" id="receipt-sheet" role="dialog" aria-modal="true" aria-labelledby="receipt-title" hidden>
           <div className="stars-panel receipt-panel">
             <button className="sheet-close" id="receipt-x" type="button" aria-label="閉じる">×</button>
