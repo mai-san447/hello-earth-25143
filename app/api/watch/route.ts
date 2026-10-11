@@ -4,8 +4,8 @@ import {getDb} from "../../../db";
 import {publicStars, starReports, watchSettings} from "../../../db/schema";
 import {errorKind} from "../error-kind.mjs";
 import {rateLimit} from "../rate-limit";
-import {authorized, parseWatch, watchEnabled} from "./rules.mjs";
-import {readPaused} from "./settings";
+import {authorized, parseWatch, tooManyFailures, watchEnabled} from "./rules.mjs";
+import {readFailures, readPaused, recordFailure} from "./settings";
 
 function reply(body: unknown, status = 200) {
   return Response.json(body, {status, headers: {"Cache-Control": "no-store", "X-Robots-Tag": "noindex"}});
@@ -15,7 +15,10 @@ async function guard(request: Request) {
   // 合言葉を試せるのは、同じ回線から1分5回まで（当て推量を止める）
   const limited = await rateLimit(request, "/api/watch", {STARS_LIMITER: env.WATCH_LIMITER});
   if (limited) return limited;
+  const now = Date.now();
+  if (tooManyFailures(await readFailures(now))) return reply({error: "少し時間をおいてください。"}, 429);
   if (!await authorized(env.WATCH_TOKEN!, request.headers.get("Authorization"))) {
+    await recordFailure(now);
     const error = new Error();
     console.error("watch authentication", errorKind(error));
     return reply({error: "トークンを確認してください。"}, 401);

@@ -53,7 +53,7 @@ test('端末内の案内：注意語を揃え、ふつうの願いは変えな�
   assert.equal(new Set(stars.CAUTION_WORDS).size, stars.CAUTION_WORDS.length);
 });
 
-function load(file, {db, env = {}, readPaused = async () => true} = {}) {
+function load(file, {db, env = {}, readPaused = async () => true, failures = {count: 0}} = {}) {
   const exports = {};
   const logs = [];
   const require = specifier => {
@@ -62,7 +62,7 @@ function load(file, {db, env = {}, readPaused = async () => true} = {}) {
     if (specifier.endsWith('/db')) return {getDb: () => db};
     if (specifier.endsWith('/schema')) return {publicStars: {}, starReports: {}, watchSettings: {}, orbits: {}};
     if (specifier.endsWith('error-kind.mjs')) return {errorKind};
-    if (specifier.endsWith('/settings')) return {readPaused};
+    if (specifier.endsWith('/settings')) return {readPaused, readFailures: async () => failures.count, recordFailure: async () => { failures.count += 1; }};
     if (specifier.endsWith('rules.mjs')) return file.startsWith('watch/') && specifier === './rules.mjs' ? watch : stars;
     if (specifier === 'drizzle-orm') return new Proxy({}, {get: (_, key) => key === 'sql' ? (strings, ...values) => ({strings, values}) : () => ({})});
     throw new Error(specifier);
@@ -145,4 +145,35 @@ test('見守りAPI：再表示は通報数を戻し、削除は星と通報を�
     if (action === 'delete') assert.equal(batches, 1);
     if (action === 'pause' || action === 'resume') assert.equal(setting.value, action === 'pause' ? '1' : '0');
   }
+});
+
+test('見守りの合言葉は、全体で1分に5回まちがえたら、その1分は受け付けない', () => {
+  assert.equal(watch.tooManyFailures(4), false);
+  assert.equal(watch.tooManyFailures(5), true);
+  assert.equal(watch.tooManyFailures('7'), true);
+  // 同じ1分の中は同じ数え先、次の1分は新しい数え先
+  assert.equal(watch.failBucket(60000 * 10), watch.failBucket(60000 * 10 + 59999));
+  assert.notEqual(watch.failBucket(60000 * 10), watch.failBucket(60000 * 11));
+  // 一時停止の設定と数え先が混ざらない
+  assert.notEqual(watch.failBucket(0), 'paused');
+});
+
+test('見守りAPI：まちがいを数え、5回目のあとは合言葉を確かめずに429を返す', async () => {
+  const failures = {count: 0};
+  const {exports} = load('watch/route.ts', {env: {DB: {}, WATCH_TOKEN: token}, failures});
+  const wrong = () => exports.GET(new Request('https://example.com/api/watch', {headers: {Authorization: 'Bearer wrong-passphrase'}}));
+  for (let i = 0; i < 5; i += 1) assert.equal((await wrong()).status, 401);
+  assert.equal(failures.count, 5);
+  assert.equal((await wrong()).status, 429);
+  // 止まっている間は、正しい合言葉でも数を増やさず待ってもらう
+  const right = await exports.GET(new Request('https://example.com/api/watch', {headers: {Authorization: `Bearer ${token}`}}));
+  assert.equal(right.status, 429);
+  assert.equal(failures.count, 5);
+});
+
+test('まちがいの数が読めないときは、受け付けない側に倒す', async () => {
+  const db = {select() {throw new Error('private database details');}};
+  const {exports, logs} = load('watch/settings.ts', {db});
+  assert.equal(watch.tooManyFailures(await exports.readFailures(Date.now())), true);
+  assert.ok(!JSON.stringify(logs).includes('private database details'));
 });
