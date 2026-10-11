@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CHOICES, LIMITS, STATUS, candidatesWithTrial, canDeposit, checkReturnFrom, createWish, daysWaited, decide, gentleMessage, markReturned, nextReturnFrom, orbitingWishes, parseReturnFrom, pendingReturn, returnCandidates, returnFromLabel, returnFromRange, summarize, trialAvailable, waitedMessage} from '../public/wish-state.js';
+import {CHOICES, LIMITS, STATUS, candidatesWithTrial, canDeposit, checkReturnFrom, createWish, daysWaited, decide, gentleMessage, markReturned, nextReturnFrom, orbitingWishes, parseReturnFrom, pendingReturn, returnCandidates, returnFromLabel, returnFromRange, summarize, trialAvailable, waitedMessage, nextSeat, assignMissingSeats, seatOf, pickReturn} from '../public/wish-state.js';
 
 const at = (y, m, d, h = 12, min = 0) => new Date(y, m - 1, d, h, min).getTime();
 const wish = (overrides = {}) => ({id: 'a', text: '朝の海を歩きたい', status: STATUS.WAITING, createdAt: at(2026, 9, 22), updatedAt: at(2026, 9, 22), ...overrides});
@@ -188,4 +188,57 @@ test('#27 ふつうの候補があれば、そちらだけを出す', () => {
 
 test('書く言葉は12字まで（星空で1行・帰還票で1行におさまる長さ）', () => {
   assert.equal(LIMITS.textLength, 12);
+});
+
+test('預けられる願いは19個（北の星座3つの星の数）', () => {
+  assert.equal(LIMITS.orbit, 19);
+});
+
+test('席は空いているいちばん小さい番号。受け取った願いの席は空く', () => {
+  const seated = Array.from({length: 3}, (_, i) => wish({id: `s${i}`, seq: i + 1, seat: i}));
+  assert.equal(nextSeat(seated), 3);
+  const received = [{...seated[0], status: STATUS.DOING}, seated[1], seated[2]];
+  assert.equal(nextSeat(received), 0);
+  // 判断待ち（着地したカプセル）は、もう少し預けると星空へ戻るので席を持ったまま
+  const landed = [{...seated[0], status: STATUS.RETURNED}, seated[1], seated[2]];
+  assert.equal(nextSeat(landed), 3);
+  const full = Array.from({length: LIMITS.orbit}, (_, i) => wish({id: `f${i}`, seat: i}));
+  assert.equal(nextSeat(full), null);
+  assert.equal(createWish({id: 'n', text: 'x', now: 1, seat: 4}).seat, 4);
+});
+
+test('番号が20を超えても、空いた席に置くので星が重ならない', () => {
+  // 1〜19番を預け、1番を受け取ってから20番を預けた人
+  const wishes = Array.from({length: 19}, (_, i) => wish({id: `w${i + 1}`, seq: i + 1, seat: i}));
+  wishes[0] = {...wishes[0], status: STATUS.DOING};
+  const seat = nextSeat(wishes);
+  assert.equal(seat, 0);
+  const all = [...wishes, wish({id: 'w20', seq: 20, seat})];
+  const seats = all.filter(item => item.status === STATUS.WAITING).map(item => seatOf(item, all));
+  assert.equal(new Set(seats).size, seats.length);
+});
+
+test('席のない前からの願いは、預けた順に空いている席を受け取る。席が足りなければ19から先', () => {
+  const legacy = [wish({id: 'b', seq: 2}), wish({id: 'a', seq: 1}), wish({id: 'c', seq: 3, seat: 0}), wish({id: 'd', seq: 4, status: STATUS.DOING})];
+  const updated = assignMissingSeats(legacy);
+  assert.deepEqual(updated.map(item => [item.id, item.seat]), [['a', 1], ['b', 2]]);
+  assert.equal(seatOf(legacy[1], legacy), 1);
+  assert.equal(seatOf(legacy[2], legacy), 0);
+  // 重なった席は、後の願いを付け直す
+  const twins = [wish({id: 'x', seq: 1, seat: 5}), wish({id: 'y', seq: 2, seat: 5})];
+  assert.deepEqual(assignMissingSeats(twins).map(item => [item.id, item.seat]), [['y', 0]]);
+  // 前に25個預けていた人は、19から先の席になる（2周目として描く）
+  const many = Array.from({length: 25}, (_, i) => wish({id: `m${i}`, seq: i + 1}));
+  const seats = assignMissingSeats(many).map(item => item.seat);
+  assert.deepEqual(seats, Array.from({length: 25}, (_, i) => i));
+  assert.equal(canDeposit(many), false);
+});
+
+test('ガチャは前に帰ってきた願いを続けて選ばない（候補が1つなら、それを返す）', () => {
+  const two = [wish({id: 'a'}), wish({id: 'b'})];
+  for (const r of [0, .3, .6, .99]) assert.equal(pickReturn(two, 'a', r).id, 'b');
+  assert.equal(pickReturn([wish({id: 'a'})], 'a', .5).id, 'a');
+  assert.equal(pickReturn([], 'a'), null);
+  const three = [wish({id: 'a'}), wish({id: 'b'}), wish({id: 'c'})];
+  assert.deepEqual([0, .5, .99].map(r => pickReturn(three, null, r).id), ['a', 'b', 'c']);
 });

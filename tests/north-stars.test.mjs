@@ -35,9 +35,9 @@ test('20個目以降は19個周期で同じ恒星へ戻り、重なる位置だ�
   }
 });
 
-test('waitingとdoingだけ空に灯し、doingは一歩ごとに明るくなる', () => {
+test('預けている願いだけ空に灯す。受け取った願いは空から消え、一歩ごとに明るくなる', () => {
   const wishes = ['waiting','doing','returned','done','later','expired'].map((status, i) => ({id: i, status, seq: i + 1}));
-  assert.deepEqual(skyWishes(wishes).map(w => w.status), ['waiting','doing']);
+  assert.deepEqual(skyWishes(wishes).map(w => w.status), ['waiting']);
   assert.equal(magnitude(wishes[1]), 6);
   assert.equal(magnitude(recordStep(wishes[1], Date.UTC(2026,9,7))), 5);
   assert.equal(magnitude(wishes[0]), null);

@@ -19,9 +19,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 // #17 登録できる数とルール（講師の質問から、使う人と場面を想定して決めた）
 export const LIMITS = Object.freeze({
-  // 軌道に置ける願い。1日1つ帰すと約1か月分。
+  // 預けておける願い。北の星座3つ（北斗七星・カシオペヤ座・こぐま座）の星の数と同じ19個。
+  // 1つの星に1つの願いが灯り、重ならない。満杯は「3つの星座がそろった」とき（2026-10-12 本人と決定。以前は30個で、20個目から同じ星に重なっていた）。
   // 多すぎると「やりたいことリストが重荷になる」という出発点の課題に戻る
-  orbit: 30,
+  orbit: 19,
   // 書く言葉（願い・最初の一歩・叶ったよ）の文字数。星空に浮かんでも帰還票でも1行で読める長さ（2026-10-12 本人と決定。以前は60字と40字）
   textLength: 12,
   // 帰ってくる日は、翌日から1年後まで。打ち間違いを防ぎ、端末の保存が消えるリスクも抑える
@@ -31,7 +32,7 @@ export const LIMITS = Object.freeze({
 });
 
 // 判断を待っている願い（着地したカプセル）も「もう少し預ける」で星空へ戻りうるので、枠に数える。
-// 数えないと、30個のときに1つ帰して新しく預け、戻すと31個になっていた（2026-10-07 レビュー）
+// 数えないと、満杯のときに1つ帰して新しく預け、戻すと上限を1つ超えていた（2026-10-07 レビュー）
 export function canDeposit(wishes) {
   return wishes.filter(wish => wish.status === STATUS.WAITING || wish.status === STATUS.RETURNED).length < LIMITS.orbit;
 }
@@ -102,9 +103,49 @@ export function orbitingWishes(wishes) {
   return wishes.filter(wish => wish.status === STATUS.WAITING);
 }
 
-// 星空に灯す願い。判断待ち・アーカイブは描かない。飛行中の除外は描画側で行う。
+// 星空に灯す願い。預けている願いだけ。受け取った願いは星空から消え、回収記録で育つ（2026-10-12 本人と決定）。
+// 判断待ち（着地したカプセル）・アーカイブも描かない。飛行中の除外は描画側で行う。
 export function skyWishes(wishes) {
-  return wishes.filter(wish => wish.status === STATUS.WAITING || wish.status === STATUS.DOING);
+  return wishes.filter(wish => wish.status === STATUS.WAITING);
+}
+
+// 星の席。預けている願い（判断待ちを含む）が、星座の星を1つずつ受け持つ。
+// 番号（seq）は使い回さないので、番号で星を決めると、帰った願いの席が空いたままになり、20番目が1番目の星に重なる。
+// そのため、預けたときに空いているいちばん小さい席を選び、願いに固定する。帰ってきて受け取れば、席は空く。
+const seatHolders = wishes => wishes.filter(wish => wish.status === STATUS.WAITING || wish.status === STATUS.RETURNED);
+const validSeat = seat => Number.isInteger(seat) && seat >= 0;
+
+// 次に預ける願いの席。空きがなければ null（canDeposit が先に止める）
+export function nextSeat(wishes) {
+  const used = new Set(seatHolders(wishes).map(wish => wish.seat).filter(validSeat));
+  for (let seat = 0; seat < LIMITS.orbit; seat++) if (!used.has(seat)) return seat;
+  return null;
+}
+
+// 席を持たない前からの願い（と、重なった席）に、預けた順で空いている席を付ける（開いたときに1回）。
+// 前に20個以上預けていた人は席が足りないので、19から先の番号にする（星は2周目として、少しずらして描く）。
+// 返すのは、席を付け直した願い（保存し直すもの）
+export function assignMissingSeats(wishes) {
+  const holders = seatHolders(wishes)
+    .sort((a, b) => (a.seq ?? Infinity) - (b.seq ?? Infinity) || a.createdAt - b.createdAt || String(a.id).localeCompare(String(b.id)));
+  const used = new Set();
+  const needs = [];
+  for (const wish of holders) {
+    if (validSeat(wish.seat) && !used.has(wish.seat)) used.add(wish.seat);
+    else needs.push(wish);
+  }
+  let seat = 0;
+  return needs.map(wish => {
+    while (used.has(seat)) seat++;
+    used.add(seat);
+    return {...wish, seat};
+  });
+}
+
+// 描くときの席。保存前でも、assignMissingSeats と同じ席を返す
+export function seatOf(wish, wishes) {
+  if (validSeat(wish.seat) && seatHolders(wishes).filter(item => item.seat === wish.seat)[0]?.id === wish.id) return wish.seat;
+  return assignMissingSeats(wishes).find(item => item.id === wish.id)?.seat ?? wish.seat ?? 0;
 }
 
 // 帰還の候補。#7：帰ってくる日（returnFrom）が決まっている願いは、その日になるまで帰らない。
@@ -164,9 +205,10 @@ export function wishNumber(personNumber, seq) {
   return `${personNumber}-${String(seq).padStart(2, '0')}`;
 }
 
-export function createWish({id, text, now, returnFrom = null, seq = null}) {
+export function createWish({id, text, now, returnFrom = null, seq = null, seat = null}) {
   const wish = {id, text, status: STATUS.WAITING, createdAt: now, updatedAt: now};
   if (Number.isInteger(seq) && seq > 0) wish.seq = seq;
+  if (validSeat(seat)) wish.seat = seat;
   // 今日より後の日付のときだけ持たせる。空欄や過去の日付は「すぐ帰還の候補」
   if (Number.isFinite(returnFrom) && returnFrom > now) wish.returnFrom = returnFrom;
   return wish;
@@ -313,4 +355,13 @@ export function growthMessage(wish) {
 // 帰還の途中で別タブの変更を見せると、今選んでいる願いが入れ替わるため待つ。
 export function canReloadWishes({flying, cardOpen, receiptOpen}) {
   return !flying && !cardOpen && !receiptOpen;
+}
+
+// 振る・「ひとつ帰す」で帰ってくる願い（ガチャ）。候補が2つ以上あれば、前に帰ってきた願いは続けて選ばない。
+// 完全なランダムだと、候補が2つのとき半分の確率で同じ願いが続き、「何度やっても同じものが戻る」と感じられた（2026-10-12 本人の声）
+export function pickReturn(candidates, lastId = null, random = Math.random()) {
+  if (!candidates.length) return null;
+  const pool = candidates.length > 1 && lastId != null ? candidates.filter(wish => wish.id !== lastId) : candidates;
+  const list = pool.length ? pool : candidates;
+  return list[Math.min(list.length - 1, Math.floor(random * list.length))];
 }

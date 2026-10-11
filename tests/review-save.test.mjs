@@ -36,7 +36,9 @@ function scene({fail = false, text = '見学を予約する', status = 'doing'} 
       if (fail) throw new Error('IndexedDB failed');
       return action({put: wish => {calls.push('put'); sandbox.persisted = wish;}});
     },
-    writeStorage: () => {calls.push('trial'); sandbox.used = true;},
+    // 前に帰ってきた願いの記録（LAST_RETURN_KEY）は、試しの記録と分けて数える
+    LAST_RETURN_KEY: 'last', readStorage: () => null, hideFloatingWish() {},
+    writeStorage: key => { if (key === 'trial') {calls.push('trial'); sandbox.used = true;} },
   };
   sandbox.currentWish = id => sandbox.wishes.find(w => w.id === id);
   sandbox.receiptWish = () => sandbox.currentWish('w');

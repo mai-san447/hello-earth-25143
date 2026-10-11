@@ -79,6 +79,7 @@
   // 検証・評価（docs/検証計画.md）：アプリを開いた日だけを端末に控える。願いの中身は含まない
   const OPEN_DAYS_KEY = 'morune-25143-open-days';
   const TRIAL_KEY = 'morune-25143-first-return-used';
+  const LAST_RETURN_KEY = 'morune-25143-last-return';
   function readOpenDays() {
     try {
       const days = JSON.parse(readStorage(OPEN_DAYS_KEY) || '[]');
@@ -657,7 +658,8 @@
   }
 
   function wishStarPosition(wish) {
-    const slot = Sky.northStarForSeq(WishState.wishSeqOf(wish, wishes));
+    // 星は席で決める（番号ではない）。席は19個＝北の星座3つの星
+    const slot = Sky.northStarForSeq(WishState.seatOf(wish, wishes) + 1);
     const point = projectNorthStar(slot.constellation, slot.starIndex);
     return point && {...point, x: point.x + slot.offsetX, y: point.y + slot.offsetY};
   }
@@ -694,6 +696,16 @@
       menu.addEventListener('click', () => openStarCard(point.star));
       menu.addEventListener('focus', () => clearTimeout(floatingTimer));
       floatingText.append(menu);
+    } else if (!chance && !returningWish && !returnFlight && readyToReturn().some(wish => wish.id === point.wish.id)) {
+      // 自分の星をタップしたときだけ、その願いを選んで帰せる（振るのはガチャ、タップは指名。2026-10-12 本人の提案）
+      const call = document.createElement('button');
+      call.type = 'button';
+      call.className = 'floating-return';
+      call.textContent = '帰す';
+      call.setAttribute('aria-label', `「${point.wish.text}」を帰す`);
+      call.addEventListener('click', () => returnOne(point.wish));
+      call.addEventListener('focus', () => clearTimeout(floatingTimer));
+      floatingText.append(call);
     }
     floatingText.className = 'floating-wish' + (point.star ? ' floating-wish-other' : '') + (chance ? ' floating-wish-chance' : '');
     // 自分で触れて出した言葉は、動かさずに長めに出す（「…」から通報できるよう、押せる時間と止まった的をつくる。2026-10-12）
@@ -1605,7 +1617,8 @@
     } catch {}
   }
 
-  function returnOne() {
+  // chosen：星をタップして選んだ願い。なければ振る・「ひとつ帰す」のガチャで選ぶ
+  function returnOne(chosen = null) {
     if (returningWish && landed && !returnFlight) {
       $('#mission-status').textContent = '帰ってきた願いが待っています。先にカプセルを開いてください';
       return;
@@ -1616,7 +1629,10 @@
       $('#mission-status').textContent = orbiting().length ? waitingForStartMessage() : 'すべての願いは地球にあります';
       return;
     }
-    returningWish = candidates[Math.floor(Math.random() * candidates.length)];
+    returningWish = (chosen && candidates.find(wish => wish.id === chosen.id)) ||
+      WishState.pickReturn(candidates, readStorage(LAST_RETURN_KEY));
+    writeStorage(LAST_RETURN_KEY, returningWish.id);
+    hideFloatingWish();
     if (launchFlight?.wish.id === returningWish.id) launchFlight = null;
     returnFlight = {
       wish: returningWish,
@@ -2227,7 +2243,7 @@
       return;
     }
     const now = Date.now();
-    // #17 軌道に置ける願いは30個まで。いっぱいのときは預けず、入力は残す
+    // #17 預けておける願いは19個まで（北の星座3つの星の数）。いっぱいのときは預けず、入力は残す
     if (!WishState.canDeposit(wishes)) {
       depositStatus.textContent = `預けられるのは${WishState.LIMITS.orbit}個までです。1つ受け取ると、また預けられます。`;
       return;
@@ -2252,7 +2268,7 @@
     try {
       const seq = WishState.nextWishSeq(wishes, Number(readStorage(WISH_SEQ_KEY)) || 0);
       writeStorage(WISH_SEQ_KEY, String(seq));
-      const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time, seq});
+      const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time, seq, seat: WishState.nextSeat(wishes)});
       await store('readwrite', object => object.put(wish));
       wishes = [...wishes, wish];
       // 最初に預けたとき、人の番号を受け取る（ネットがなければ、つながったときに）
@@ -2744,6 +2760,19 @@
     }
   }
 
+  // 席を持たない前からの願いに、空いている席を付けて保存する。保存できなくても、描くときは同じ席を使う
+  async function fixWishSeats() {
+    const seated = WishState.assignMissingSeats(wishes);
+    if (!seated.length) return;
+    try {
+      for (const wish of seated) await store('readwrite', object => object.put(wish));
+      const byId = new Map(seated.map(wish => [wish.id, wish]));
+      wishes = wishes.map(wish => byId.get(wish.id) ?? wish);
+    } catch (error) {
+      console.error('fix wish seats', error);
+    }
+  }
+
   // 人の番号を受け取る。願いを1つでも預けていて、まだ番号がないときだけ。失敗しても預けることは止めない
   let numbering = false;
   async function ensureNumber() {
@@ -3103,6 +3132,7 @@
   }
   showIntroIfFirstTime();
   await fixWishSeq();
+  await fixWishSeats();
   ensureNumber();
   showConnection();
   registerOfflineSupport();

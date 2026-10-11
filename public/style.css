@@ -498,6 +498,8 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 .floating-wish[hidden]{display:none}
 .floating-star-menu{pointer-events:auto;border:0;background:rgba(8,16,32,.8);color:#d8e9ff;border-radius:50%;margin-left:6px;min-width:32px;min-height:32px;font-size:18px;cursor:pointer}
 .floating-star-menu:focus-visible{outline:2px solid #eacb83}
+.floating-return{pointer-events:auto;margin-left:8px;min-height:32px;padding:0 12px;border:1px solid rgba(234,203,131,.7);border-radius:9999px;background:rgba(8,16,32,.8);color:#f5ead1;font-size:13px;letter-spacing:.08em;cursor:pointer}
+.floating-return:focus-visible{outline:2px solid #eacb83}
 .floating-wish-other{color:#d8e9ff}
 .visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
 .sky-reader:focus-visible{position:relative;width:auto;height:auto;margin:0;clip-path:none;white-space:normal;background:#142139;color:#e9eef8;padding:8px;border:1px solid #eacb83;border-radius:6px}
@@ -568,4 +570,4 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 /* 触れて出した言葉：動かさずに6秒（押しやすく、読みやすく） */
 .floating-wish-held{animation:wish-hold 6s ease-out both}
 @keyframes wish-hold{0%{opacity:0}6%,88%{opacity:1}100%{opacity:0}}
-.floating-wish:has(.floating-star-menu:hover),.floating-wish:has(.floating-star-menu:focus-visible){animation-play-state:paused}
+.floating-wish:has(.floating-star-menu:hover),.floating-wish:has(.floating-star-menu:focus-visible),.floating-wish:has(.floating-return:hover),.floating-wish:has(.floating-return:focus-visible){animation-play-state:paused}

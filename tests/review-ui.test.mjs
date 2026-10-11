@@ -137,7 +137,7 @@ test('約束を断った後でも、公開を選び直すと同意の窓を開�
 test('浮かぶ言葉は操作バーの上端より上に置く', () => {
   const sandbox = {floatingText: {style: {}, classList: {add() {}}}, width: 400, height: 800,
     app: {getBoundingClientRect: () => ({top: 0})}, missionDock: {getBoundingClientRect: () => ({top: 600})},
-    hideFloatingWish() {}, setTimeout() {}, floatingTimer: null};
+    hideFloatingWish() {}, setTimeout() {}, floatingTimer: null, returningWish: null, returnFlight: null, readyToReturn: () => []};
   vm.createContext(sandbox);
   vm.runInContext(functionSource('showFloatingWish'), sandbox);
   sandbox.showFloatingWish({x: 200, y: 790, wish: {text: '星を見る'}});
