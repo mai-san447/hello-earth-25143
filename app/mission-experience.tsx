@@ -50,7 +50,7 @@ export function MissionExperience({
           </div>
           <div className="mission-dock-meta">
             <p className="gesture-hint" id="gesture-hint">願いを預けると、星がひとつ灯ります</p>
-            <button className="others-trigger" id="others-open" type="button" hidden>みんなの星 <span id="others-count">0</span></button>
+            <button className="visually-hidden sky-reader" id="others-read" type="button" hidden>みんなの願いを読む</button>
             <button className="archive-trigger" id="archive-open" type="button">回収記録 <span id="archive-count">0</span></button>
           </div>
         </section>
@@ -66,13 +66,13 @@ export function MissionExperience({
             <input id="return-from" type="date" aria-describedby="return-from-hint" />
             <p id="return-from-hint">この日までは帰ってきません。空欄なら、すぐ帰還の候補になります。</p>
           </div>
-          {/* #22 みんなの星。サーバーの準備ができた環境でだけ出す（初期値は「流さない」） */}
+          {/* #22 みんなの星。サーバーの準備ができた環境でだけ出す（自分だけの星を選べるようにする） */}
           <div className="publish-field" id="publish-field" hidden>
             <label className="publish-option">
               <input id="publish-wish" type="checkbox" aria-describedby="publish-hint" />
-              この願いを、名前を出さずに星空に流す
+              自分だけの星にする（みんなの星空に出さない）
             </label>
-            <p id="publish-hint">言葉だけが30日間、ほかの人の星空に小さく出ます。預けた願いは、これまでどおりこの端末の中にあります。</p>
+            <p id="publish-hint">願いは名前なしで、みんなの星空に灯ります</p>
           </div>
           <button className="launch-button" id="deposit" type="button">星へ送る <span aria-hidden="true">↗</span></button>
           <p className="sheet-status" id="deposit-status" role="status" />
@@ -134,7 +134,7 @@ export function MissionExperience({
           <div className="policy-panel">
             <button className="policy-close" id="policy-close" type="button" aria-label="利用規約を閉じる">×</button>
             <h2 id="policy-title">利用規約・プライバシー</h2>
-            <p className="policy-updated">内容更新日：2026年10月7日</p>
+            <p className="policy-updated">内容更新日：2026年10月11日</p>
             <div className="policy-content" id="policy-content" tabIndex={0}>
               <section>
                 <h3>運営者</h3>
@@ -146,7 +146,7 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>入力内容と保存</h3>
-                <p>願いは60文字以内で入力できます。預けられる願いは30個まで、帰還が始まる日は翌日から1年後までです。願いと回収記録はこのブラウザーのIndexedDBにだけ保存され、運営者やサーバーには送られません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないとサイトの保存が消えることがあります）。</p>
+                <p>願いは60文字以内で入力できます。預けられる願いは30個まで、帰還が始まる日は翌日から1年後までです。願いと回収記録はこのブラウザーのIndexedDBに保存されます。みんなの星空が開いている環境では、公開する願いの言葉をサーバーにも送ります。「自分だけの星にする」を選んだ願いは送りません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないとサイトの保存が消えることがあります）。</p>
                 <p>ほかの人に見られたくない内容を書くときは、端末の画面ロックをお使いください。パスワードや、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
               </section>
               <section>
@@ -155,7 +155,13 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>番号</h3>
-                <p>はじめて願いを預けた端末には「25143-0001」のような番号を付け、願いごとに「25143-0001-03」のような番号を付けます。端末の番号を付けるときだけ、この端末で作ったランダムな識別子（軌道ID）と番号を付けた時刻を運営者のデータベースに保存します（願いの内容・名前・IPアドレスは保存しません）。願いごとの番号は端末の中で数え、送信しません。これはこの作品の中だけの番号で、本物の星や小惑星の名前ではありません。国際天文学連合（IAU）やJAXAとは関係ありません。</p>
+                <p>はじめて願いを預けた端末には「25143-0001」のような番号を付け、願いごとに「25143-0001-03」のような番号を付けます。端末の番号を付けるときだけ、この端末で作ったランダムな識別子（軌道ID）と番号を付けた時刻を運営者のデータベースに保存します（番号の発行では願いの内容・名前・IPアドレスは保存しません）。願いごとの番号は端末の中で数え、送信しません。これはこの作品の中だけの番号で、本物の星や小惑星の名前ではありません。国際天文学連合（IAU）やJAXAとは関係ありません。</p>
+              </section>
+              <section>
+                <h3>みんなの星空</h3>
+                <p>預けた願いは、初期設定では名前なしでみんなの星空に公開されます。「自分だけの星にする」を選べば、その願いはサーバーに送りません。みんなの星空が止まっている環境では、これまでどおり端末の中だけに預かります。</p>
+                <p>公開する言葉・軌道ID（端末で作るランダムな識別子）・時刻を保存します。名前・メールアドレス・IPアドレスは保存しません。表示は最長400日、帰ってきた星は帰還から30日残ります。「叶ったよ」は24時間です。気になる言葉は運営が確認してから出し、通報が3件届くと非表示にします。</p>
+                <p>自分の言葉は回収記録からいつでも消せます。ネットがないときの削除は控え、つながったときに送ります。削除の依頼は<a href="https://morune.store/contact" target="_blank" rel="noopener noreferrer">問い合わせフォーム</a>からお願いします。</p>
               </section>
               <section>
                 <h3>X でのシェア</h3>
@@ -181,18 +187,18 @@ export function MissionExperience({
         <section className="stars-backdrop" id="promise-sheet" role="dialog" aria-modal="true" aria-labelledby="promise-title" hidden>
           <div className="stars-panel">
             <p className="sheet-kicker">STARS OF EVERYONE</p>
-            <h2 id="promise-title">星空に流す前に、3つの約束</h2>
+            <h2 id="promise-title">みんなの星空に出す前に</h2>
             <ul className="promise-list">
-              <li>やさしい言葉だけを流します</li>
-              <li>名前・連絡先・病院名は書きません</li>
-              <li>他の人の願いを笑いません</li>
+              <li>誰かを傷つける言葉は書かない</li>
+              <li>名前や連絡先は書かない</li>
+              <li>ほかの人の願いを笑わない</li>
             </ul>
-            <p className="stars-note">流れるのは言葉だけです。名前や端末の情報は出ません。願いは30日、「叶ったよ」は24時間で空から消えます。</p>
-            <button className="stars-primary" id="promise-agree" type="button">約束して流す</button>
-            <button className="stars-secondary" id="promise-decline" type="button">今は流さない</button>
+            <p className="stars-note">願いは名前なしで灯ります。帰ってくるのは、自分の願いだけです。</p>
+            <button className="stars-primary" id="promise-agree" type="button">星空に出す</button>
+            <button className="stars-secondary" id="promise-decline" type="button">自分だけの星にする</button>
           </div>
         </section>
-        {/* 他の人の星に触れたときのカード。できるのは信号と通報だけ（返信・いいねの数は作らない） */}
+        {/* 他の人の星に触れたときのカード。気になる言葉を通報できるようにする（返信・いいねの数は作らない） */}
         <section className="stars-backdrop" id="star-card" role="dialog" aria-modal="true" aria-labelledby="star-card-text" hidden>
           <div className="stars-panel star-card">
             <button className="sheet-close" id="star-card-close" type="button" aria-label="閉じる">×</button>
@@ -200,8 +206,7 @@ export function MissionExperience({
             <h2 id="star-card-text" />
             <p className="stars-note">名前を出さずに流された言葉です。</p>
             <div className="star-card-actions" id="star-card-actions">
-              <button className="stars-primary" id="star-signal" type="button">応援の信号を送る</button>
-              <button className="star-report" id="star-report" type="button">通報</button>
+              <button className="star-report" id="star-report" type="button">この言葉を通報する</button>
             </div>
             <div className="star-report-confirm" id="star-report-confirm" hidden>
               <p>この言葉を通報しますか。運営者が確かめます。</p>

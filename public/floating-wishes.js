@@ -20,8 +20,9 @@ export const AUTO_INTERVAL_MS = 8000;
 
 // 続けて同じ星を選ばないよう、直前の星は（ほかに候補があれば）除いてから選ぶ
 export function nextAutoStar(points, lastId, random) {
-  const others = points.length > 1 ? points.filter(point => point.wish?.id !== lastId) : points;
-  return randomStar(others, random);
+  const others = points.length > 1 ? points.filter(point => (point.star?.id ?? point.wish?.id) !== lastId) : points;
+  // 自分の星を少し多めに読み、他の人の言葉だけで空が埋まらないようにする。
+  return randomStar(others.flatMap(point => point.star ? [point] : [point, point]), random);
 }
 
 // 乱数を外から渡して、空の星空や選ばれる端の星も確かめられるようにする。

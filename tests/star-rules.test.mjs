@@ -5,7 +5,7 @@ import {
   publicStarsEnabled,
   CAUTION_WORDS, DAILY_LIMIT, MAX_LENGTH, REPORT_HIDE_THRESHOLD, SKY_LIMIT, TTL_MS,
   acceptPublish, expiresAt, formatNumber, isShowable, isStarId, normalizeText, parsePublish,
-  parseReport, parseStarSignal, publicStar, screenText, statusAfterReport,
+  parseReport, publicStar, screenText, statusAfterReport,
 } from '../app/api/stars/rules.mjs';
 
 const orbitId = '3f2b8c1e-9a4d-4b7e-8c21-5d6e7f809a1b';
@@ -13,12 +13,12 @@ const otherOrbit = '7a1c2d3e-4f50-4a6b-9c7d-8e9f0a1b2c3d';
 const starId = 'c0ffee00-1234-4abc-8def-0123456789ab';
 const DAY = 24 * 60 * 60 * 1000;
 
-test('決めた数：60字・40字、1日3つ、30日と24時間、12個、通報3件', () => {
+test('決めた数：60字・40字、願いは1日10個、400日と24時間、24個、通報3件', () => {
   assert.deepEqual({...MAX_LENGTH}, {wish: 60, fulfilled: 40});
-  assert.deepEqual({...DAILY_LIMIT}, {wish: 3, fulfilled: 3});
-  assert.equal(TTL_MS.wish, 30 * DAY);
+  assert.deepEqual({...DAILY_LIMIT}, {wish: 10, fulfilled: 3});
+  assert.equal(TTL_MS.wish, 400 * DAY);
   assert.equal(TTL_MS.fulfilled, DAY);
-  assert.equal(SKY_LIMIT, 12);
+  assert.equal(SKY_LIMIT, 24);
   assert.equal(REPORT_HIDE_THRESHOLD, 3);
 });
 
@@ -94,17 +94,17 @@ test('文字数：願いは60字、叶ったよは40字まで（絵文字も1字
   assert.equal(parsePublish({orbitId, kind: 'fulfilled', text: '🌠'.repeat(40)}).ok, true);
 });
 
-test('1つの軌道から、願いも叶ったよも1日3つまで', () => {
+test('1つの軌道から、願いは1日10個、叶ったよは1日3つまで', () => {
   for (const kind of ['wish', 'fulfilled']) {
     assert.deepEqual(acceptPublish({kind, dailyCount: 0}), {ok: true});
-    assert.deepEqual(acceptPublish({kind, dailyCount: 2}), {ok: true});
-    assert.equal(acceptPublish({kind, dailyCount: 3}).status, 429);
+    assert.deepEqual(acceptPublish({kind, dailyCount: DAILY_LIMIT[kind] - 1}), {ok: true});
+    assert.equal(acceptPublish({kind, dailyCount: DAILY_LIMIT[kind]}).status, 429);
   }
 });
 
-test('有効期限：願いは30日後、叶ったよは24時間後', () => {
+test('有効期限：願いは400日後、叶ったよは24時間後', () => {
   const now = Date.UTC(2026, 8, 30);
-  assert.equal(expiresAt('wish', now), now + 30 * DAY);
+  assert.equal(expiresAt('wish', now), now + 400 * DAY);
   assert.equal(expiresAt('fulfilled', now), now + DAY);
 });
 
@@ -126,16 +126,13 @@ test('通報は3件で非表示。保留と非表示はそのまま', () => {
   assert.equal(statusAfterReport({status: 'hidden', reports: 1}), 'hidden');
 });
 
-test('通報と信号の形を確かめる（null でも 400）', () => {
+test('通報の形を確かめる（null でも 400）', () => {
   assert.equal(isStarId(starId), true);
   assert.equal(isStarId(`${starId}'--`), false);
   for (const body of [null, 1, [], {}, {starId}, {reporterOrbitId: orbitId}, {starId: 'x', reporterOrbitId: orbitId}]) {
     assert.equal(parseReport(body).status, 400, JSON.stringify(body));
   }
   assert.deepEqual(parseReport({starId, reporterOrbitId: orbitId}), {ok: true, value: {starId, reporterOrbitId: orbitId}});
-  assert.equal(parseStarSignal(null).status, 400);
-  assert.equal(parseStarSignal({starId: 'x'}).status, 400);
-  assert.deepEqual(parseStarSignal({starId}), {ok: true, value: {starId}});
 });
 
 test('枝番は 25143-0001 の形。この作品の中だけの番号', () => {
@@ -149,7 +146,7 @@ test('枝番は 25143-0001 の形。この作品の中だけの番号', () => {
 
 test('返す星には、軌道ID・状態・通報数を含めない', () => {
   const row = {id: starId, orbitId, kind: 'wish', text: '海', status: 'visible', reports: 2, createdAt: 1, expiresAt: 2};
-  assert.deepEqual(publicStar(row), {id: starId, kind: 'wish', text: '海', expiresAt: 2});
+  assert.deepEqual(publicStar(row), {id: starId, kind: 'wish', text: '海', expiresAt: 2, returned: false});
 });
 
 test('みんなの星は、D1 があってもスイッチが "true" のときだけ開く', () => {

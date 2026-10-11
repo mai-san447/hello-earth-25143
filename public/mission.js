@@ -46,7 +46,7 @@
   }
 
   // #22 みんなの星。他の人の星は、最後にネットにつながったときに受け取った分を端末に控え、病室でも見せる。
-  // 自分の願いは今までどおり IndexedDB だけ。サーバーに出るのは「流す」を選んだ言葉と軌道IDだけ。
+  // 自分だけの星は送らず、公開する言葉と軌道IDだけをサーバーに渡す。
   const STARS_CACHE_KEY = 'morune-25143-public-stars';
   const STARS_ENABLED_KEY = 'morune-25143-stars-enabled';
   const PROMISE_KEY = 'morune-25143-stars-promise';
@@ -54,8 +54,10 @@
   // 願いの番号（25143-0007-03 の「03」）を、これまでいくつまで出したか。消した番号を使い回さないため
   const WISH_SEQ_KEY = 'morune-25143-wish-seq';
   const REPORTED_KEY = 'morune-25143-reported-stars';
-  const STAR_SIGNALS_KEY = 'morune-25143-star-signals';
   const PUBLISH_QUEUE_KEY = 'morune-25143-publish-queue';
+  const STAR_ACTIONS_KEY = 'morune-25143-star-actions';
+  const requestedStarId = new URL(location.href).searchParams.get('star');
+  let focusPending = true;
   function readJson(key, fallback) {
     try {
       return JSON.parse(readStorage(key) ?? 'null') ?? fallback;
@@ -63,7 +65,6 @@
       return fallback;
     }
   }
-  const todayKey = () => new Date().toLocaleDateString('sv-SE');
   let starsEnabled = readStorage(STARS_ENABLED_KEY) === '1';
   let reportedStars = readJson(REPORTED_KEY, []);
   if (!Array.isArray(reportedStars)) reportedStars = [];
@@ -275,6 +276,12 @@
       }
     }
     const removed = new Set(removedIds);
+    const removedWishes = wishes.filter(wish => removed.has(wish.id));
+    const publishing = readJson(PUBLISH_QUEUE_KEY, []);
+    for (const item of publishing) if (removed.has(item.wishId) && item.publicStarId) queueStarAction('delete', item.publicStarId);
+    writeStorage(PUBLISH_QUEUE_KEY, JSON.stringify(publishing.filter(item => !removed.has(item.wishId))));
+    for (const wish of removedWishes) if (wish.publicStarId) queueStarAction('delete', wish.publicStarId);
+    flushStarActions();
     wishes = all ? [] : wishes.filter(wish => !removed.has(wish.id));
     removedIds.forEach(id => selectedArchiveIds.delete(id));
     if (all) growthDrafts.clear();
@@ -613,7 +620,7 @@
 
   function homeIsVisible() {
     return !document.hidden && !openingCard && !returnFlight && !launchFlight &&
-      (!splashScreen || !splashScreen.isConnected) && locationModal.classList.contains('is-hidden') &&
+      (!splashScreen || !splashScreen.isConnected) && $('#intro-screen').hidden && locationModal.classList.contains('is-hidden') &&
       !app.querySelector('.sheet:not([hidden]), .archive-sheet:not([hidden]), .return-card:not([hidden]), .stars-backdrop:not([hidden]), .policy-backdrop:not([hidden]), .account-sheet:not([hidden])');
   }
 
@@ -633,8 +640,18 @@
 
   function showFloatingWish(point, chance = false) {
     hideFloatingWish();
-    floatingText.textContent = point.wish.text;
-    floatingText.className = 'floating-wish' + (chance ? ' floating-wish-chance' : '');
+    floatingText.textContent = (point.star ?? point.wish).text;
+    if (point.star) {
+      const menu = document.createElement('button');
+      menu.type = 'button';
+      menu.className = 'floating-star-menu';
+      menu.textContent = '…';
+      menu.setAttribute('aria-label', 'この言葉について');
+      menu.addEventListener('click', () => openStarCard(point.star));
+      menu.addEventListener('focus', () => clearTimeout(floatingTimer));
+      floatingText.append(menu);
+    }
+    floatingText.className = 'floating-wish' + (point.star ? ' floating-wish-other' : '') + (chance ? ' floating-wish-chance' : '');
     floatingText.style.left = `${Math.max(110, Math.min(width - 110, point.x))}px`;
     floatingText.style.top = `${Math.max(40, Math.min(height - 100, point.y - 20))}px`;
     floatingText.hidden = false;
@@ -652,13 +669,23 @@
     }
     // 見ているだけで、願いが1つずつ浮かんでは消える（案C）。触れると homeSince が戻り、次の自動は間隔をあけてから。
     // 動きを減らす設定では、自動では浮かべない（触れたときだけ）
+    if (focusPending) {
+      const point = otherStarPoints.find(point => point.star.focus);
+      if (point) {
+        focusPending = false;
+        homeSince = time;
+        lastAutoWishId = point.star.id;
+        showFloatingWish(point);
+        return;
+      }
+    }
     if (reducedMotion) return;
     if (homeSince == null) homeSince = time - FloatingWishes.AUTO_INTERVAL_MS + FloatingWishes.AUTO_FIRST_MS;
     if (time - homeSince >= FloatingWishes.AUTO_INTERVAL_MS) {
       homeSince = time;
-      const point = FloatingWishes.nextAutoStar(wishStarPoints().filter(point => WishState.orbitingWishes([point.wish]).length), lastAutoWishId, Math.random());
+      const point = FloatingWishes.nextAutoStar([...wishStarPoints().filter(point => WishState.orbitingWishes([point.wish]).length), ...otherStarPoints], lastAutoWishId, Math.random());
       if (point) {
-        lastAutoWishId = point.wish.id;
+        lastAutoWishId = (point.star ?? point.wish).id;
         showFloatingWish(point, true);
       }
     }
@@ -692,7 +719,7 @@
   $('#intro-start').addEventListener('click', () => {
     writeStorage(INTRO_KEY, '1');
     $('#intro-screen').hidden = true;
-    depositAfterIntro = true;
+    depositAfterIntro = !requestedStarId;
     // 場所をもう決めてあれば（2回目以降など）、すぐ入力へ
     if (locationModal.classList.contains('is-hidden')) openDepositAfterIntro();
     else locationAllow.focus({preventScroll: true});
@@ -1147,17 +1174,17 @@
   // #22 他の人の星。自分の金色の星とひと目で分かるよう、青白く小さく描く。「叶ったよ」は流れ星にする。
   // 3D星空のときも簡易表示のときも、願いの星はこの 2D の層に描く
   function drawOtherStars(time) {
-    const {centerX, centerY, orbitX, orbitY} = geometry();
     const now = Date.now();
     otherStarPoints = [];
+    if (!starsEnabled) return;
     for (const star of otherStars) {
       if (star.expiresAt <= now) continue;
       const seed = PublicStars.starSeed(star.id);
-      // 自分の星とは逆向きに、ゆっくりめぐる
-      const angle = seed.angle - (reducedMotion ? 0 : time * 0.000012);
-      const x = centerX + Math.cos(angle) * orbitX * seed.lane;
-      const y = centerY + Math.sin(angle) * orbitY * seed.lane;
-      otherStarPoints.push({x, y, star});
+      // 背景と同じ投影に置き、時刻と場所が変わっても一緒に回るようにする。
+      const point = Sky.projectPolarStar(seed.raDeg, seed.decDeg, now, pendingLocation.lat, pendingLocation.lon, width, height);
+      if (!point.visible || point.x < 0 || point.x > width || point.y < 0 || point.y > height) continue;
+      const {x, y} = point;
+      otherStarPoints.push({...point, star});
       let headX = x;
       let headY = y;
       context.save();
@@ -1176,6 +1203,15 @@
         context.beginPath();
         context.moveTo(headX - tail, headY - tail * .45);
         context.lineTo(headX, headY);
+        context.stroke();
+      }
+      context.globalAlpha = star.returned ? 0.3 : 0.85;
+      if (star.focus) {
+        context.globalAlpha = 1;
+        context.strokeStyle = '#eacb83';
+        context.lineWidth = 1.5;
+        context.beginPath();
+        context.arc(x, y, 9, 0, Math.PI * 2);
         context.stroke();
       }
       context.shadowColor = '#8fc1ff';
@@ -1308,14 +1344,23 @@
   async function finishReturn(wish) {
     if (!returnFlight || returnFlight.wish.id !== wish.id) return;
     returnFlight = null;
-    const returned = WishState.markReturned(wish, Date.now(), pendingLocation);
+    let returned;
     const wasTrial = WishState.trialAvailable(wishes, trialUsed());
     try {
-      await store('readwrite', object => object.put(returned));
+      // 公開IDの保存と帰還が重なっても、先に保存されたIDを消さないよう順番に処理する。
+      returned = await growthQueue.run(wish.id, async () => {
+        const current = wishes.find(item => item.id === wish.id);
+        if (!current) return null;
+        const next = WishState.markReturned(current, Date.now(), pendingLocation);
+        await store('readwrite', object => object.put(next));
+        wishes = wishes.map(item => item.id === wish.id ? next : item);
+        return next;
+      });
+      if (!returned) return;
       // 着地前の再読み込みや保存失敗で、試しの帰還だけが使えなくなるのを防ぐ。
       if (wasTrial) writeStorage(TRIAL_KEY, '1');
-      wishes = wishes.map(item => item.id === wish.id ? returned : item);
       returningWish = returned;
+      if (returned.publicStarId) { queueStarAction('return', returned.publicStarId); flushStarActions(); }
       landed = true;
       sampleButton.hidden = false;
       setTimeout(() => sampleButton.classList.add('sample-arrived'), 20);
@@ -1554,9 +1599,15 @@
       return;
     }
     try {
+      updated = await growthQueue.run(updated.id, async () => {
+        const current = wishes.find(wish => wish.id === updated.id);
+        if (!current) throw new Error('この願いは、もうありません。');
+        const next = WishState.decide(current, choice, Date.now());
+        await store('readwrite', object => object.put(next));
+        wishes = wishes.map(wish => wish.id === next.id ? next : wish);
+        return next;
+      });
       const backToOrbit = updated.status === WishState.STATUS.WAITING;
-      await store('readwrite', object => object.put(updated));
-      wishes = wishes.map(wish => wish.id === updated.id ? updated : wish);
       returningWish = updated;
       if (backToOrbit) launchFlight = {wish: updated, startedAt: performance.now()};
       closeCard({decided: true});
@@ -1930,7 +1981,7 @@
       distanceText: km == null ? '' : Itokawa.formatDistanceJa(km),
       number: currentWishNumber(wish),
       includeText: $('#receipt-include-text').checked,
-      qrUrl: `${location.origin}/`,
+      qrUrl: PublicStars.receiptUrl(location.origin, wish.publicStarId),
       observer: pendingLocation,
     });
   }
@@ -2074,8 +2125,12 @@
     const seq = WishState.nextWishSeq(wishes, Number(readStorage(WISH_SEQ_KEY)) || 0);
     const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time, seq});
     const firstWish = wishes.length === 0 && !trialUsed();
-    // #22 「星空に流す」は願いごとに選ぶ（初期値は流さない）。約束に同意したときだけ選べる
-    const publish = starsEnabled && publishCheckbox.checked && promiseAgreed();
+    // 同意しない場合も、端末だけに預けられるようにする。
+    let publish = starsEnabled && !publishCheckbox.checked;
+    if (publish && !promiseAgreed()) {
+      publish = await askPromise();
+      if (!publish) publishCheckbox.checked = true;
+    }
     try {
       await store('readwrite', object => object.put(wish));
       wishes = [...wishes, wish];
@@ -2113,7 +2168,7 @@
       }, 1850);
       // 自分の願いは先に端末へ預け終えている。流すのが失敗しても、預けたことは取り消さない
       if (publish) {
-        publishStar('wish', text).then(({message}) => {
+        publishStar('wish', text, wish.id).then(({message}) => {
           setTimeout(() => {
             if (!returnFlight && !returningWish) $('#mission-status').textContent = message;
           }, 2200);
@@ -2124,11 +2179,11 @@
         setTimeout(() => {
           if (returnFlight || returningWish) return;
           setMissionStep('receive');
-          $('#mission-status').textContent = '試しに1つ、帰してみましょう。スマホを振るか「タップで帰還」を押してください';
+          $('#mission-status').textContent = '試しに1つ帰せます。スマホを振るか「タップで帰還」を押すと帰ってきます';
         }, 2600);
       }
     } catch (error) {
-      // 願いは端末に保存するだけで送信しない。失敗は端末の保存の失敗
+      // 端末への保存が済むまでは公開せず、入力を残してやり直せるようにする。
       depositStatus.textContent = `保存できませんでした。入力は残しています。${error.message || ''}`;
     } finally {
       launchButton.disabled = false;
@@ -2221,15 +2276,9 @@
     if (restoreFocus) $('#archive-open').focus({preventScroll: true});
   }
   $('#archive-open').addEventListener('click', openArchive);
-  publishCheckbox.addEventListener('change', async () => {
-    if (!publishCheckbox.checked || promiseAgreed()) return;
-    // 約束に同意するまでは選べない
-    publishCheckbox.checked = false;
-    if (await askPromise()) publishCheckbox.checked = true;
-  });
   $('#promise-agree').addEventListener('click', () => closePromise(true));
   $('#promise-decline').addEventListener('click', () => closePromise(false));
-  $('#others-open').addEventListener('click', () => {
+  $('#others-read').addEventListener('click', () => {
     const star = PublicStars.nextStar(visibleOtherStars(), lastShownStarId);
     if (star) openStarCard(star);
   });
@@ -2240,11 +2289,11 @@
     if (event.pointerType !== 'mouse') return;
     const overSky = (event.target === app || event.target === canvas) && homeIsVisible();
     const bounds = app.getBoundingClientRect();
-    const star = overSky ? FloatingWishes.nearestStar(wishStarPoints(), event.clientX - bounds.left, event.clientY - bounds.top) : null;
+    const star = overSky ? FloatingWishes.nearestStar([...wishStarPoints(), ...otherStarPoints], event.clientX - bounds.left, event.clientY - bounds.top) : null;
     app.style.cursor = star ? 'pointer' : '';
     if (!star) { hoveredWishId = null; return; }
-    if (star.wish.id === hoveredWishId) return;
-    hoveredWishId = star.wish.id;
+    if ((star.star ?? star.wish).id === hoveredWishId) return;
+    hoveredWishId = (star.star ?? star.wish).id;
     homeSince = performance.now();
     showFloatingWish(star);
   });
@@ -2252,20 +2301,18 @@
   app.addEventListener('click', event => {
     if ((event.target !== app && event.target !== canvas) || !homeIsVisible()) return;
     const bounds = app.getBoundingClientRect();
-    const ownStar = FloatingWishes.nearestStar(wishStarPoints(), event.clientX - bounds.left, event.clientY - bounds.top);
+    const ownStar = FloatingWishes.nearestStar([...wishStarPoints(), ...otherStarPoints], event.clientX - bounds.left, event.clientY - bounds.top);
     if (ownStar) {
       homeSince = performance.now();
       showFloatingWish(ownStar);
       return;
     }
-    const star = PublicStars.nearestStar(otherStarPoints, event.clientX - bounds.left, event.clientY - bounds.top);
-    if (star) openStarCard(star);
+
   });
   $('#star-card-close').addEventListener('click', closeStarCard);
   starCard.addEventListener('click', event => {
     if (event.target === starCard) closeStarCard();
   });
-  $('#star-signal').addEventListener('click', sendStarSignal);
   $('#star-report').addEventListener('click', () => {
     $('#star-card-actions').hidden = true;
     $('#star-report-confirm').hidden = false;
@@ -2557,7 +2604,7 @@
 
   function visibleOtherStars() {
     const now = Date.now();
-    return otherStars.filter(star => star.expiresAt > now);
+    return starsEnabled ? otherStars.filter(star => star.expiresAt > now) : [];
   }
 
   // 機能の出し入れと数を、今の状態に合わせる（空のとき：星がなければ「みんなの星」ボタンを出さない）
@@ -2565,8 +2612,7 @@
     $('#publish-field').hidden = !starsEnabled;
     if (!starsEnabled) publishCheckbox.checked = false;
     const count = visibleOtherStars().length;
-    $('#others-open').hidden = !starsEnabled || count === 0;
-    $('#others-count').textContent = String(count);
+    $('#others-read').hidden = !starsEnabled || count === 0;
     const number = readStorage(NUMBER_KEY);
     $('#orbit-number').hidden = !number;
     $('#orbit-number-value').textContent = number || '';
@@ -2581,7 +2627,7 @@
   let promiseResolve = null;
   let promiseReturnFocus = null;
   function askPromise() {
-    if (promiseAgreed()) return Promise.resolve(true);
+    if (readStorage(PROMISE_KEY) !== null) return Promise.resolve(promiseAgreed());
     promiseReturnFocus = document.activeElement;
     promiseSheet.hidden = false;
     $('#promise-agree').focus({preventScroll: true});
@@ -2589,7 +2635,7 @@
   }
 
   function closePromise(agreed) {
-    if (agreed) writeStorage(PROMISE_KEY, '1');
+    writeStorage(PROMISE_KEY, agreed ? '1' : '0');
     promiseSheet.hidden = true;
     promiseResolve?.(agreed);
     promiseResolve = null;
@@ -2597,18 +2643,10 @@
   }
 
   // 他の人の星を受け取る。読めないとき（ネットなし・一時的な失敗）は、端末に控えた星をそのまま見せる
-  // みんなの星は次期バージョンまで止めている。止めている間はサーバーに問い合わせない（軌道ID を送らないため。2026-10-07 レビュー）
-  const PUBLIC_STARS_CLIENT_ENABLED = false;
   async function loadOtherStars() {
-    if (!PUBLIC_STARS_CLIENT_ENABLED) {
-      starsEnabled = false;
-      otherStars = [];
-      refreshStarsInterface();
-      return;
-    }
     if (!navigator.onLine) return;
     try {
-      const response = await fetch(`/api/stars?orbit=${encodeURIComponent(orbitId())}`);
+      const response = await fetch(`/api/stars?orbit=${encodeURIComponent(orbitId())}${requestedStarId ? `&star=${encodeURIComponent(requestedStarId)}` : ''}`, {signal: AbortSignal.timeout(8000)});
       if (!response.ok) return;
       const data = await response.json();
       if (!data.enabled) {
@@ -2626,73 +2664,125 @@
       writeStorage(STARS_CACHE_KEY, JSON.stringify(otherStars));
       saveNumber(data.number);
       refreshStarsInterface();
-      flushPublishQueue();
+      flushPublishQueue().then(results => {
+        const messages = results ? [...results.values()].map(result => result.message) : [];
+        if (messages.length && !returnFlight && !returningWish) $('#mission-status').textContent = messages.find(message => message.includes('確認してから')) ?? messages[messages.length - 1];
+      });
+      flushStarActions();
     } catch {
       // 読めなければ、端末に控えた星で続ける
     }
   }
 
-  function queuePublish(kind, text) {
-    writeStorage(PUBLISH_QUEUE_KEY, JSON.stringify(PublicStars.enqueue(readJson(PUBLISH_QUEUE_KEY, []), {kind, text}, Date.now())));
+  function queuePublish(kind, text, wishId) {
+    const queue = readJson(PUBLISH_QUEUE_KEY, []);
+    const existing = queue.find(item => wishId ? item.wishId === wishId : item.kind === kind && item.text === text && !item.wishId);
+    if (existing) return;
+    writeStorage(PUBLISH_QUEUE_KEY, JSON.stringify(PublicStars.enqueue(queue, {kind, text, wishId, publishId: createWishId()}, Date.now())));
   }
 
-  async function postStar(kind, text) {
+  async function postStar(kind, text, publishId) {
     const response = await fetch('/api/stars', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({orbitId: orbitId(), kind, text}),
+      body: JSON.stringify({orbitId: orbitId(), kind, text, ...(publishId ? {starId: publishId} : {})}),
+      signal: AbortSignal.timeout(8000),
     });
     const data = await response.json().catch(() => ({}));
     if (response.ok) saveNumber(data.number);
     return {response, data};
   }
 
-  // 言葉を流す。ネットがなければ控えて、つながったときに流す。
-  // done は「流せた・控えた」とき true（送り直さなくてよい）。上限などで流せなかったときは false
-  async function publishStar(kind, text) {
-    const queued = {done: true, message: 'Wi-Fi につながったら流せます。願いはこの端末に預かっています'};
-    if (!navigator.onLine) {
-      queuePublish(kind, text);
-      return queued;
-    }
-    try {
-      const {response, data} = await postStar(kind, text);
-      if (!response.ok) return {done: false, message: data.error || '星空に流せませんでした。願いはこの端末に預かっています'};
-      refreshStarsInterface();
-      return {done: true, message: PublicStars.publishMessage({status: data.status, number: data.number, kind})};
-    } catch {
-      // 休憩室の弱い電波などで届かなかった。控えておき、次につながったときに流す
-      queuePublish(kind, text);
-      return queued;
-    }
+  // 公開IDの保存も一歩の記録と同じ列に並べ、通信中の帰還や編集を上書きしない。
+  async function attachPublishedStar(wishId, publicStarId) {
+    await growthQueue.run(wishId, async () => {
+      const wish = wishes.find(item => item.id === wishId);
+      if (!wish) { queueStarAction('delete', publicStarId); return; }
+      const next = WishState.setPublicStarId(wish, publicStarId);
+      await store('readwrite', object => object.put(next));
+      wishes = wishes.map(item => item.id === wishId ? next : item);
+      if (returningWish?.id === wishId) returningWish = next;
+      if (Number.isFinite(next.returnedAt)) queueStarAction('return', publicStarId);
+    });
+    flushStarActions();
+  }
+
+  async function publishStar(kind, text, wishId) {
+    queuePublish(kind, text, wishId);
+    const results = await flushPublishQueue();
+    return results?.get(wishId ?? kind + ':' + text) ?? {done: true, message: 'つながったら星空に出ます。願いは端末に預かっています'};
   }
 
   let flushingQueue = false;
   async function flushPublishQueue() {
     if (flushingQueue || !navigator.onLine || !starsEnabled) return;
     const queue = PublicStars.pruneQueue(readJson(PUBLISH_QUEUE_KEY, []), Date.now());
-    if (!queue.length) {
-      writeStorage(PUBLISH_QUEUE_KEY, '[]');
-      return;
-    }
     flushingQueue = true;
-    const rest = [];
-    let message = '';
-    for (const item of queue) {
-      try {
-        const {response, data} = await postStar(item.kind, item.text);
-        if (response.ok) message = PublicStars.publishMessage({status: data.status, number: data.number, kind: item.kind});
-        else if (response.status >= 500) rest.push(item);
-        // 上限や形の誤り（4xx）は、何度送っても通らないので控えから外し、理由だけを伝える
-        else message = data.error || message;
-      } catch {
-        rest.push(item);
+    const results = new Map();
+    try {
+      for (const item of queue) {
+        let done = false;
+        try {
+          if (item.wishId && !wishes.some(wish => wish.id === item.wishId)) { done = true; continue; }
+          let id = item.publicStarId;
+          if (!id) {
+            const {response, data} = await postStar(item.kind, item.text, item.publishId);
+            if (!response.ok) {
+              results.set(item.wishId ?? item.kind + ':' + item.text, {done: false, message: data.error || '星空に出せませんでした'});
+              done = response.status >= 400 && response.status < 500 && response.status !== 429 && data.enabled !== false;
+              continue;
+            }
+            id = data.id;
+            // 公開後に端末の保存が失敗しても、同じ言葉をもう一度公開しないようIDを先に控える。
+            const current = readJson(PUBLISH_QUEUE_KEY, []);
+            const found = current.some(entry => entry.queuedAt === item.queuedAt && entry.wishId === item.wishId && entry.text === item.text);
+            if (found) writeStorage(PUBLISH_QUEUE_KEY, JSON.stringify(current.map(entry => entry.queuedAt === item.queuedAt && entry.wishId === item.wishId && entry.text === item.text ? {...entry, publicStarId: id} : entry)));
+            else if (item.wishId) queueStarAction('delete', id);
+            results.set(item.wishId ?? item.kind + ':' + item.text, {done: true, message: PublicStars.publishMessage({status: data.status, number: data.number, kind: item.kind})});
+          }
+          if (item.wishId) await attachPublishedStar(item.wishId, id);
+          done = true;
+        } catch {
+          results.set(item.wishId ?? item.kind + ':' + item.text, {done: true, message: '星空への送信を控えています。つながったら続けます'});
+        } finally {
+          // 待っている間に追加された願いを消さないよう、処理した控えだけを外す。
+          if (done) writeStorage(PUBLISH_QUEUE_KEY, JSON.stringify(readJson(PUBLISH_QUEUE_KEY, []).filter(entry => !(entry.queuedAt === item.queuedAt && entry.wishId === item.wishId && entry.text === item.text))));
+        }
       }
+    } finally {
+      flushingQueue = false;
+      refreshStarsInterface();
     }
-    writeStorage(PUBLISH_QUEUE_KEY, JSON.stringify(rest));
-    flushingQueue = false;
-    refreshStarsInterface();
-    if (message && !returnFlight && !returningWish) $('#mission-status').textContent = `Wi-Fi につながりました。${message}`;
+    return results;
+  }
+
+  function queueStarAction(action, starId) {
+    writeStorage(STAR_ACTIONS_KEY, JSON.stringify(PublicStars.enqueueAction(readJson(STAR_ACTIONS_KEY, []), {action, starId})));
+  }
+
+  let flushingActions = false;
+  async function flushStarActions() {
+    if (flushingActions || !navigator.onLine || !starsEnabled) return;
+    flushingActions = true;
+    try {
+      const queue = PublicStars.sanitizeActions(readJson(STAR_ACTIONS_KEY, []));
+      for (const item of queue) {
+        // 途中で削除が追加された星には帰還を送らず、次の削除を残す。
+        if (!readJson(STAR_ACTIONS_KEY, []).some(entry => entry.starId === item.starId && entry.action === item.action)) continue;
+        try {
+          const response = await fetch('/api/stars/' + item.action, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({starId: item.starId, orbitId: orbitId()}), signal: AbortSignal.timeout(8000)});
+          const data = await response.json();
+          if (response.ok || (response.status === 404 && data.enabled !== false)) {
+            writeStorage(STAR_ACTIONS_KEY, JSON.stringify(readJson(STAR_ACTIONS_KEY, []).filter(entry => !(entry.starId === item.starId && entry.action === item.action))));
+          } else if (response.status !== 429 && data.enabled !== false) {
+            $('#mission-status').textContent = '星空への変更を控えています。次につながったときに送ります';
+          }
+        } catch {
+          // 願いの帰還や削除は端末で済んでいるため、空への変更だけを次の接続まで残す。
+        }
+      }
+    } finally { flushingActions = false; }
+    if (readJson(STAR_ACTIONS_KEY, []).some(item => item.action === 'delete')) setTimeout(flushStarActions, 60000);
   }
 
   function openStarCard(star) {
@@ -2702,9 +2792,7 @@
     $('#star-card-text').textContent = star.text;
     $('#star-card-actions').hidden = false;
     $('#star-report-confirm').hidden = true;
-    const canSignal = PublicStars.canSignal(readJson(STAR_SIGNALS_KEY, {}), star.id, todayKey());
-    $('#star-signal').disabled = !canSignal;
-    $('#star-card-status').textContent = canSignal ? '' : '今日の信号は、この星に届いています。また明日、送れます';
+    $('#star-card-status').textContent = '';
     starCard.hidden = false;
     $('#star-card-close').focus({preventScroll: true});
   }
@@ -2712,7 +2800,7 @@
   function closeStarCard() {
     starCard.hidden = true;
     openStar = null;
-    const trigger = $('#others-open');
+    const trigger = $('#others-read');
     if (!trigger.hidden) trigger.focus({preventScroll: true});
   }
 
@@ -2721,38 +2809,6 @@
     otherStars = otherStars.filter(star => star.id !== starId);
     writeStorage(STARS_CACHE_KEY, JSON.stringify(otherStars));
     refreshStarsInterface();
-  }
-
-  async function sendStarSignal() {
-    const star = openStar;
-    if (!star) return;
-    const status = $('#star-card-status');
-    const button = $('#star-signal');
-    if (!navigator.onLine) {
-      status.textContent = 'Wi-Fi につながったら送れます';
-      return;
-    }
-    button.disabled = true;
-    status.textContent = '信号を送っています…';
-    try {
-      const response = await fetch('/api/stars/signal', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({starId: star.id}),
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        if (response.status === 404) dropOtherStar(star.id);
-        status.textContent = data.error || '信号を送れませんでした。少し待ってから、もう一度お試しください';
-        button.disabled = response.status === 404;
-        return;
-      }
-      writeStorage(STAR_SIGNALS_KEY, JSON.stringify(PublicStars.markSignal(readJson(STAR_SIGNALS_KEY, {}), star.id, todayKey())));
-      status.textContent = '信号を送りました。この星が少し明るくなります。また明日、送れます';
-    } catch {
-      status.textContent = 'Wi-Fi につながったら送れます';
-      button.disabled = false;
-    }
   }
 
   async function sendStarReport() {

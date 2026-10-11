@@ -170,6 +170,17 @@ export function createWish({id, text, now, returnFrom = null, seq = null}) {
   return wish;
 }
 
+// 公開先との対応だけを変え、願いの状態や帰還の日付を動かさない。
+export function setPublicStarId(wish, id) {
+  const next = {...wish};
+  if (id == null) delete next.publicStarId;
+  else {
+    if (typeof id !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id)) throw new Error('公開した星の番号を確認してください。');
+    next.publicStarId = id;
+  }
+  return next;
+}
+
 // 日付入力（YYYY-MM-DD）を、その日の端末の 0:00 にする。空や不正な値は null。
 export function parseReturnFrom(value) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value ?? '');
