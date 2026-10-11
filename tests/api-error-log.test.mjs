@@ -18,8 +18,9 @@ const cases = [
   ['orbits/route.ts', 'POST', {orbitId}],
   ['stars/route.ts', 'GET', null],
   ['stars/route.ts', 'POST', {orbitId, kind: 'wish', text: secret}],
+  ['stars/delete/route.ts', 'POST', {starId, orbitId}],
   ['stars/report/route.ts', 'POST', {starId, reporterOrbitId: orbitId}],
-  ['stars/signal/route.ts', 'POST', {starId}],
+  ['stars/return/route.ts', 'POST', {starId, orbitId}],
   ['wishes/route.ts', 'GET', null],
   ['wishes/route.ts', 'POST', {id: orbitId, text: secret, status: 'doing', createdAt: 1, updatedAt: 2}],
   ['wishes/route.ts', 'DELETE', {all: true}],
@@ -31,8 +32,10 @@ function loadRoute(file, error) {
   const fail = () => {throw error;};
   const env = {DB: {}, AI: {}, ART_ENABLED: 'true', PUBLIC_STARS_ENABLED: 'true'};
   const require = specifier => {
+    if (specifier.endsWith('rate-limit')) return {rateLimit: async () => null};
     if (specifier === 'cloudflare:workers') return {env};
     if (specifier.endsWith('error-kind.mjs')) return {errorKind};
+    if (specifier.endsWith('/watch/settings')) return {readPaused: async () => true};
     if (specifier.endsWith('/db')) return {getDb: fail};
     if (specifier.endsWith('/schema')) return {publicStars: {}, orbits: {}, starReports: {}, artUses: {}};
     if (specifier.endsWith('chatgpt-auth')) return {getChatGPTUser: async () => ({userId: 'user'})};

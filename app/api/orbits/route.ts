@@ -1,3 +1,4 @@
+import { rateLimit } from "../rate-limit";
 import { errorKind } from "../error-kind.mjs";
 import { env } from "cloudflare:workers";
 import { count, eq, gt, sql } from "drizzle-orm";
@@ -10,6 +11,8 @@ import { ORBIT_ISSUE_LIMIT, canIssueOrbit, formatNumber } from "../stars/rules.m
 // 受け取るのは端末で作ったランダムな軌道ID だけ。名前・願いの中身・IPアドレスは受け取らず、保存もしない。
 // 願いの番号（25143-0007-03 の「03」）は端末の中で数えるので、ここには来ない。
 export async function POST(request: Request) {
+  const limited = await rateLimit(request, '/api/orbits', env);
+  if (limited) return limited;
   if (!env.DB) return Response.json({ enabled: false });
   let body: unknown;
   try { body = await request.json(); } catch { return Response.json({ error: "軌道を確認してください。" }, { status: 400 }); }

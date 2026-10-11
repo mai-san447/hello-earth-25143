@@ -22,7 +22,7 @@ export const LIMITS = Object.freeze({
   // 軌道に置ける願い。1日1つ帰すと約1か月分＝入院（一般病床の平均在院日数は約16日）と回復期に見合う。
   // 多すぎると「やりたいことリストが重荷になる」という出発点の課題に戻る
   orbit: 30,
-  // 帰還が始まる日は、翌日から1年後まで。打ち間違いを防ぎ、端末の保存が消えるリスクも抑える
+  // 帰ってくる日は、翌日から1年後まで。打ち間違いを防ぎ、端末の保存が消えるリスクも抑える
   returnFromMaxDays: 365,
   // 星空へ戻した回数がこの回数になったら、一度だけ「手放してもいい」と伝える。戻すこと自体は止めない
   gentleLaterCount: 5,
@@ -34,18 +34,18 @@ export function canDeposit(wishes) {
   return wishes.filter(wish => wish.status === STATUS.WAITING || wish.status === STATUS.RETURNED).length < LIMITS.orbit;
 }
 
-// 帰還が始まる日の入力を確かめる。空欄は「すぐ帰還の候補」でよい
+// 帰ってくる日の入力を確かめる。空欄は「すぐ帰還の候補」でよい
 export function checkReturnFrom(value, now) {
   if (!value) return {ok: true, time: null};
   const time = parseReturnFrom(value);
-  if (time == null) return {ok: false, error: '帰還が始まる日を確かめてください。'};
+  if (time == null) return {ok: false, error: '帰ってくる日を確かめてください。'};
   const tomorrow = new Date(now);
   tomorrow.setHours(0, 0, 0, 0);
   tomorrow.setDate(tomorrow.getDate() + 1);
-  if (time < tomorrow.getTime()) return {ok: false, error: '帰還が始まる日は、明日以降にしてください。'};
+  if (time < tomorrow.getTime()) return {ok: false, error: '帰ってくる日は、明日以降にしてください。'};
   const latest = new Date(tomorrow);
   latest.setDate(latest.getDate() - 1 + LIMITS.returnFromMaxDays);
-  if (time > latest.getTime()) return {ok: false, error: '帰還が始まる日は、1年後までにしてください。'};
+  if (time > latest.getTime()) return {ok: false, error: '帰ってくる日は、1年後までにしてください。'};
   return {ok: true, time};
 }
 
@@ -78,7 +78,7 @@ export function summarize(wishes, openDays = [], now = Date.now()) {
     pending: count(STATUS.RETURNED),
     received,
     archived,
-    // 受け取り率：帰ってきて決めた願いのうち「想いを受け取る」を選んだ割合（決めた願いがなければ null）
+    // 受け取り率：帰ってきて決めた願いのうち「受け取る」を選んだ割合（決めた願いがなければ null）
     receiveRate: received + archived ? Math.round((received / (received + archived)) * 100) : null,
     backToOrbit: wishes.reduce((sum, wish) => sum + (wish.laterCount ?? 0), 0),
     withReturnFrom: wishes.filter(wish => Number.isFinite(wish.returnFrom)).length,
@@ -91,11 +91,11 @@ export function summarize(wishes, openDays = [], now = Date.now()) {
 
 export function gentleMessage(wish) {
   return wish.laterCount === LIMITS.gentleLaterCount
-    ? `この願いを${LIMITS.gentleLaterCount}回、もう少し預けました。急がなくて大丈夫です。`
+    ? '5回目です。手放してもかまいません。'
     : '';
 }
 
-// 軌道を回っている願い（画面に星として描くもの）。帰還が始まる日の前でも描く。
+// 軌道を回っている願い（画面に星として描くもの）。帰ってくる日の前でも描く。
 export function orbitingWishes(wishes) {
   return wishes.filter(wish => wish.status === STATUS.WAITING);
 }
@@ -105,12 +105,12 @@ export function skyWishes(wishes) {
   return wishes.filter(wish => wish.status === STATUS.WAITING || wish.status === STATUS.DOING);
 }
 
-// 帰還の候補。#7：帰還が始まる日（returnFrom）が決まっている願いは、その日になるまで帰らない。
+// 帰還の候補。#7：帰ってくる日（returnFrom）が決まっている願いは、その日になるまで帰らない。
 export function returnCandidates(wishes, now = Date.now()) {
   return orbitingWishes(wishes).filter(wish => !Number.isFinite(wish.returnFrom) || wish.returnFrom <= now);
 }
 
-// #27 はじめての1回。まだ一度も帰ってきたことがない人は、帰還が始まる日の前でも1回だけ帰せる。
+// #27 はじめての1回。まだ一度も帰ってきたことがない人は、帰ってくる日の前でも1回だけ帰せる。
 // やりたいことのアプリは最初の1週間で価値が見えないと離れるため、預けた直後に「帰ってくる」まで体験してもらう。
 export function trialAvailable(wishes, trialUsed) {
   return !trialUsed && orbitingWishes(wishes).length > 0 && wishes.every(wish => wish.status === STATUS.WAITING);
@@ -122,7 +122,7 @@ export function candidatesWithTrial(wishes, now, trialUsed) {
   return ready.length || !trialAvailable(wishes, trialUsed) ? ready : orbitingWishes(wishes);
 }
 
-// まだ帰還の候補がないとき、いちばん早く帰還が始まる日。なければ null。
+// まだ帰還の候補がないとき、いちばん早く帰ってくる日。なければ null。
 export function nextReturnFrom(wishes, now = Date.now()) {
   const upcoming = orbitingWishes(wishes)
     .map(wish => wish.returnFrom)
@@ -170,6 +170,17 @@ export function createWish({id, text, now, returnFrom = null, seq = null}) {
   return wish;
 }
 
+// 公開先との対応だけを変え、願いの状態や帰還の日付を動かさない。
+export function setPublicStarId(wish, id) {
+  const next = {...wish};
+  if (id == null) delete next.publicStarId;
+  else {
+    if (typeof id !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id)) throw new Error('公開した星の番号を確認してください。');
+    next.publicStarId = id;
+  }
+  return next;
+}
+
 // 日付入力（YYYY-MM-DD）を、その日の端末の 0:00 にする。空や不正な値は null。
 export function parseReturnFrom(value) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value ?? '');
@@ -193,9 +204,12 @@ export function pendingReturn(wishes) {
     .sort((a, b) => b.updatedAt - a.updatedAt)[0] ?? null;
 }
 
-export function markReturned(wish, now) {
+export function markReturned(wish, now, observer = null) {
   if (wish.status !== STATUS.WAITING) throw new Error(`軌道上にない願いは帰還できません: ${wish.status}`);
-  return {...wish, status: STATUS.RETURNED, updatedAt: now, returnedAt: now};
+  const returned = {...wish, status: STATUS.RETURNED, updatedAt: now, returnedAt: now};
+  // 帰ってきたときの観測地（帰還票の「観測」の行に使う。端末の中だけに保存する）
+  if (observer && Number.isFinite(observer.lat) && Number.isFinite(observer.lon)) returned.observedAt = {lat: Math.round(observer.lat * 10) / 10, lon: Math.round(observer.lon * 10) / 10};
+  return returned;
 }
 
 export function decide(wish, choice, now) {
@@ -222,7 +236,7 @@ export function daysWaited(wish, now) {
 }
 
 export function waitedMessage(days) {
-  return days === 0 ? '今日、預けた願いです。' : `${days}日間、あなたを待っていました。`;
+  return days === 0 ? '今日、預けた願いです。' : `${days}日ぶりに帰ってきました。`;
 }
 
 // 育つ願い。受け取った（doing）願いは、小さな一歩をふみ出すたびに明るくなる。
@@ -293,4 +307,8 @@ export function growthMessage(wish) {
   if (!steps) return 'かすかな星です。一歩ふみ出すと、明るくなります。';
   if (value === GROWTH.brightest) return `${steps}歩ふみ出して、1等星になりました。`;
   return `${steps}歩ふみ出して、${value}等星になりました。`;
+}
+// 帰還の途中で別タブの変更を見せると、今選んでいる願いが入れ替わるため待つ。
+export function canReloadWishes({flying, cardOpen, receiptOpen}) {
+  return !flying && !cardOpen && !receiptOpen;
 }
