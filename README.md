@@ -2,7 +2,7 @@
 
 [公開アプリを開く](https://morune-25143.morune-25143.workers.dev/)
 
-> 願いを星に、想いを地球へ。
+> やりたいことを　星に預けておく（Leave your wish with the stars）
 
 ## 卒業制作HQ
 
