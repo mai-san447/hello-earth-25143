@@ -558,3 +558,7 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 /* 利用規約のルールの箇条書き */
 .policy-content ul{margin:8px 0 0;padding-left:1.2em;display:grid;gap:6px}
 .policy-content li{font-size:inherit;line-height:1.75}
+/* 触れて出した言葉：動かさずに6秒（押しやすく、読みやすく） */
+.floating-wish-held{animation:wish-hold 6s ease-out both}
+@keyframes wish-hold{0%{opacity:0}6%,88%{opacity:1}100%{opacity:0}}
+.floating-wish:has(.floating-star-menu:hover),.floating-wish:has(.floating-star-menu:focus-visible){animation-play-state:paused}
