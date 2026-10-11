@@ -39,38 +39,41 @@ export function MissionExperience({
           <div className="mission-step-panel" id="step-panel-receive" data-step-panel="receive" hidden>
             <div className="mission-controls">
               <div className="mission-secondary-actions">
-                <button className="shake-control" id="shake" type="button"><span className="shake-glyph" aria-hidden="true"><i /><Smartphone size={18} strokeWidth={1.8} /></span><span>振って帰す</span></button>
-                <button className="fallback-control" id="fallback" type="button">ひとつ帰す</button>
+                <button className="shake-control" id="shake" type="button"><span className="shake-glyph" aria-hidden="true"><i /><Smartphone size={18} strokeWidth={1.8} /></span><span>シグナルを探す</span></button>
+                <button className="fallback-control" id="fallback" type="button">タップで帰還</button>
               </div>
             </div>
           </div>
+          <div className="mission-step-panel mission-choose-panel" id="step-panel-choose" data-step-panel="choose" hidden>
+            <p className="choose-status" id="choose-status" role="status">カプセルの帰還を待っています</p>
+            <button className="sample-trigger" id="sample-trigger" type="button" hidden>カプセルを開く <span aria-hidden="true">↗</span></button>
+          </div>
           <div className="mission-dock-meta">
             <p className="gesture-hint" id="gesture-hint">願いを預けると、星がひとつ灯ります</p>
-            <button className="visually-hidden sky-reader" id="others-read" type="button" hidden>みんなの願いを読む</button>
+            <button className="others-trigger" id="others-open" type="button" hidden>みんなの星 <span id="others-count">0</span></button>
             <button className="archive-trigger" id="archive-open" type="button">回収記録 <span id="archive-count">0</span></button>
           </div>
         </section>
         <section className="sheet deposit-sheet" id="deposit-sheet" aria-label="願いを星に預ける" hidden>
           <div className="sheet-grip" aria-hidden="true" />
           <button className="sheet-close" id="deposit-close" type="button" aria-label="閉じる">×</button>
-          <h2 className="deposit-question">いつか、何をしたい？</h2>
           <label className="wish-label" htmlFor="wish">願い（60字まで）</label>
           <textarea id="wish" maxLength={60} placeholder="例：天文台に行く" />
           <div className="input-meta"><span /><span><b id="wish-length">0</b> / 60</span></div>
           <div className="return-from-field">
-            <label htmlFor="return-from">帰ってくる日（任意）</label>
+            <label htmlFor="return-from">帰還が始まる日（任意）</label>
             <input id="return-from" type="date" aria-describedby="return-from-hint" />
-            <p id="return-from-hint">この日までは帰ってきません。空けておくと、すぐ帰ってくることがあります。</p>
+            <p id="return-from-hint">この日までは帰ってきません。空欄なら、すぐ帰還の候補になります。</p>
           </div>
-          {/* #22 みんなの星。サーバーの準備ができた環境でだけ出す（自分だけの星を選べるようにする） */}
+          {/* #22 みんなの星。サーバーの準備ができた環境でだけ出す（初期値は「流さない」） */}
           <div className="publish-field" id="publish-field" hidden>
             <label className="publish-option">
               <input id="publish-wish" type="checkbox" aria-describedby="publish-hint" />
-              自分だけの星にする（みんなの星空に出さない）
+              この願いを、名前を出さずに星空に流す
             </label>
-            <p id="publish-hint">願いは名前なしで、みんなの星空に灯ります</p>
+            <p id="publish-hint">言葉だけが30日間、ほかの人の星空に小さく出ます。預けた願いは、これまでどおりこの端末の中にあります。</p>
           </div>
-          <button className="launch-button" id="deposit" type="button">預ける</button>
+          <button className="launch-button" id="deposit" type="button">星に預ける <span aria-hidden="true">↗</span></button>
           <p className="sheet-status" id="deposit-status" role="status" />
         </section>
         <section className="return-card" id="return-card" role="dialog" aria-modal="true" aria-labelledby="returned-text" hidden>
@@ -87,16 +90,15 @@ export function MissionExperience({
           <h2 id="returned-text" />
           <time id="returned-date" />
           <p className="returned-wait" id="returned-wait" />
-          <p className="return-question">どうする？</p>
-          <div className="return-actions" aria-label="選択">
-            <button className="return-action-primary" id="try-wish" type="button">受け取る</button>
+          <div className="return-actions" aria-label="帰還した願いの扱い">
+            <button className="return-action-primary" id="try-wish" type="button">想いを受け取る</button>
             <button id="return-to-orbit" type="button">もう少し預ける</button>
           </div>
         </section>
         <section className="archive-sheet" id="archive-sheet" aria-labelledby="archive-title" hidden>
           <button className="sheet-close" id="archive-close" type="button" aria-label="閉じる">×</button>
           <h2 id="archive-title">回収記録</h2>
-          <p className="archive-empty" id="archive-empty">まだ帰ってきた願いはありません。</p>
+          <p className="archive-empty" id="archive-empty">まだ帰還した願いはありません。</p>
           {/* 回収記録は「帰ってきた願い」が主役。一覧を先に置き、番号・記録の数はその下へ（2026-10-07） */}
           <ul id="archive-list" />
           <div className="archive-management">
@@ -107,7 +109,7 @@ export function MissionExperience({
               <label className="archive-select-all"><input id="archive-select-all" type="checkbox" disabled />すべて選択</label>
               <div className="archive-management-actions">
                 <button id="archive-delete-selected" type="button" disabled>選択した願いを削除 <span id="archive-selection-count">0</span></button>
-                <button id="archive-reset" type="button">すべて消す</button>
+                <button id="archive-reset" type="button">すべてリセット</button>
               </div>
             </details>
             <p id="archive-status" role="status" aria-live="polite" />
@@ -130,7 +132,7 @@ export function MissionExperience({
           <div className="policy-panel">
             <button className="policy-close" id="policy-close" type="button" aria-label="利用規約を閉じる">×</button>
             <h2 id="policy-title">利用規約・プライバシー</h2>
-            <p className="policy-updated">内容更新日：2026年10月12日</p>
+            <p className="policy-updated">内容更新日：2026年10月7日</p>
             <div className="policy-content" id="policy-content" tabIndex={0}>
               <section>
                 <h3>運営者</h3>
@@ -142,7 +144,7 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>入力内容と保存</h3>
-                <p>願いは60文字以内で入力できます。預けられる願いは30個まで、帰ってくる日は翌日から1年後までです。願いと回収記録はこのブラウザーのIndexedDBに保存されます。みんなの星空が開いている環境では、公開する願いの言葉をサーバーにも送ります。「自分だけの星にする」を選んだ願いは送りません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないとサイトの保存が消えることがあります）。</p>
+                <p>願いは60文字以内で入力できます。預けられる願いは30個まで、帰還が始まる日は翌日から1年後までです。願いと回収記録はこのブラウザーのIndexedDBにだけ保存され、運営者やサーバーには送られません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないとサイトの保存が消えることがあります）。</p>
                 <p>ほかの人に見られたくない内容を書くときは、端末の画面ロックをお使いください。パスワードや、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
               </section>
               <section>
@@ -151,34 +153,15 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>番号</h3>
-                <p>はじめて願いを預けた端末には「25143-0001」のような番号を付け、願いごとに「25143-0001-03」のような番号を付けます。端末の番号を付けるときだけ、この端末で作ったランダムな識別子（軌道ID）と番号を付けた時刻を運営者のデータベースに保存します（番号の発行では願いの内容・名前・IPアドレスは保存しません）。願いごとの番号は端末の中で数え、送信しません。これはこの作品の中だけの番号で、本物の星や小惑星の名前ではありません。国際天文学連合（IAU）やJAXAとは関係ありません。</p>
-              </section>
-              <section>
-                <h3>みんなの星空</h3>
-                <p>預けた願いは、初期設定では名前なしでみんなの星空に公開されます。「自分だけの星にする」を選べば、その願いはサーバーに送りません。みんなの星空が止まっている環境では、これまでどおり端末の中だけに預かります。</p>
-                <p>公開する言葉・軌道ID（端末で作るランダムな識別子）・時刻を保存します。名前・メールアドレス・IPアドレスは保存しません。表示は最長400日、帰ってきた星は帰還から30日残ります。「叶ったよ」は24時間です。気になる言葉は運営が確認してから出し、通報が3件届くと非表示にします。</p>
-                <p>自分の言葉は回収記録からいつでも消せます。ネットがないときの削除は控え、つながったときに送ります。削除の依頼は<a href="https://morune.store/contact" target="_blank" rel="noopener noreferrer">問い合わせフォーム</a>からお願いします。</p>
-              </section>
-              <section>
-                <h3>みんなの星空のルール</h3>
-                <p>みんなで気持ちよく星空を見られるよう、次のルールで運営します。</p>
-                <ul>
-                  <li>書かないこと：名前・住所・電話番号・メールアドレス・URL・病院名など、だれかが分かること。ほかの人への悪口やいやがらせ。宣伝。法律や他人の権利に反すること。</li>
-                  <li>数：預けられる願いは1台の端末で30個まで。みんなの星空に出せるのは、1台の端末から1日10件、全員あわせて1日500件までです。短い時間に何度も送ると、少し時間をおくようお願いすることがあります。</li>
-                  <li>確認：URLや電話番号らしい数字、気になる言葉を含む願いは、すぐには出さず、運営が確かめてから出します。運営が見守れない期間は、新しい願いをすべて確かめてから出します。</li>
-                  <li>つらい気持ちの言葉：星空には出しません。書いた人には、相談できる窓口をこの端末の中だけでお知らせします。</li>
-                  <li>通報：気になる言葉は「…」から通報できます（同じ言葉へは1台の端末から1回）。3件の通報で見えなくなり、運営が確かめて戻すか消します。</li>
-                  <li>運営は、ルールに合わない言葉を、お知らせなく見えなくしたり消したりできます。</li>
-                  <li>流れ星は、だれかの「叶ったよ」です（24時間）。帰ってきた星は、30日のあいだ薄く残ります。</li>
-                </ul>
+                <p>はじめて願いを預けた端末には「25143-0001」のような番号を付け、願いごとに「25143-0001-03」のような番号を付けます。端末の番号を付けるときだけ、この端末で作ったランダムな識別子（軌道ID）と番号を付けた時刻を運営者のデータベースに保存します（願いの内容・名前・IPアドレスは保存しません）。願いごとの番号は端末の中で数え、送信しません。これはこの作品の中だけの番号で、本物の星や小惑星の名前ではありません。国際天文学連合（IAU）やJAXAとは関係ありません。</p>
               </section>
               <section>
                 <h3>X でのシェア</h3>
-                <p>「X でシェアする」を押すと、X の投稿画面が開きます。投稿する文（「願いの言葉も入れる」を選んだ場合は願いの言葉を含みます）は、あなたが X に投稿したときだけ X に送られ、X の規約とポリシーに従います。運営者のサーバーには送られません。</p>
+                <p>「X でシェアする」を押すと、X の投稿画面が開き、帰還票の画像がこの端末に保存されます。投稿する文（「願いの言葉も入れる」を選んだ場合は願いの言葉を含みます）と画像は、あなたが X に投稿したときだけ X に送られ、X の規約とポリシーに従います。運営者のサーバーには送られません。</p>
               </section>
               <section>
                 <h3>位置情報</h3>
-                <p>位置情報の利用は任意です。許可した場合、座標はこのブラウザー内で星空を描くために使います。位置は送りません。帰ってきた場所だけを、小数1桁で端末に残し、帰還票に印字します（自分だけの記録）。みんなの星空に送る言葉に位置は含めません。「東京の星空で見る」を選んでも利用できます。許可の扱いはブラウザーや端末の設定にも従います。</p>
+                <p>位置情報の利用は任意です。許可した場合、座標はこのブラウザー内で現在時刻の星の高度・方位を計算するためだけに使い、送信・保存しません。「東京の星空で見る」を選んでも利用できます。許可の扱いはブラウザーや端末の設定にも従います。</p>
               </section>
               <section>
                 <h3>通信と外部サービス</h3>
@@ -195,27 +178,28 @@ export function MissionExperience({
         {/* #22 みんなの星：はじめて公開する前の約束 */}
         <section className="stars-backdrop" id="promise-sheet" role="dialog" aria-modal="true" aria-labelledby="promise-title" hidden>
           <div className="stars-panel">
-            <p className="sheet-kicker">みんなの星</p>
-            <h2 id="promise-title">みんなの星空に出す前に</h2>
+            <p className="sheet-kicker">STARS OF EVERYONE</p>
+            <h2 id="promise-title">星空に流す前に、3つの約束</h2>
             <ul className="promise-list">
-              <li>誰かを傷つける言葉は書かない</li>
-              <li>名前や連絡先は書かない</li>
-              <li>ほかの人の願いを笑わない</li>
+              <li>やさしい言葉だけを流します</li>
+              <li>名前・連絡先・病院名は書きません</li>
+              <li>他の人の願いを笑いません</li>
             </ul>
-            <p className="stars-note">願いは名前なしで灯ります。帰ってくるのは、自分の願いだけです。</p>
-            <button className="stars-primary" id="promise-agree" type="button">星空に出す</button>
-            <button className="stars-secondary" id="promise-decline" type="button">自分だけの星にする</button>
+            <p className="stars-note">流れるのは言葉だけです。名前や端末の情報は出ません。願いは30日、「叶ったよ」は24時間で空から消えます。</p>
+            <button className="stars-primary" id="promise-agree" type="button">約束して流す</button>
+            <button className="stars-secondary" id="promise-decline" type="button">今は流さない</button>
           </div>
         </section>
-        {/* 他の人の星に触れたときのカード。気になる言葉を通報できるようにする（返信・いいねの数は作らない） */}
+        {/* 他の人の星に触れたときのカード。できるのは信号と通報だけ（返信・いいねの数は作らない） */}
         <section className="stars-backdrop" id="star-card" role="dialog" aria-modal="true" aria-labelledby="star-card-text" hidden>
           <div className="stars-panel star-card">
             <button className="sheet-close" id="star-card-close" type="button" aria-label="閉じる">×</button>
-            <p className="sheet-kicker" id="star-card-kicker">だれかの願い</p>
+            <p className="sheet-kicker" id="star-card-kicker">SOMEONE&apos;S WISH</p>
             <h2 id="star-card-text" />
             <p className="stars-note">名前を出さずに流された言葉です。</p>
             <div className="star-card-actions" id="star-card-actions">
-              <button className="star-report" id="star-report" type="button">この言葉を通報する</button>
+              <button className="stars-primary" id="star-signal" type="button">応援の信号を送る</button>
+              <button className="star-report" id="star-report" type="button">通報</button>
             </div>
             <div className="star-report-confirm" id="star-report-confirm" hidden>
               <p>この言葉を通報しますか。運営者が確かめます。</p>
@@ -225,58 +209,39 @@ export function MissionExperience({
             <p className="stars-status" id="star-card-status" role="status" aria-live="polite" />
           </div>
         </section>
-        {/* #22 「叶った」と押したあとの「叶ったよ」（任意・24時間の流れ星）。流れ星は、だれかの願いが叶った知らせ */}
+        {/* #22 想いを受け取ったあとの「叶ったよ」（任意・24時間の流れ星） */}
         <section className="stars-backdrop receipt-backdrop" id="receipt-sheet" role="dialog" aria-modal="true" aria-labelledby="receipt-title" hidden>
           <div className="stars-panel receipt-panel">
             <button className="sheet-close" id="receipt-x" type="button" aria-label="閉じる">×</button>
-            <h2 id="receipt-title">帰還票が現像されました</h2>
-            {/* 完成の画面は帰還票が主役。画面の帰還票と、展示で印刷される紙は同じもの（2026-10-11） */}
-            {/* eslint-disable-next-line @next/next/no-img-element -- 端末の中で描いた帰還票（data URL）を出すだけなので、画像の最適化は要らない */}
-            <img className="receipt-preview" id="receipt-preview" alt="帰還票" />
-            <label className="receipt-label" htmlFor="receipt-first-step">最初の小さな一歩（書くと帰還票に入ります）</label>
+            <h2 id="receipt-title">帰還票をつくる</h2>
+            <label className="receipt-label" htmlFor="receipt-first-step">最初の小さな一歩（書かなくても大丈夫）</label>
             <input id="receipt-first-step" type="text" placeholder="例：天文台の見学に申し込む" />
             <label className="certificate-option" htmlFor="receipt-include-text"><input id="receipt-include-text" type="checkbox" /> 願いの言葉も入れる</label>
-            <button className="stars-primary receipt-primary" id="receipt-save" type="button">保存する</button>
+            {/* eslint-disable-next-line @next/next/no-img-element -- 端末の中で描いた帰還票（data URL）を出すだけなので、画像の最適化は要らない */}
+            <img className="receipt-preview" id="receipt-preview" alt="帰還票のプレビュー" />
+            <button className="stars-primary receipt-primary" id="receipt-save" type="button">紙に印刷する・保存する</button>
             <button className="stars-secondary" id="receipt-share" type="button">X でシェアする</button>
-            <button className="receipt-later" id="receipt-close" type="button">星空へ戻る</button>
+            <button className="stars-secondary" id="receipt-close" type="button">あとで</button>
             <p className="stars-status" id="receipt-status" role="status" aria-live="polite" />
           </div>
         </section>
         <section className="stars-backdrop" id="fulfilled-sheet" role="dialog" aria-modal="true" aria-labelledby="fulfilled-title" hidden>
           <div className="stars-panel">
-            <p className="sheet-kicker">叶ったよ</p>
+            <p className="sheet-kicker">SHOOTING STAR / 24H</p>
             <h2 id="fulfilled-title">「叶ったよ」のひとこと（任意）</h2>
             <p className="stars-note">書くと、24時間だけ、ほかの人の星空に流れ星として出ます。名前は出ません。</p>
             <textarea id="fulfilled-text" maxLength={40} aria-label="叶ったよ、のひとこと" placeholder="例：海を見に行けた" />
-            <div className="input-meta"><span>ひとこと</span><span><b id="fulfilled-length">0</b> / 40</span></div>
+            <div className="input-meta"><span>ONE LINE</span><span><b id="fulfilled-length">0</b> / 40</span></div>
             <button className="stars-primary" id="fulfilled-send" type="button">流れ星にして流す</button>
             <button className="stars-secondary" id="fulfilled-skip" type="button">今は流さない</button>
             <p className="stars-status" id="fulfilled-status" role="status" aria-live="polite" />
           </div>
         </section>
-        {/* 入口：はじめて開いた人にだけ、完成物（帰還票）と3つのステップを見せる（2026-10-11） */}
-        <section className="intro-screen" id="intro-screen" role="dialog" aria-modal="true" aria-labelledby="intro-title" hidden>
-          <div className="intro-inner">
-            <p className="intro-brand">MORUNE <span>25143</span></p>
-            <h2 id="intro-title">願いを星に、<br />想いを地球へ。</h2>
-            <p className="intro-lead">手放した「いつかやりたいこと」を星に預け、ひとつずつ受け取りなおす。</p>
-            <div className="intro-sample">
-              {/* eslint-disable-next-line @next/next/no-img-element -- 見本の帰還票（同梱の画像） */}
-              <img src="/receipt-sample.png" alt="帰還票の見本" />
-              <p><span>持ち帰れるもの</span>帰ってきた願いは、<br />帰還票として現像されます。</p>
-            </div>
-            <ol className="intro-steps">
-              <li>願いを星に預ける</li>
-              <li>ある日、1つだけ帰ってくる</li>
-              <li>帰還票が現像される</li>
-            </ol>
-            <button className="intro-start" id="intro-start" type="button">願いを預ける</button>
-          </div>
-        </section>
+        <div className="itokawa-label" id="itokawa-label" aria-hidden="true" hidden>25143 ITOKAWA</div>
         <section className="location-backdrop" id="location-modal" role="dialog" aria-modal="true" aria-labelledby="location-title" aria-describedby="location-description">
           <div className="location-panel">
-            <h2 id="location-title">今いる場所の星空を映します</h2>
-            <p id="location-description">位置は送りません。帰ってきた場所だけを、小数1桁で端末に残し、帰還票に印字します。自分だけの記録です。許可しなくても東京の星空で使えます。</p>
+            <h2 id="location-title">あなたのいる場所の、今の本物の星空を表示します</h2>
+            <p id="location-description">位置は端末の中だけで使い、送信しません。許可しなくても東京の星空で使えます。昼間も星を表示します。</p>
             <button className="location-allow" id="location-allow" type="button">現在地の星空を見る</button>
             <button className="location-skip" id="location-skip" type="button">東京の星空で見る</button>
             <p className="location-status" id="location-status" role="status" aria-live="polite" />

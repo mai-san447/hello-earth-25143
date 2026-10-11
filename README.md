@@ -60,12 +60,12 @@ GS 卒業制作（**2026-10-07 提出**）の入口。ここから全部たど�
 - 振る／タップで、帰還の候補から1つだけ帰ってくる。判断せずに閉じても、次に開いたとき続きから選べる
 - 帰還カードの選択肢は「想いを受け取る」「もう少し預ける」の2つだけ
 - 想いを受け取ると、帰還票をつくるシートが出る。帰還票には MORUNE 25143 と番号、星のドット絵（ガチャ。まれに流れ星）、願いの言葉（はじめは入れる。外せる）、「預けた日 → 帰ってきた日」と 25143 までの距離、サービスへの QR、切り取り線、最初の小さな一歩（なければ書く線）、「距離：NASA/JPL Horizons」が入る
-- 「X でシェアする」で X の投稿画面をすぐ開く（共有先は X だけ）。文は「願い」（選んだときだけ）＋「星に預けていた願いを、やってみることにした。」＋ #MORUNE25143。リンクと画像は付けない
+- 「X でシェアする」で X の投稿画面をすぐ開く（共有先は X だけ）。文は「願い」（選んだときだけ）＋「星に預けていた願いを、やってみることにした。」＋ #MORUNE25143 ＋サービスのURL。帰還票の画像は端末に保存されるので、投稿に添える
 - 帰還が始まる日を決めて預ける（その日までは振っても帰ってこない）
 - 一度開けば、ネットがない場所でも開ける（Service Worker）。ホーム画面に追加できる
 - 願いが育つ：受け取った願いは6等星から始まり、小さな一歩をふみ出すたび（1日1回）明るくなって1等星へ。「叶った」で叶った星になる。暗くはならない（2026-10-05 本番公開）
 - 回収記録：帰ってきた願いの一覧が先頭。そこで育てる・叶ったを記録する。削除とリセットは「整理する」の中にたたむ。その下に番号と「あなたの記録」（たたんである）、いちばん下に利用規約。開いている間は下のボタンを隠す
-- みんなの星空：開いている環境では、預けた願いを初期設定で名前なしの星にする。「自分だけの星にする」を選べば送らない。他の人の星は青白く灯り、触れると読める。帰ってくるのは自分の願いだけ。願いは最長400日、帰還した星は30日薄く残る。「叶ったよ」は24時間の流れ星。本番の `PUBLIC_STARS_ENABLED` は変更していない。画面は `GET /api/stars` の `enabled` で機能を出し入れする（Issue #22・#23）
+- みんなの星：選んだ願いだけを名前を出さずに星空に流す。「叶ったよ」は24時間の流れ星。**次期バージョンの機能で、本番では止めている**（`PUBLIC_STARS_ENABLED` が `"false"`。止めている間、画面は `/api/stars` に問い合わせない。Issue #22・#23）
 - 2026-10-07 にやめたもの：応援の信号と応援リンク（`/signal` の画面と `/api/signals` の受け口を消した）、星座の線と軌道の線、願いの絵（AI）の画面、ログインの入口、タブ
 
 ## 作者の番号（25143-0000）
@@ -81,11 +81,11 @@ npx wrangler d1 execute morune-25143 --remote --command "INSERT INTO orbits (id,
 
 ## 保存と通信
 
-- 願いと回収記録はこの端末のブラウザ（IndexedDB）に保存します。本番は `CHATGPT_SYNC_ENABLED=false` で、ログイン同期は使っていません
+- 願いはこの端末のブラウザ（IndexedDB）にだけ保存します。本番は `CHATGPT_SYNC_ENABLED=false` で、ログイン同期は使っていません
 - 画面と部品は Service Worker が端末に保存します（`public/sw.js`）
-- みんなの星空が止まっている環境では、`GET /api/stars` で停止を確認し、サーバーに記録するのは人の番号の発行（`POST /api/orbits`）だけです。保存するのは「軌道ID（端末で作るランダムな UUID）と、発行した時刻」です
+- ふだんの使い方でサーバーに送るのは、人の番号の発行（`POST /api/orbits`）だけです。保存するのは「軌道ID（端末で作るランダムな UUID）と、発行した時刻」です
 - 願いの言葉はどこにも送りません。願いの絵（AI）はやめました（`/api/art` は `ART_ENABLED` が `"true"` のときだけ動き、本番では動きません）
-- みんなの星空が開いている環境では、最初の約束に同意した公開する言葉・軌道ID・時刻を保存します（名前・メール・IP は保存しません）。願いは400日、帰還後は30日、「叶ったよ」は24時間で空から消えます。端末の願いには公開IDを控え、帰還・削除をサーバーにも送ります。オフラインや一時的な失敗では送信を控え、次の接続で続けます。帰還票のQRは公開IDがあればその星、なければトップにつながります
+- みんなの星（次期バージョン）を有効にした場合だけ、本人が「星空に流す」を選んだ言葉と軌道IDを保存します（名前・IP は保存しません）。願い30日・叶ったよ24時間で空から消えます
 
 ## 構成
 
@@ -99,7 +99,7 @@ npx wrangler d1 execute morune-25143 --remote --command "INSERT INTO orbits (id,
 | オフライン | `public/sw.js`、`public/offline-routes.js`、`public/manifest.webmanifest` |
 | イトカワの距離 | `public/itokawa.js`、`public/itokawa-distance.json` |
 | 人の番号 | `app/api/orbits/`（D1 の `orbits` 表、`drizzle/0003_orbits.sql`） |
-| 軌道IDの検証 | `app/api/signals/rules.mjs`（番号と公開星で使う検証だけを残す。信号のAPI・記録処理は廃止） |
+| 信号の上限の部品 | `app/api/signals/rules.mjs`・`record.ts`（応援の信号は廃止。みんなの星が使う共通の部品として残す） |
 | みんなの星 | `app/api/stars/`（数とルールは `rules.mjs`）、`public/public-stars.js`、D1 の `orbits`・`public_stars`・`star_reports` 表（`drizzle/0002_public_stars.sql`） |
 | ログイン同期（本番では停止） | `app/api/wishes/route.ts`、Supabase（`docs/SUPABASE-SETUP.md`） |
 
@@ -134,14 +134,31 @@ npx wrangler deploy --config wrangler.jsonc
 
 ## 保留・通報された言葉の確認
 
-運営者だけが使う画面は `/watch`。アプリからのリンクはありません。トークンはこのタブの sessionStorage にだけ保存し、「閉じる」で消せます。
+みんなの星で「保留（held）」になった言葉と、通報で「非表示（hidden）」になった言葉は、運営者（本人）が確かめて表示・非表示を決めます。管理画面はまだないので、手元の PC から SQL で行います。**本番のデータを触るので、落ち着いて1つずつ。**
 
-- `WATCH_TOKEN` は32文字以上のランダムな秘密値を wrangler secret で設定します。未設定・32文字未満では API は404です。リポジトリや画面URLには書きません。
-- 公開前に `drizzle/0005_watch_settings.sql` と `drizzle/0006_shared_sky.sql` を適用する必要があります（本番への適用・公開は本人の了承後）。初期値は一時停止です。
-- 一時停止中の新しい言葉はすべて保留になります。設定の表が読めないときも保留になります。既に表示中の星はそのままです。
-- 保留・非表示の言葉を新しい順に100件まで確認し、「出す」「隠す」「消す」を選べます。「出す」は通報数を0に戻します。同じ端末からの通報記録は残します。「消す」はページ内で確認してから星と通報を一緒に消します。
-- 本人の帰還は `POST /api/stars/return` に `{starId, orbitId}` を渡します。最初の帰還時刻を残し、再送で30日の期限を延ばしません。本人の削除は `POST /api/stars/delete` に `{starId, orbitId}` を渡します。軌道IDが一致するときだけ消せます。帰還と削除の試行は操作別・軌道ごとに1分10回までで、D1に短時間の回数だけを記録します。軌道IDは端末が持つ秘密の識別子で、ログインによる本人確認ではありません。
-- つらい気持ちの言葉を預けたあとは、端末の中で相談先を案内します。願いの保存・状態は変わりません。この案内のための送信は行いません。
+一覧を見る（新しい順）：
+
+```bash
+npx wrangler d1 execute morune-25143 --remote --command "SELECT id, kind, status, reports, text, datetime(created_at/1000, 'unixepoch', '+9 hours') AS created_jst, datetime(expires_at/1000, 'unixepoch', '+9 hours') AS expires_jst FROM public_stars WHERE status IN ('held', 'hidden') ORDER BY created_at DESC LIMIT 50"
+```
+
+表示に戻す／非表示にする（`<星のid>` を一覧の id に置き換える）：
+
+```bash
+npx wrangler d1 execute morune-25143 --remote --command "UPDATE public_stars SET status = 'visible' WHERE id = '<星のid>'"
+npx wrangler d1 execute morune-25143 --remote --command "UPDATE public_stars SET status = 'hidden' WHERE id = '<星のid>'"
+```
+
+- 通報で非表示になった言葉を表示に戻すときは、通報数も 0 に戻す：`UPDATE public_stars SET status = 'visible', reports = 0 WHERE id = '<星のid>'`（通報した端末の記録 `star_reports` は残すので、同じ端末からの二重の通報は数えない）
+- 消すとき（取り返しがつかない）：`DELETE FROM star_reports WHERE star_id = '<星のid>'` → `DELETE FROM public_stars WHERE id = '<星のid>'`
+
+書き出し（バックアップ。1つの外部サービスが止まっても、公開された言葉を手元に残す）：
+
+```bash
+npx wrangler d1 export morune-25143 --remote --output backup-$(date +%Y-%m-%d).sql
+```
+
+書き出したファイルには公開された言葉が入るので、Git にコミットしない。
 
 ## JAXA素材
 

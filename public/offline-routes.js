@@ -5,7 +5,7 @@
   // 画面を開くのに要る外部ファイル（3D星空の Three.js と Google Fonts）
   const CACHEABLE_HOSTS = ['cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
   // 保存すると困るもの：願いの保存API、ログイン、Service Worker 自身（更新を妨げる）
-  const BYPASS_PATHS = ['/api/', '/watch', '/signin-with-chatgpt', '/signout-with-chatgpt', '/callback', '/sw.js'];
+  const BYPASS_PATHS = ['/api/', '/signin-with-chatgpt', '/signout-with-chatgpt', '/callback', '/sw.js'];
 
   // 名前にハッシュや版が入っていて、中身が変わらないもの
   const IMMUTABLE_PATHS = ['/_next/static/', '/icons/'];

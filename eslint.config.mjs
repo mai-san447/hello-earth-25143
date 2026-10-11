@@ -9,8 +9,6 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
-    // wrangler dev がローカル確認のときに作る一時ファイル（.gitignore と同じ）
-    ".wrangler/**",
     "out/**",
     "build/**",
     "next-env.d.ts",

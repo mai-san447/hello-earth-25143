@@ -2,7 +2,6 @@
 // 決めた数はすべてここに置く（docs/みんなの星_設計.md、docs/状態設計.md の #17）。
 
 import {isOrbitId} from '../signals/rules.mjs';
-import {CARE_WORDS} from '../../../public/care.js';
 
 export {isOrbitId};
 
@@ -19,20 +18,11 @@ export const STATUS = Object.freeze({VISIBLE: 'visible', HELD: 'held', HIDDEN: '
 export const MAX_LENGTH = Object.freeze({wish: 60, fulfilled: 40});
 // 1つの軌道（端末）が1日（直近24時間）に流せる数。連投で星空が1人の言葉で埋まらないように
 export const DAILY_WINDOW_MS = DAY_MS;
-export const DAILY_LIMIT = Object.freeze({wish: 10, fulfilled: 3});
-export const GLOBAL_DAILY_LIMIT = Object.freeze({wish: 500, fulfilled: 200});
-
-/** @param {{kind: Kind, globalCount: number}} input @returns {{ok: true} | Rejected} */
-export function acceptGlobal({kind, globalCount}) {
-  return globalCount >= GLOBAL_DAILY_LIMIT[kind]
-    ? {ok: false, status: 429, error: '今日は星空がいっぱいです。また明日どうぞ。'}
-    : {ok: true};
-}
-// 翌年の帰還にも間に合うよう、願いを400日残す。
-export const TTL_MS = Object.freeze({wish: 400 * DAY_MS, fulfilled: DAY_MS});
-export const RETURN_TTL_MS = 30 * DAY_MS;
+export const DAILY_LIMIT = Object.freeze({wish: 3, fulfilled: 3});
+// 公開の有効期限。願いは30日、「叶ったよ」は1日だけの流れ星
+export const TTL_MS = Object.freeze({wish: 30 * DAY_MS, fulfilled: DAY_MS});
 // 1回に見える他の人の星。多すぎると自分の星が埋もれる
-export const SKY_LIMIT = 24;
+export const SKY_LIMIT = 12;
 // 通報がこの数たまった星は、人が確かめるまで隠す
 export const REPORT_HIDE_THRESHOLD = 3;
 // 枝番の親番（小惑星イトカワの番号）。本物の星の名前ではなく、この作品の中だけの番号
@@ -45,7 +35,7 @@ export const NUMBER_PREFIX = '25143';
 export const CAUTION_WORDS = Object.freeze([
   '死ね', '氏ね', '殺す', 'ころす', '殺したい', '消えろ', 'きえろ',
   'きもい', 'キモい', 'うざい', 'ウザい', 'ブス', 'アホ', 'クズ',
-  ...CARE_WORDS,
+  '自殺', '死にたい', 'しにたい', '消えたい',
   'セックス', '援交', 'パパ活',
   'line id', 'lineid', 'ライン id', 'dm', '住所', '電話番号',
 ]);
@@ -67,25 +57,6 @@ export function publicStarsEnabled(env) {
 
 export function isStarId(value) {
   return typeof value === 'string' && STAR_ID.test(value);
-}
-
-export function publishStatus(text, paused) {
-  return paused ? STATUS.HELD : screenText(text).status;
-}
-
-export const DELETE_LIMIT = Object.freeze({windowMs: 60_000, max: 10});
-export function canDelete(recentCount) {
-  return Number.isInteger(recentCount) && recentCount >= 0 && recentCount < DELETE_LIMIT.max;
-}
-export function ownsStar(star, orbitId) {
-  return isOrbitId(orbitId) && star?.orbitId === orbitId;
-}
-/** @returns {{ok: true, value: {starId: string, orbitId: string}} | Rejected} */
-export function parseDelete(body) {
-  const starId = bodyField(body, 'starId');
-  const orbitId = bodyField(body, 'orbitId');
-  if (!isStarId(starId) || !isOrbitId(orbitId)) return {ok: false, status: 400, error: '消す星を確認してください。'};
-  return {ok: true, value: {starId, orbitId}};
 }
 
 // 改行や連続した空白は1つの空白にし、前後の空白を落とす。見た目の制御文字も除く
@@ -122,20 +93,18 @@ function bodyField(body, key) {
 }
 
 // 公開する言葉の形を確かめる。null や数値の JSON でも 500 にならないよう、形を確かめてから読む
-/** @returns {{ok: true, value: {orbitId: string, kind: Kind, text: string, starId?: string}} | Rejected} */
+/** @returns {{ok: true, value: {orbitId: string, kind: Kind, text: string}} | Rejected} */
 export function parsePublish(body) {
   const orbitId = bodyField(body, 'orbitId');
   const kind = bodyField(body, 'kind');
   const raw = bodyField(body, 'text');
-  const starId = bodyField(body, 'starId');
-  if (starId !== undefined && !isStarId(starId)) return {ok: false, status: 400, error: '星を確認してください。'};
   if (!isOrbitId(orbitId)) return {ok: false, status: 400, error: '軌道を確認してください。'};
   if (!KINDS.includes(kind)) return {ok: false, status: 400, error: '流す言葉の種類を確認してください。'};
   if (typeof raw !== 'string') return {ok: false, status: 400, error: '流す言葉を入力してください。'};
   const text = normalizeText(raw);
   if (!text) return {ok: false, status: 400, error: '流す言葉を入力してください。'};
   if ([...text].length > MAX_LENGTH[kind]) return {ok: false, status: 400, error: `${MAX_LENGTH[kind]}字までにしてください。`};
-  return {ok: true, value: {orbitId, kind, text, ...(starId === undefined ? {} : {starId})}};
+  return {ok: true, value: {orbitId, kind, text}};
 }
 
 // 1日の上限。dailyCount はこの軌道が直近24時間に流した、同じ種類の数
@@ -145,7 +114,7 @@ export function acceptPublish({kind, dailyCount}) {
     return {
       ok: false,
       status: 429,
-      error: kind === 'wish' ? '星空に出せる願いは、1日10個までです。また明日出せます。' : '「叶ったよ」は、1日3つまでです。また明日流せます。',
+      error: kind === 'wish' ? '星空に流せる願いは、1日3つまでです。また明日流せます。' : '「叶ったよ」は、1日3つまでです。また明日流せます。',
     };
   }
   return {ok: true};
@@ -176,26 +145,16 @@ export function statusAfterReport({status, reports}) {
 
 // 他の人の星空に出してよいか（表示中・期限内・自分の星ではない）。取得の SQL と同じ条件
 /** @param {{status: string, expiresAt: number, orbitId: string}} star @param {{now: number, ownOrbitId?: string | null}} options */
-export function isShowable(star, {now, ownOrbitId = null, starId = null}) {
-  return star.status === STATUS.VISIBLE && star.expiresAt > now && (star.orbitId !== ownOrbitId || (isStarId(starId) && star.id === starId));
+export function isShowable(star, {now, ownOrbitId = null}) {
+  return star.status === STATUS.VISIBLE && star.expiresAt > now && star.orbitId !== ownOrbitId;
 }
 
-// 帰還と削除で同じ本人確認を使い、星の持ち主以外には存在を知らせない。
-export function parseReturn(body) {
-  const parsed = parseDelete(body);
-  return parsed.ok ? parsed : {...parsed, error: '星を確認してください。'};
-}
-
-export function returnedStar(star, orbitId, now) {
-  if (!ownsStar(star, orbitId)) return null;
-  // 再送で表示期限を延ばさないため、最初の帰還時刻を使う。
-  const returnedAt = Number.isFinite(star.returnedAt) ? star.returnedAt : now;
-  return {returnedAt, expiresAt: returnedAt + RETURN_TTL_MS};
-}
-
-// 指定した星を先頭に置き、ランダムの中に重複していても24個以内に収める。
-export function focusedStars(rows, focused) {
-  return (focused ? [{...publicStar(focused), focus: true}, ...rows.filter(row => row.id !== focused.id).map(publicStar)] : rows.map(publicStar)).slice(0, SKY_LIMIT);
+// 応援の信号を送るための星の形
+/** @returns {{ok: true, value: {starId: string}} | Rejected} */
+export function parseStarSignal(body) {
+  const starId = bodyField(body, 'starId');
+  if (!isStarId(starId)) return {ok: false, status: 400, error: '信号の送り先を確認してください。'};
+  return {ok: true, value: {starId}};
 }
 
 /** @param {number | null} number @returns {string | null} */
@@ -215,5 +174,5 @@ export function formatNumber(number) {
 
 // 返す星の形。軌道ID・状態・通報数は返さない（誰の星か、どれだけ通報されたかを外に出さない）
 export function publicStar(row) {
-  return {id: row.id, kind: row.kind, text: row.text, expiresAt: row.expiresAt, returned: Number.isFinite(row.returnedAt)};
+  return {id: row.id, kind: row.kind, text: row.text, expiresAt: row.expiresAt};
 }

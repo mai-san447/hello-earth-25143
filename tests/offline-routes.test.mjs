@@ -16,7 +16,7 @@ test('ページを開くときはネット優先（つながらなければ保�
 });
 
 test('名前が変わらない自前の部品は、公開直後に古い版が混ざらないようネット優先', () => {
-  for (const path of ['/mission.js', '/floating-wishes.js', '/wish-state.js', '/style.css', '/itokawa-distance.json', '/manifest.webmanifest']) {
+  for (const path of ['/mission.js', '/wish-state.js', '/style.css', '/itokawa-distance.json', '/manifest.webmanifest']) {
     assert.equal(route(`${origin}${path}`), 'fresh', path);
   }
 });

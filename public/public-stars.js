@@ -6,12 +6,12 @@ const STAR_ID = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9
 const KINDS = new Set(['wish', 'fulfilled']);
 
 // サーバーの SKY_LIMIT と同じ。端末に控えた星が多すぎても、この数までしか描かない
-export const SKY_LIMIT = 24;
+export const SKY_LIMIT = 12;
 export const MAX_LENGTH = Object.freeze({wish: 60, fulfilled: 40});
 // ネットがないときに控えておく「流す予定」の数。病室で何度押しても溜まりすぎないように
-export const QUEUE_LIMIT = 30;
-// 長く離れている間も願いを失わないよう、公開の期限と同じ期間控える。
-export const QUEUE_MAX_AGE_MS = 400 * DAY_MS;
+export const QUEUE_LIMIT = 6;
+// 控えた「流す予定」は、この日数を過ぎたら流さずに捨てる（何週間も前の言葉が急に流れないように）
+export const QUEUE_MAX_AGE_MS = 3 * DAY_MS;
 
 // 端末に控えた星、またはサーバーから届いた星のうち、形が正しく期限内のものだけを使う。
 // 通報した星は、この端末では二度と出さない
@@ -25,7 +25,7 @@ export function sanitizeStars(value, now, reportedIds = []) {
       && typeof star.text === 'string' && star.text.length > 0 && [...star.text].length <= MAX_LENGTH[star.kind]
       && Number.isFinite(star.expiresAt) && star.expiresAt > now
       && !reported.has(star.id))
-    .map(({id, kind, text, expiresAt, returned, focus}) => ({id, kind, text, expiresAt, returned: returned === true, focus: focus === true}))
+    .map(({id, kind, text, expiresAt}) => ({id, kind, text, expiresAt}))
     .slice(0, SKY_LIMIT);
 }
 
@@ -34,7 +34,7 @@ export function starSeed(id) {
   let value = 2166136261;
   for (const character of String(id)) value = Math.imul(value ^ character.charCodeAt(0), 16777619);
   const seed = value >>> 0;
-  return {raDeg: (seed % 36000) / 100, decDeg: 40 + ((seed >>> 8) % 4501) / 100, phase: (seed % 997) / 997};
+  return {angle: (seed % 6283) / 1000, lane: 0.55 + (seed % 61) / 100, phase: (seed % 997) / 997};
 }
 
 // 触れた場所にいちばん近い星。指で触れるので、少し離れていても拾う（maxDistance は CSS ピクセル）
@@ -58,37 +58,34 @@ export function nextStar(stars, currentId) {
   return stars[(index + 1) % stars.length];
 }
 
-// 同じ言葉の別の願いを混ぜないため、願いのIDで控えを区別する。
+// 他の人の星への応援の信号は、この端末から同じ星へ1日1回まで（/signal と同じ考え方）
+export function canSignal(sentDays, starId, today) {
+  return !sentDays || sentDays[starId] !== today;
+}
+
+export function markSignal(sentDays, starId, today) {
+  // 今日の記録だけを残す（昨日までの分は、もう止める理由がない）
+  const next = {};
+  for (const [id, day] of Object.entries(sentDays || {})) if (day === today) next[id] = day;
+  next[starId] = today;
+  return next;
+}
+
+// ネットがないときに「流す予定」を控える。同じ言葉を二重に控えない
 export function enqueue(queue, item, now) {
-  const kept = pruneQueue(queue, now).filter(entry => item.wishId ? entry.wishId !== item.wishId : !(entry.kind === item.kind && entry.text === item.text && !entry.wishId));
-  return [...kept, {kind: item.kind, text: item.text, queuedAt: now, ...(item.wishId ? {wishId: item.wishId} : {}), ...(item.publishId ? {publishId: item.publishId} : {})}].slice(-QUEUE_LIMIT);
+  const kept = pruneQueue(queue, now).filter(entry => !(entry.kind === item.kind && entry.text === item.text));
+  return [...kept, {kind: item.kind, text: item.text, queuedAt: now}].slice(-QUEUE_LIMIT);
 }
 
 export function pruneQueue(queue, now) {
   if (!Array.isArray(queue)) return [];
   return queue.filter(entry => entry && KINDS.has(entry.kind) && typeof entry.text === 'string'
-    && (entry.wishId === undefined || (typeof entry.wishId === 'string' && entry.wishId.length > 0))
-    && Number.isFinite(entry.queuedAt) && (STAR_ID.test(entry.publicStarId) || now - entry.queuedAt < (entry.kind === 'fulfilled' ? DAY_MS : QUEUE_MAX_AGE_MS)));
+    && Number.isFinite(entry.queuedAt) && now - entry.queuedAt < QUEUE_MAX_AGE_MS);
 }
 
 // 公開したあとに出す一言。保留（held）でも責めない言い方にする
 export function publishMessage({status, number, kind}) {
   const label = kind === 'fulfilled' ? '「叶ったよ」を流れ星にしました' : '星空に流しました';
-  if (status === 'held') return 'この願いは確認してから星空に出ます';
+  if (status === 'held') return '言葉を確かめてから、星空に出します。少し待ってください';
   return number ? `${label}。あなたの番号 ${number}` : label;
-}
-
-// 削除は帰還より優先し、同じ星の操作を重ねても控えを増やさない。
-export function enqueueAction(queue, item) {
-  const kept = sanitizeActions(queue);
-  if (item.action === 'return' && kept.some(entry => entry.starId === item.starId && entry.action === 'delete')) return kept;
-  return [...kept.filter(entry => entry.starId !== item.starId), item];
-}
-
-export function sanitizeActions(queue) {
-  return Array.isArray(queue) ? queue.filter(item => item && STAR_ID.test(item.starId) && ['return', 'delete'].includes(item.action)) : [];
-}
-
-export function receiptUrl(origin, publicStarId) {
-  return `${origin}/${typeof publicStarId === 'string' && STAR_ID.test(publicStarId) ? `?star=${encodeURIComponent(publicStarId)}` : ''}`;
 }
