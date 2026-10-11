@@ -45,7 +45,7 @@
     try { localStorage.setItem(key, value); } catch { /* 保存できなくても使い続けられる */ }
   }
 
-  // #22 みんなの星。他の人の星は、最後にネットにつながったときに受け取った分を端末に控え、病室でも見せる。
+  // #22 みんなの星。他の人の星は、最後にネットにつながったときに受け取った分を端末に控え、ネットがない場所でも見せる。
   // 自分だけの星は送らず、公開する言葉と軌道IDだけをサーバーに渡す。
   const STARS_CACHE_KEY = 'morune-25143-public-stars';
   const STARS_ENABLED_KEY = 'morune-25143-stars-enabled';
@@ -2639,11 +2639,11 @@
     }
   }
 
-  // #5 病室（ネットなし）でも開けるように、画面と部品を端末に保存する Service Worker を登録する。
+  // #5 ネットがない場所でも開けるように、画面と部品を端末に保存する Service Worker を登録する。
   // 開発サーバーでは古い部品が残って混乱するため、https の本番だけで動かす。
   function registerOfflineSupport() {
     // 端末の保存を「消されにくい保存」にしてほしいと頼む。iPhone の Safari は、しばらく開かないサイトの
-    // 保存（願いも含む）を消すことがあり、入院中に長く預ける使い方とぶつかるため。断られても使い続けられる
+    // 保存（願いも含む）を消すことがあり、長く預ける使い方とぶつかるため。断られても使い続けられる
     navigator.storage?.persist?.().catch(() => {});
     if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
     const warm = registration => registration.active?.postMessage({
