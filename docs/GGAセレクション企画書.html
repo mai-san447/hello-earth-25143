@@ -1,0 +1,500 @@
+<title>MORUNE 25143 セレクション企画書</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: 夜空の一枚紙。左に細い「観測ログ」列（番号・時間）、右に本文。帰還票だけ感熱紙の白で浮かせる */
+:root {
+  --sky: #0d1420;
+  --sky-2: #141d2c;
+  --ink: #e9e6dc;
+  --muted: #a2adb8;
+  --line: #2a3546;
+  --gold: #e3bd72;
+  --gold-soft: rgba(227,189,114,.12);
+  --paper: #fbfaf6;
+  --paper-ink: #16181b;
+  --ok: #7fc8a9;
+  --display: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --sky: #f5f3ee; --sky-2: #ece9e1; --ink: #1b2230; --muted: #5b6573; --line: #d6d2c7;
+    --gold: #9a6d1c; --gold-soft: rgba(154,109,28,.10); --paper: #ffffff; --paper-ink: #16181b; --ok: #2f7d5c;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --sky: #f5f3ee; --sky-2: #ece9e1; --ink: #1b2230; --muted: #5b6573; --line: #d6d2c7;
+  --gold: #9a6d1c; --gold-soft: rgba(154,109,28,.10); --paper: #ffffff; --paper-ink: #16181b; --ok: #2f7d5c;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--sky); color: var(--ink); font: 400 15px/1.85 var(--body); }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 80px; }
+a { color: var(--gold); }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+h1 { font: 800 clamp(30px, 5.4vw, 52px)/1.3 var(--display); letter-spacing: .02em; }
+h2 { font: 800 clamp(22px, 3.2vw, 30px)/1.45 var(--display); }
+h3 { font: 700 16px/1.6 var(--body); }
+p { margin: 0; }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.label { font: 500 11px/1.4 var(--mono); letter-spacing: .14em; color: var(--gold); text-transform: uppercase; }
+.muted { color: var(--muted); }
+
+/* 表紙 */
+.cover { display: grid; gap: 18px; padding-block: 24px 36px; border-bottom: 1px solid var(--line); position: relative; }
+.cover .lead { font-size: 17px; max-width: 40em; }
+.purpose { display: inline-block; justify-self: start; border: 1px solid var(--gold); color: var(--gold); padding: 6px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 24px; font: 400 12px/1.6 var(--mono); color: var(--muted); }
+#sky { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: .7; }
+.cover > *:not(canvas) { position: relative; }
+
+/* 章 */
+section.ch { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 0 28px; padding-block: 44px; border-bottom: 1px solid var(--line); }
+.ch-side { display: grid; align-content: start; gap: 6px; }
+.ch-side .no { font: 500 13px/1 var(--mono); color: var(--gold); }
+.ch-side .time { font: 400 11px/1.4 var(--mono); color: var(--muted); }
+.ch-body { display: grid; gap: 18px; min-width: 0; }
+@media (max-width: 720px) { section.ch { grid-template-columns: 1fr; gap: 10px; } .ch-side { grid-auto-flow: column; justify-content: start; gap: 14px; } }
+
+.grid { display: grid; gap: 14px; }
+.g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 720px) { .g3, .g2 { grid-template-columns: 1fr; } }
+.card { background: var(--sky-2); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.card.key { border-color: var(--gold); background: var(--gold-soft); }
+.card h3 { font-size: 15px; }
+.card p, .card li { font-size: 14px; line-height: 1.75; }
+ul.tight { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; }
+
+.thesis { font: 800 clamp(20px, 3vw, 27px)/1.6 var(--display); border-left: 3px solid var(--gold); padding-left: 16px; }
+
+.tablebox { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 560px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 12px; border-bottom: 1px solid var(--line); line-height: 1.65; }
+th { background: var(--sky-2); font-weight: 700; color: var(--ink); }
+tr:last-child td { border-bottom: 0; }
+td.us { color: var(--gold); font-weight: 700; }
+
+/* 最後の30秒 */
+.timeline { display: grid; gap: 0; border-left: 1px solid var(--line); margin-left: 6px; }
+.tick { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 14px; padding: 10px 0 10px 18px; position: relative; }
+.tick::before { content: ""; position: absolute; left: -5px; top: 17px; width: 9px; height: 9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--gold); }
+.tick .t { font: 500 13px/1.6 var(--mono); color: var(--gold); }
+.tick b { display: block; }
+
+/* 帰還票 */
+.receipt-wrap { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 720px) { .receipt-wrap { grid-template-columns: 1fr; } }
+.receipt { background: var(--paper); color: var(--paper-ink); font: 400 12px/1.5 var(--mono); padding: 14px 16px 18px; box-shadow: 0 10px 30px rgba(0,0,0,.35); max-width: 300px; justify-self: center; width: 100%; }
+.receipt .row { display: flex; justify-content: space-between; }
+.receipt canvas { display: block; width: 100%; height: auto; margin: 8px 0; border: 2px solid var(--paper-ink); image-rendering: pixelated; }
+.receipt .wish { font: 700 18px/1.4 var(--body); text-align: center; margin: 6px 0 2px; }
+.receipt .date { text-align: center; font-size: 10.5px; }
+.receipt .qr { width: 64px; height: 64px; margin: 10px auto; background:
+  conic-gradient(from 90deg at 2px 2px, var(--paper-ink) 25%, transparent 0) 0 0/8px 8px; outline: 6px solid var(--paper); opacity: .85; }
+.receipt .cut { border-top: 1.5px dashed var(--paper-ink); margin: 10px -16px 8px; position: relative; }
+.receipt .cut::before { content: "✂"; position: absolute; left: 4px; top: -11px; background: var(--paper); font-size: 12px; }
+.receipt .step { font: 700 13px/1.5 var(--body); }
+.receipt .line { border-bottom: 1px solid var(--paper-ink); height: 20px; }
+.receipt .fine { text-align: center; font-size: 9.5px; margin-top: 10px; line-height: 1.5; }
+
+/* 図 */
+.diagram { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: stretch; }
+@media (max-width: 720px) { .diagram { grid-template-columns: 1fr; } .diagram .arrow { transform: rotate(90deg); justify-self: center; } }
+.zone { border: 1.5px solid var(--ink); border-radius: 10px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.zone.server { border-style: dashed; }
+.zone li { font-size: 13.5px; }
+.arrow { align-self: center; font: 500 11px/1.5 var(--mono); color: var(--muted); text-align: center; }
+.arrow b { display: block; font-size: 20px; color: var(--gold); }
+
+.pill { display: inline-block; font: 500 11px/1.4 var(--mono); padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.pill.done { color: var(--ok); border-color: var(--ok); }
+.pill.next { color: var(--gold); border-color: var(--gold); }
+
+.stat { display: grid; gap: 2px; }
+.stat .n { font: 800 34px/1.1 var(--display); color: var(--gold); font-variant-numeric: tabular-nums; }
+.stat .u { font-size: 13px; color: var(--muted); }
+
+.qa { display: grid; gap: 10px; }
+.qa details { border: 1px solid var(--line); border-radius: 10px; padding: 12px 16px; background: var(--sky-2); }
+.qa summary { cursor: pointer; font-weight: 700; }
+.qa summary:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+.qa details p { margin-top: 8px; font-size: 14px; }
+
+.script td:first-child { white-space: nowrap; font-family: var(--mono); color: var(--gold); }
+.foot { padding-top: 30px; font-size: 12px; color: var(--muted); display: grid; gap: 6px; }
+@media (prefers-reduced-motion: reduce) { #sky { display: none; } }
+</style>
+
+<div class="wrap">
+
+<header class="cover" aria-labelledby="t">
+  <canvas id="sky" aria-hidden="true"></canvas>
+  <span class="label">G's Graduate Award · Selection Plan · 2026.10</span>
+  <h1 id="t">MORUNE 25143</h1>
+  <p class="lead">手放した「いつかやりたいこと」を星に預け、ひとつずつ受け取りなおす。<br>星空は、みんなの願いでできている。帰ってくるのは、自分の願いだけ。</p>
+  <span class="purpose">出場の目的：この体験を、展示として届ける仲間を探しています</span>
+  <div class="meta"><span>G's DEV 31期 中村舞衣子</span><span>https://morune-25143.morune-25143.workers.dev/</span><span>個人制作</span></div>
+</header>
+
+<!-- 審査基準への答え -->
+<section class="ch" aria-labelledby="c0">
+  <div class="ch-side"><span class="no">SUMMARY</span><span class="time">先に答え</span></div>
+  <div class="ch-body">
+    <h2 id="c0">審査の3つの問いに、この企画はこう答える</h2>
+    <div class="grid g3">
+      <div class="card"><span class="label">① 課題の解像度</span><h3>「消える」「選べない」の2つの瞬間</h3><p>しばらく日常から離れる人の「いつか」は、手放すときに<b>消える気がして</b>、戻ったときに<b>多すぎて選べない</b>。一覧を見せず、1つずつ帰ってくる形で、この2つだけを解く。</p></div>
+      <div class="card"><span class="label">② 技術への主体性</span><h3>作ったものより、やめたもの</h3><p>本物の星空（5,080星）を自分で計算して描く一方、AI の絵・星座の線・応援の信号は、試してから<b>自分の判断でやめた</b>。見せ方は自由に、データの扱いは厳しく、と線を引いた。</p></div>
+      <div class="card key"><span class="label">③ ディストリビューション</span><h3>展示で出会い、紙で持ち帰り、アプリで続く</h3><p>科学館・宇宙イベントでの体験を入口にし、その場で印刷される<b>帰還票</b>が家まで連れて帰る。公開2日で約12人が願いを預けた（実数）。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 1 Why me -->
+<section class="ch" aria-labelledby="c1">
+  <div class="ch-side"><span class="no">01</span><span class="time">1:30</span></div>
+  <div class="ch-body">
+    <span class="label">Why me</span>
+    <h2 id="c1">なぜ、わたしが願いを宇宙に預けるのか</h2>
+    <div class="grid g2">
+      <div class="card"><h3>原点：はやぶさを取材した</h3><p>前職で、小惑星探査機「はやぶさ」のプロジェクトマネージャー、川口淳一郎教授を取材した。<br>「高い塔を建てなければ、新たな水平線は見えてこない」。<br>はやぶさは、7年かけて小惑星 25143 イトカワから地球へ帰ってきた。作品名の「25143」は、この小惑星の番号から。</p></div>
+      <div class="card"><h3>体験：やりたいことを、一度手放した</h3><p>やりたいことを手放さなければならない時期があった。手放すときは「消えてしまう気がする」。戻ったときは「多すぎて選べない」。<br>大学院では 1on1 のふりかえりを研究し、<b>過去の自分の言葉に出会い直すと、次の一歩を選びやすくなる</b>ことを学んだ（JSET 2026 で発表）。</p></div>
+    </div>
+    <p class="muted">話す順番：取材の言葉 → 自分が手放した時期 → 研究で分かったこと。病名など、どこまで話すかは場によって本人が決める。</p>
+  </div>
+</section>
+
+<!-- 2 課題 -->
+<section class="ch" aria-labelledby="c2">
+  <div class="ch-side"><span class="no">02</span><span class="time">含む 01</span></div>
+  <div class="ch-body">
+    <span class="label">Problem</span>
+    <h2 id="c2">しばらく離れる人の「いつか」は、置き場所がないまま消えていく</h2>
+    <p>療養・休職・育休・介護・受験・転職など、数週間から数か月、日常から離れる人がいる。その間にも「いつかやりたいこと」は生まれるが、まだ予定にできない。</p>
+    <div class="tablebox"><table>
+      <thead><tr><th style="width:18%">場面</th><th>起きていること</th><th>今の代わり</th><th>MORUNE がすること</th></tr></thead>
+      <tbody>
+        <tr><td>手放すとき</td><td>書いても埋もれる。「消えてしまう気がする」</td><td>メモ・ToDo・頭の中</td><td class="us">星にして、本物の星空に灯す</td></tr>
+        <tr><td>離れている間</td><td>見返すと焦る。期限や通知がつらい</td><td>通知・連続日数</td><td class="us">何もしなくても星は暗くならない</td></tr>
+        <tr><td>戻ったとき</td><td>一覧を開くと多すぎて、また閉じる</td><td>自分で一覧を開く</td><td class="us">1つだけ、願いの方から帰ってくる</td></tr>
+      </tbody>
+    </table></div>
+    <p class="muted">生活や目標のアプリは、使い始めて100日以内に約7割が使われなくなるとされる（Userpilot、JMIR 2024 のレビューを引用）。続けさせる仕組みではなく、待っていられる場所をつくる。</p>
+  </div>
+</section>
+
+<!-- 3 コンセプト -->
+<section class="ch" aria-labelledby="c3">
+  <div class="ch-side"><span class="no">03</span><span class="time">1:00</span></div>
+  <div class="ch-body">
+    <span class="label">World</span>
+    <h2 id="c3">世界観</h2>
+    <p class="thesis">星空は、みんなの願いでできている。<br>帰ってくるのは、自分の願いだけ。</p>
+    <div class="grid g3">
+      <div class="card"><h3>預ける</h3><p>願いは名前なしで、今いる場所の本物の星空に金色の星として灯る。人に見せたくない願いは「自分だけの星」にできる。</p></div>
+      <div class="card"><h3>出会う</h3><p>星に触れると、言葉がふわっと浮かんで消える。他の人の願いとは、偶然すれ違うだけ。返信も、いいねの数もない。</p></div>
+      <div class="card"><h3>帰ってくる</h3><p>ある日スマホを振ると、自分の願いが1つだけ地球へ帰ってくる。帰ってきた星は、みんなの星空から消える。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3.5 画面の流れ -->
+<section class="ch" aria-labelledby="c35">
+  <div class="ch-side"><span class="no">FLOW</span><span class="time">設計</span></div>
+  <div class="ch-body">
+    <span class="label">Screens</span>
+    <h2 id="c35">画面は5つの段階に分け、1画面1つの行動にする</h2>
+    <p>イベントの体験アプリに学んだこと：最初に完成物と手順を見せ、作ったあとに「保存する・共有する・載せる」を選べる。作る楽しさから、持ち帰り、その後の参加までがつながっている。MORUNE も段階を分けて、次にすることを1つにし、帰還の瞬間を際立たせる。</p>
+    <div class="tablebox"><table>
+      <thead><tr><th style="width:12%">段階</th><th>見せること</th><th style="width:20%">主なボタン</th><th style="width:22%">今のアプリ</th></tr></thead>
+      <tbody>
+        <tr><td>入口</td><td>帰還票の見本と、体験の3ステップ（預ける → 帰ってくる → 帰還票が現像される）。はじめての人だけ</td><td>願いを預ける</td><td><span class="pill next">これから</span></td></tr>
+        <tr><td>入力</td><td>「いつか、何をしたい？」の一問だけ。「自分だけの星にする」は小さく</td><td>星へ送る</td><td><span class="pill done">あり（シート）</span></td></tr>
+        <tr><td>星空</td><td>みんなの願いが漂い、触れると言葉が浮かぶ。自分の星は金色</td><td>1つ呼び戻す（振る）</td><td><span class="pill done">あり</span></td></tr>
+        <tr><td>帰還</td><td>言葉が降りてきて、願いを大きく表示。今の気持ちを選ぶ（受け取る／もう少し預ける）</td><td>想いを受け取る</td><td><span class="pill done">あり</span></td></tr>
+        <tr><td>完成</td><td>帰還票そのものを主役にして現像する。画面の帰還票と、会場で出てくる紙を同じデザインにする</td><td>保存する／X でシェア</td><td><span class="pill done">あり</span>（主役にする調整はこれから）</td></tr>
+      </tbody>
+    </table></div>
+    <p class="muted">回収記録（受け取った願いの一覧と、一歩で星が育つ）は、5つの段階の外に置く「あとで見返す場所」。体験の流れには入れない。</p>
+  </div>
+</section>
+
+<!-- 4 デモ：最後の30秒 -->
+<section class="ch" aria-labelledby="c4">
+  <div class="ch-side"><span class="no">04</span><span class="time">3:00 デモ</span></div>
+  <div class="ch-body">
+    <span class="label">Demo · The last 30 seconds</span>
+    <h2 id="c4">いちばん磨くのは、願いが帰ってきた最後の30秒</h2>
+    <p>デモの前半（預ける・星が灯る・触れると言葉が浮かぶ）は1分。残りをこの30秒と、その意味の説明に使う。</p>
+    <div class="timeline" role="list">
+      <div class="tick" role="listitem"><span class="t">0:00</span><div><b>スマホを振る</b><span class="muted">星空から光が地球へ落ちてくる。振動と音。</span></div></div>
+      <div class="tick" role="listitem"><span class="t">0:05</span><div><b>カプセルが着地する</b><span class="muted">地表で小さく光り続ける。「カプセルを開く」だけが押せる。</span></div></div>
+      <div class="tick" role="listitem"><span class="t">0:10</span><div><b>言葉が、星空から降りてくる</b><span class="muted">「パンを一から焼いてみる」。カードより先に、言葉に出会う。</span></div></div>
+      <div class="tick" role="listitem"><span class="t">0:13</span><div><b>「30日間、あなたを待っていました」</b><span class="muted">預けた日と、待っていた日数。急かす言葉は入れない。</span></div></div>
+      <div class="tick" role="listitem"><span class="t">0:18</span><div><b>受け取るか、もう少し預けるか</b><span class="muted">2択だけ。今でなくていいなら、星空へ戻せる。</span></div></div>
+      <div class="tick" role="listitem"><span class="t">0:22</span><div><b>帰還票が現像される</b><span class="muted">紙が上から少しずつ現れる。会場では感熱プリンターから本物の紙が出てくる。</span></div></div>
+      <div class="tick" role="listitem"><span class="t">0:30</span><div><b>「やってみることにした」</b><span class="muted">X にシェアするかは自分で決める。いいねが応援になる。</span></div></div>
+    </div>
+    <p class="muted">デモは見本の願いを入れた端末で行う。録画も用意する。時間の早送りは作らない。<span class="pill done">実装済み（プレビュー）</span></p>
+  </div>
+</section>
+
+<!-- 5 展示シナリオ -->
+<section class="ch" aria-labelledby="c5">
+  <div class="ch-side"><span class="no">05</span><span class="time">1:30</span></div>
+  <div class="ch-body">
+    <span class="label">Exhibition</span>
+    <h2 id="c5">展示シナリオ：科学館・宇宙イベントで「星空に願いを預ける」</h2>
+    <div class="grid g2">
+      <div class="card key"><h3>来場者の2〜3分</h3><ul class="tight">
+        <li>入口の QR を自分のスマホで読む</li>
+        <li>願いを書いて預ける → 会場の大きな画面の星空に、自分の星が灯る</li>
+        <li>大きな画面には、来場者の願いがふわっと浮かんでは消える</li>
+        <li>スマホを振る → カプセルが帰ってくる</li>
+        <li>感熱プリンターから帰還票が出てくる。持ち帰る</li>
+        <li>家に帰ってから、残りの願いが1つずつ帰ってくる</li>
+      </ul></div>
+      <div class="card"><h3>運営に必要なもの</h3><ul class="tight">
+        <li>大きな画面（またはプロジェクター）1、PC 1</li>
+        <li>感熱プリンター（80mm）1、ロール紙</li>
+        <li>QR の看板、スタッフ 1〜2人</li>
+        <li>見守り：気になる言葉は大きな画面に出す前に止まる。スタッフが確認する</li>
+        <li>その会場の緯度経度で、その場所の本物の星空を描く</li>
+      </ul></div>
+    </div>
+    <div class="tablebox"><table>
+      <thead><tr><th style="width:24%">展開</th><th>場所</th><th>違い</th></tr></thead>
+      <tbody>
+        <tr><td>A 星空に預ける（本命）</td><td>科学館、プラネタリウム、宇宙イベント</td><td>Why me と 25143 の物語がそのまま語れる</td></tr>
+        <tr><td>B 願いを持ち帰る</td><td>商業施設、七夕・新年のポップアップ</td><td>1分の短縮版。帰還票の半券を入れるサンプルカプセルを添える</td></tr>
+        <tr><td>C 地域の願いをつなぐ</td><td>星空の見える町、観光・移住イベント</td><td>その土地の夜空と、地域の願いの星空</td></tr>
+        <tr><td>共創</td><td>アーティスト・ブランド</td><td>帰還票の絵柄、会場の映像を一緒に作る</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- 6 帰還票 -->
+<section class="ch" aria-labelledby="c6">
+  <div class="ch-side"><span class="no">06</span><span class="time">0:30</span></div>
+  <div class="ch-body">
+    <span class="label">Take-home</span>
+    <h2 id="c6">持ち帰る作品：帰還票</h2>
+    <div class="receipt-wrap">
+      <div class="receipt" aria-label="帰還票の見本">
+        <div class="row"><span>MORUNE 25143</span><span>25143-0007-03</span></div>
+        <canvas id="dot" width="132" height="76" aria-hidden="true"></canvas>
+        <div class="wish">パンを一から焼いてみる</div>
+        <div class="date">2026.09.12 → 2026.10.11 · 25143まで 約2.5億km</div>
+        <div class="qr" aria-hidden="true"></div>
+        <div class="cut"></div>
+        <div class="step">最初の小さな一歩</div>
+        <div class="step" style="font-weight:400">近くのパン教室を調べる</div>
+        <div class="line"></div>
+        <div class="fine">距離：NASA/JPL Horizons<br>番号は作品の中だけのもので、本物の星の名前ではありません</div>
+      </div>
+      <div class="grid">
+        <div class="card"><h3>文字は最小限</h3><p>番号・星のドット絵・願い・預けた日→帰ってきた日・QR・最初の一歩だけ。あいさつや説明は入れない。</p></div>
+        <div class="card"><h3>絵はガチャ</h3><p>夕方の一番星・満天の星・夜明け、たまにレアの流れ星。どれが出るかは現像されるまで分からない。</p></div>
+        <div class="card"><h3>紙がアプリへ連れ戻す</h3><p>QR から自分の星へ戻れる。半券の「最初の小さな一歩」は切り取ってカプセルに入れられる。</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 技術 -->
+<section class="ch" aria-labelledby="c7">
+  <div class="ch-side"><span class="no">07</span><span class="time">0:40</span></div>
+  <div class="ch-body">
+    <span class="label">Technology</span>
+    <h2 id="c7">見せ方は自由に、データの扱いは厳しく</h2>
+    <div class="diagram">
+      <div class="zone"><h3>スマホの中</h3><ul class="tight">
+        <li>本物の星空：Yale 輝星星表 5,080星を同梱、時刻と位置から計算（Three.js）</li>
+        <li>位置情報：端末の中で計算に使うだけ。送らない</li>
+        <li>自分の願いと帰還の記録：IndexedDB</li>
+        <li>帰還票：Canvas で白黒画像に</li>
+        <li>ネットがなくても動く（Service Worker）</li>
+      </ul></div>
+      <div class="arrow"><b>⇄</b>願いの言葉<br>軌道ID・時刻<br>名前・IPは<br>送らない</div>
+      <div class="zone server"><h3>サーバー（Cloudflare Workers ＋ D1）</h3><ul class="tight">
+        <li>みんなの星空：名前なしの願いの言葉と、端末ごとのランダムな ID</li>
+        <li>見守り：気になる言葉は保留して運営が確認、通報3件で非表示</li>
+        <li>人の番号（25143-0007）の発行</li>
+      </ul></div>
+    </div>
+    <div class="tablebox"><table>
+      <thead><tr><th style="width:26%">試したこと</th><th>結果</th><th>判断</th></tr></thead>
+      <tbody>
+        <tr><td>AI で願いの絵をつくる</td><td>Workers AI で実装。絵が願いのイメージとずれることが多い</td><td>やめた。星のドット絵のガチャにした</td></tr>
+        <tr><td>願いを星座の線でつなぐ</td><td>文字なしの線は、意味が伝わらなかった</td><td>やめた。星が光るだけにした</td></tr>
+        <tr><td>応援の信号（振って星を明るくする）</td><td>シェアとの違いが分かりにくい</td><td>やめた。X のいいねで応援を受け取る</td></tr>
+        <tr><td>北45°の固定視野の星空</td><td>季節によって願いの星が地平線に沈む</td><td>天の北極中心の星座早見盤に作り直した</td></tr>
+      </tbody>
+    </table></div>
+    <p class="muted">AI（Claude・Codex）にコードを書かせ、互いにレビューさせた。何を作り、何をやめるかは自分が決めた。自動テスト 152件、変更のたびに GitHub で自動実行。</p>
+  </div>
+</section>
+
+<!-- 8 検証 -->
+<section class="ch" aria-labelledby="c8">
+  <div class="ch-side"><span class="no">08</span><span class="time">含む 09</span></div>
+  <div class="ch-body">
+    <span class="label">Evidence</span>
+    <h2 id="c8">分かっていること、これから確かめること</h2>
+    <div class="grid g3">
+      <div class="card"><div class="stat"><span class="n mono">約12</span><span class="u">公開2日で願いを預けた人（番号の発行数）</span></div></div>
+      <div class="card"><div class="stat"><span class="n mono">1</span><span class="u">届いた声「電車で位置が取れない」→ 当日中に直して公開</span></div></div>
+      <div class="card"><div class="stat"><span class="n mono">0</span><span class="u">アンケートの回答。1分で返せる頼み方に変える</span></div></div>
+    </div>
+    <div class="tablebox"><table>
+      <thead><tr><th style="width:30%">確かめたいこと</th><th>見る数字</th><th>いつ</th></tr></thead>
+      <tbody>
+        <tr><td>本当に、また開くか</td><td>預けた人のうち、3日後に自分から開いた人の割合</td><td>セレクションまでに数人分</td></tr>
+        <tr><td>展示で、持ち帰りたくなるか</td><td>体験した人のうち、帰還票を持ち帰った人・家で QR を開いた人</td><td>GGA の交流会</td></tr>
+        <tr><td>置きたい場所があるか</td><td>「この体験を置ける場所がある」と言った施設・人の数</td><td>GGA の交流会と、その後のフォロー</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- 9 収益 -->
+<section class="ch" aria-labelledby="c9">
+  <div class="ch-side"><span class="no">09</span><span class="time">0:40</span></div>
+  <div class="ch-body">
+    <span class="label">How it sustains</span>
+    <h2 id="c9">体験を実現する仕組み：個人からは取らない</h2>
+    <div class="grid g3">
+      <div class="card key"><h3>展示の導入</h3><p>科学館・商業施設・自治体に、体験一式（画面の設定、プリンター、運営の手順）を期間で提供する。出展ごとの料金。</p></div>
+      <div class="card"><h3>持ち帰る物</h3><p>サンプルカプセル（ブレスレット）、キーホルダー、帰還票の台紙。数百円〜千円台（仮説）。</p></div>
+      <div class="card"><h3>共創</h3><p>アーティスト・ブランドと、帰還票の絵柄や会場の演出を一緒につくる。限定の帰還票。</p></div>
+    </div>
+    <p class="muted">MORUNE は商標登録済み。商品には「25143」・星・MORUNE だけを入れ、はやぶさ・JAXA の名前や形は入れない。物販の前に特定商取引法の表示を整える。アプリは無料のまま。</p>
+  </div>
+</section>
+
+<!-- 10 Ask -->
+<section class="ch" aria-labelledby="c10">
+  <div class="ch-side"><span class="no">10</span><span class="time">0:20</span></div>
+  <div class="ch-body">
+    <span class="label">Ask</span>
+    <h2 id="c10">一緒にやりたい人</h2>
+    <div class="grid g3">
+      <div class="card"><h3>場を持つ方</h3><p>科学館、プラネタリウム、商業施設、自治体のイベント担当。まず1回、試しに置かせてください。</p></div>
+      <div class="card"><h3>つくる方</h3><p>星空や帰還票の絵柄・映像を一緒に描いてくれるアーティスト。</p></div>
+      <div class="card"><h3>確かめる方</h3><p>しばらく日常から離れた経験がある人と、その人たちにつながるコミュニティ。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 想定問答 -->
+<section class="ch" aria-labelledby="c11">
+  <div class="ch-side"><span class="no">Q&amp;A</span><span class="time">質疑</span></div>
+  <div class="ch-body">
+    <h2 id="c11">聞かれそうなこと</h2>
+    <div class="qa">
+      <details><summary>メモアプリやリマインダーで十分では？</summary><p>メモは「自分で一覧を開く」道具で、開かなくなると終わる。MORUNE は一覧を見せず、願いの方から1つずつ帰ってくる。期限も連続日数もないので、離れている間に罪悪感が生まれない。</p></details>
+      <details><summary>願いを公開されるのがこわい人は？</summary><p>名前は出さない。人に見せたくない願いは、預けるときに「自分だけの星」を選べば、端末の中だけに置かれる。</p></details>
+      <details><summary>荒らしや個人情報の書き込みは？</summary><p>URL・メールアドレス・電話番号らしい数字・注意語を含む言葉は、自動で保留して運営が確認してから出す。通報3件で非表示。展示の会場ではスタッフが見守る。</p></details>
+      <details><summary>はやぶさやイトカワの権利は？</summary><p>「25143」は IAU が承認した小惑星の番号で、作品名に使える。はやぶさは物語の由来として語るだけで、商品や画面の名前には使わない。商品化するときは JAXA に相談する。</p></details>
+      <details><summary>なぜアプリを有料にしないのか？</summary><p>願いは長く預けるもので、データの守りとサポートの体制ができるまでは、お金をもらう責任を負えない。体験の場と持ち帰る物で成り立たせる。</p></details>
+      <details><summary>一人で運営できるのか？</summary><p>アプリは Cloudflare の上で、サーバーの手間はほぼない。展示は機材が少なく、1〜2人で回せる形にした。仲間を探しているのは、場づくりと絵づくりの部分。</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- 台本 -->
+<section class="ch" aria-labelledby="c12">
+  <div class="ch-side"><span class="no">10 min</span><span class="time">台本</span></div>
+  <div class="ch-body">
+    <h2 id="c12">セレクション10分の流れ</h2>
+    <div class="tablebox"><table class="script">
+      <thead><tr><th>時間</th><th>話すこと・見せるもの</th></tr></thead>
+      <tbody>
+        <tr><td>0:00</td><td>名前と出場の目的「この体験を、展示として届ける仲間を探しています」</td></tr>
+        <tr><td>0:20</td><td>Why me：取材の言葉 → 手放した時期 → 研究（01）</td></tr>
+        <tr><td>1:50</td><td>世界観：みんなの願いの星空、帰ってくるのは自分の願いだけ（03）</td></tr>
+        <tr><td>2:50</td><td>デモ：預ける → 灯る → 触れると浮かぶ → 振る → 最後の30秒 → 帰還票（04）</td></tr>
+        <tr><td>5:50</td><td>展示シナリオ A と展開先（05）、帰還票の実物（06）</td></tr>
+        <tr><td>7:50</td><td>技術：自由と管理の線、やめたもの（07）</td></tr>
+        <tr><td>8:30</td><td>分かっていること（08）、仕組み（09）</td></tr>
+        <tr><td>9:40</td><td>Ask（10）。QR を出したまま質疑へ</td></tr>
+      </tbody>
+    </table></div>
+    <p class="muted">GGA 本番（5分）では、01 を40秒、デモを2分、05〜06 を50秒、07 を20秒、09 を30秒、Ask を20秒に縮める。</p>
+  </div>
+</section>
+
+<!-- 準備 -->
+<section class="ch" aria-labelledby="c13">
+  <div class="ch-side"><span class="no">TODO</span><span class="time">10/18 まで</span></div>
+  <div class="ch-body">
+    <h2 id="c13">この企画を見せるために、残っていること</h2>
+    <div class="tablebox"><table>
+      <thead><tr><th>やること</th><th style="width:22%">状態</th></tr></thead>
+      <tbody>
+        <tr><td>星に触れると浮かぶ・言葉が降りてくる・帰還票の現像・マウスを重ねる</td><td><span class="pill done">プレビュー済み</span></td></tr>
+        <tr><td>上の演出を本番へ</td><td><span class="pill next">OK 待ち</span></td></tr>
+        <tr><td>みんなの星空を「初期値で出す＋自分だけの星」に作り直す、見守りの担当を決める</td><td><span class="pill next">これから</span></td></tr>
+        <tr><td>スライドをこの構成で作る（PowerPoint 16:9）</td><td><span class="pill next">これから</span></td></tr>
+        <tr><td>デモ動画の撮り直し、帰還票の実物の写真</td><td><span class="pill next">これから</span></td></tr>
+        <tr><td>3日後にまた開いたかを、数人に聞く</td><td><span class="pill next">これから</span></td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<footer class="foot">
+  <span>はやぶさとイトカワの物語をモチーフにした個人制作です。JAXA・IAU とは関係ありません。</span>
+  <span>星のデータ：Yale Bright Star Catalogue（VizieR V/50）／ 距離：NASA/JPL Horizons</span>
+</footer>
+</div>
+
+<script>
+// 表紙の星空と、帰還票の星のドット絵（見本）。動きを減らす設定では表紙の星は出さない
+(function () {
+  var sky = document.getElementById('sky');
+  try {
+    if (sky && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      var ctx = sky.getContext('2d');
+      var fit = function () { var r = sky.getBoundingClientRect(); sky.width = r.width * devicePixelRatio; sky.height = r.height * devicePixelRatio; };
+      fit(); addEventListener('resize', fit);
+      var stars = [];
+      for (var i = 0; i < 140; i++) stars.push({x: Math.random(), y: Math.random(), r: Math.random() * 1.2 + .3, p: Math.random() * 6.28});
+      var gold = {x: .82, y: .32};
+      var draw = function (t) {
+        ctx.clearRect(0, 0, sky.width, sky.height);
+        var ink = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#a2adb8';
+        stars.forEach(function (s) {
+          ctx.globalAlpha = .35 + .35 * Math.sin(t / 1400 + s.p);
+          ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(s.x * sky.width, s.y * sky.height, s.r * devicePixelRatio, 0, 6.28); ctx.fill();
+        });
+        var gx = gold.x * sky.width, gy = gold.y * sky.height, k = .8 + .2 * Math.sin(t / 900);
+        var g = ctx.createRadialGradient(gx, gy, 0, gx, gy, 22 * devicePixelRatio * k);
+        g.addColorStop(0, 'rgba(255,236,190,.95)'); g.addColorStop(.3, 'rgba(255,214,140,.35)'); g.addColorStop(1, 'rgba(255,200,120,0)');
+        ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(gx, gy, 22 * devicePixelRatio * k, 0, 6.28); ctx.fill();
+        requestAnimationFrame(draw);
+      };
+      requestAnimationFrame(draw);
+    }
+  } catch (e) { /* 星が描けなくても本文は読める */ }
+
+  var dot = document.getElementById('dot');
+  if (dot) {
+    var c = dot.getContext('2d'), w = dot.width, h = dot.height;
+    c.fillStyle = '#16181b'; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#fbfaf6';
+    for (var y = 0; y < h * .7; y += 2) for (var x = (y / 2) % 2; x < w; x += 2) { if (Math.random() < y / (h * 1.6)) c.fillRect(x, y, 1, 1); }
+    for (var j = 0; j < 30; j++) c.fillRect(Math.floor(Math.random() * w), Math.floor(Math.random() * h * .55), 1, 1);
+    c.fillRect(96, 18, 1, 9); c.fillRect(92, 22, 9, 1); c.fillRect(95, 21, 3, 3);
+    c.fillStyle = '#16181b';
+    c.beginPath(); c.ellipse(w / 2, h + 26, w * .75, 40, 0, 0, 6.28); c.fill();
+    c.fillStyle = '#16181b'; c.fillRect(54, 46, 4, 6); c.beginPath(); c.arc(56, 44, 2.5, 0, 6.28); c.fill();
+  }
+})();
+</script>
