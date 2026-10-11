@@ -308,3 +308,7 @@ export function growthMessage(wish) {
   if (value === GROWTH.brightest) return `${steps}歩ふみ出して、1等星になりました。`;
   return `${steps}歩ふみ出して、${value}等星になりました。`;
 }
+// 帰還の途中で別タブの変更を見せると、今選んでいる願いが入れ替わるため待つ。
+export function canReloadWishes({flying, cardOpen, receiptOpen}) {
+  return !flying && !cardOpen && !receiptOpen;
+}

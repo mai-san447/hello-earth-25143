@@ -40,6 +40,7 @@ export const publicStars = sqliteTable("public_stars", {
   index("public_stars_status_expires").on(table.status, table.expiresAt),
   // 1日の上限を数えるときに使う
   index("public_stars_orbit_created").on(table.orbitId, table.createdAt),
+  index("public_stars_kind_created").on(table.kind, table.createdAt),
 ]);
 
 // 通報。同じ端末（軌道ID）から同じ星への通報は1回だけ数える
