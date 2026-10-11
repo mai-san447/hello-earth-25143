@@ -534,7 +534,7 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 .intro-brand{margin:0;font:700 14px/1 "Zen Kaku Gothic New",sans-serif;letter-spacing:.14em}
 .intro-brand span{color:#e3bd72}
 .intro-screen h2{margin:0;font:500 clamp(28px,8vw,34px)/1.6 "Shippori Mincho B1","Yu Mincho",serif;letter-spacing:.14em;font-feature-settings:"palt"}
-.intro-lead{margin:0;font-size:14px;line-height:1.8;color:#c3ccd5}
+.intro-lead{margin:-6px 0 0;font-size:14px;line-height:1.8;letter-spacing:.08em;color:#c3ccd5}
 .intro-sample{display:flex;gap:16px;align-items:center;padding:14px;border:1px solid #2a3546;border-radius:16px;background:#141d2c}
 .intro-sample img{width:96px;flex:none;transform:rotate(-3deg);box-shadow:0 8px 18px rgba(0,0,0,.5)}
 .intro-sample p{margin:0;font-size:14px;line-height:1.7}
