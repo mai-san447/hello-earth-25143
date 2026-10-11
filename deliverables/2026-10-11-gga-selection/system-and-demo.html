@@ -1,0 +1,246 @@
+<title>MORUNE 25143 設計とデモ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500&family=Shippori+Mincho+B1:wght@600&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap">
+<style>
+/* 夜空の一枚もの：アプリと同じ夜空色と金色。見出しは明朝、本文はゴシック */
+:root {
+  --night: #0b1020;
+  --panel: #151c2f;
+  --line: #2a3350;
+  --text: #f2eee6;
+  --muted: #9aa3b5;
+  --gold: #e2b867;
+  --paper: #ffffff;
+  --display: "Shippori Mincho B1", "Yu Mincho", "Hiragino Mincho ProN", serif;
+  --latin: "Cormorant Garamond", Georgia, serif;
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--night); color: var(--text); font-family: var(--body); font-size: 15px; line-height: 1.75; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 80px; display: grid; gap: 64px; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.35; letter-spacing: .08em; }
+h2 { font-size: clamp(22px, 3vw, 28px); letter-spacing: .04em; }
+h3 { font-size: 17px; }
+p { margin: 0; }
+.eyebrow { font-family: var(--latin); color: var(--gold); letter-spacing: .3em; font-size: 14px; text-transform: uppercase; }
+.muted { color: var(--muted); }
+.sec { display: grid; gap: 20px; min-width: 0; }
+.sec > header { display: grid; gap: 6px; }
+a { color: var(--gold); }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 40px; align-items: center; }
+.hero .copy { display: grid; gap: 18px; min-width: 0; }
+.brand { font-weight: 700; letter-spacing: .14em; }
+.brand b { color: var(--gold); }
+.facts { display: flex; flex-wrap: wrap; gap: 8px; }
+.facts span { border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 13px; color: var(--muted); }
+.phone { width: 100%; max-width: 300px; border-radius: 28px; border: 1px solid var(--line); overflow: hidden; background: #000; justify-self: center; }
+.phone video { display: block; width: 100%; height: auto; }
+
+.strip { display: grid; grid-auto-flow: column; grid-auto-columns: 190px; gap: 16px; overflow-x: auto; padding-bottom: 12px; scroll-snap-type: x mandatory; }
+.shot { display: grid; gap: 8px; scroll-snap-align: start; margin: 0; }
+.shot img { width: 100%; border-radius: 16px; border: 1px solid var(--line); display: block; }
+.shot figcaption { font-size: 13px; }
+.shot figcaption b { color: var(--gold); font-family: var(--display); margin-right: 6px; }
+
+.diagram { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; overflow-x: auto; }
+.arch { display: grid; grid-template-columns: minmax(0, 1fr) 150px minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.zone { border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.zone h3 { color: var(--gold); }
+.zone ul { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; }
+.zone li { font-size: 14px; }
+.zone li small { color: var(--muted); }
+.wire { display: grid; align-content: center; gap: 10px; text-align: center; font-size: 13px; }
+.wire .send { border-top: 1px dashed var(--gold); border-bottom: 1px dashed var(--gold); padding: 8px 0; }
+.wire .no { color: var(--muted); }
+.off { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--muted); }
+
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 14px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 400; font-size: 13px; background: var(--panel); }
+tr:last-child td { border-bottom: 0; }
+td code, li code { font-size: 13px; color: var(--gold); }
+.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+
+@media (max-width: 760px) {
+  .hero { grid-template-columns: 1fr; }
+  .arch { grid-template-columns: 1fr; }
+  .wire .send { border: 0; border-left: 1px dashed var(--gold); border-right: 1px dashed var(--gold); padding: 6px; }
+  .cols { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .strip { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+
+<section class="hero">
+  <div class="copy">
+    <p class="brand">MORUNE <b>25143</b></p>
+    <p class="eyebrow">Leave your wish with the stars</p>
+    <h1>やりたいことを<br>星に預けておく</h1>
+    <p class="muted">預けた願いは、名前なしでみんなの星空に灯ります。ある日、自分の願いだけが1つ帰ってきて、帰還票が現像されます。このページは、GGA セレクション（2026年10月14日 19:00）に向けて、画面とシステムの設計を1枚にまとめたものです。</p>
+    <div class="facts">
+      <span>本番 版 d7a60351</span><span>自動テスト 212件</span><span>星 5,080個</span><span>公開2日で約12人</span>
+    </div>
+    <p><a href="https://morune-25143.morune-25143.workers.dev/" target="_blank" rel="noopener">本番のアプリを開く</a></p>
+  </div>
+  <div class="phone">
+    <video src="demo-phone.mp4" poster="img/01-home.png" controls muted playsinline preload="metadata"></video>
+  </div>
+</section>
+
+<section class="sec">
+  <header>
+    <p class="eyebrow">Demo</p>
+    <h2>デモの流れ</h2>
+    <p class="muted">ペルソナ（休職するみわさん）の願い「天文台で土星の輪を見る」が、30日ぶりに帰ってくるまで。横にスクロールできます。録画はこの PC の中だけのデータベースで撮り、ほかの人の願いは見本です。</p>
+  </header>
+  <div class="strip" tabindex="0" aria-label="デモの画面">
+    <figure class="shot"><img src="img/01-home.png" alt="ホーム。本物の星空と見出し"><figcaption><b>1</b>本物の星空。金色が自分の願い</figcaption></figure>
+    <figure class="shot"><img src="img/02-deposit.png" alt="願いを書く画面"><figcaption><b>2</b>願いは12字まで。「自分だけの星」も選べる</figcaption></figure>
+    <figure class="shot"><img src="img/04-float-1.png" alt="星空に願いの言葉が浮かぶ"><figcaption><b>3</b>星空に、願いの言葉が浮かんでは消える</figcaption></figure>
+    <figure class="shot"><img src="img/06-landed.png" alt="カプセルが地球に着いた"><figcaption><b>4</b>振ると、カプセルが地球に着く</figcaption></figure>
+    <figure class="shot"><img src="img/07-descend.png" alt="言葉が星空から降りてくる"><figcaption><b>5</b>カードより先に、言葉が降りてくる</figcaption></figure>
+    <figure class="shot"><img src="img/08-card.png" alt="30日ぶりに帰ってきましたのカード"><figcaption><b>6</b>「30日ぶりに帰ってきました」。2択だけ</figcaption></figure>
+    <figure class="shot"><img src="img/09-developing.png" alt="帰還票が現像されていく途中"><figcaption><b>7</b>帰還票が上から現像される</figcaption></figure>
+    <figure class="shot"><img src="img/10b-receipt-step.png" alt="最初の小さな一歩を書いた帰還票"><figcaption><b>8</b>最初の小さな一歩を書いて、保存かシェア</figcaption></figure>
+  </div>
+</section>
+
+<section class="sec">
+  <header>
+    <p class="eyebrow">Architecture</p>
+    <h2>システム構成：見せ方は端末で、共有は名前なしで</h2>
+    <p class="muted">自分の願いと記録は端末の中に置きます。サーバーに届くのは、みんなの星空に出す言葉と、ランダムな ID だけです。</p>
+  </header>
+  <div class="diagram">
+    <div class="arch">
+      <div class="zone">
+        <h3>スマホ・PC のブラウザ</h3>
+        <ul>
+          <li>本物の星空 <small>Yale 輝星星表 5,080星を同梱し、時刻と緯度経度から計算。Three.js で描く</small></li>
+          <li>25143 の位置と距離 <small>NASA/JPL Horizons の値を同梱</small></li>
+          <li>自分の願い・状態・回収記録 <small>IndexedDB</small></li>
+          <li>位置情報 <small>星空の計算に使うだけ。取れなければ東京</small></li>
+          <li>振る操作 <small>DeviceMotion。使えなければ「ひとつ帰す」</small></li>
+          <li>帰還票 <small>Canvas で 576px 白黒、QR は同梱のライブラリ</small></li>
+          <li>オフライン <small>Service Worker。送れなかったものは控えて、あとで送る</small></li>
+        </ul>
+      </div>
+      <div class="wire">
+        <div class="send">送る<br>願いの言葉<br>軌道 ID（ランダム）<br>星の ID（UUID）</div>
+        <div class="no">送らない<br>名前・位置・端末の記録<br>IP は保存しない</div>
+      </div>
+      <div class="zone">
+        <h3>Cloudflare Workers ＋ D1</h3>
+        <ul>
+          <li><code>/api/orbits</code> 人の番号（25143-0007）の発行</li>
+          <li><code>/api/stars</code> みんなの星空を読む・灯す</li>
+          <li><code>/api/stars/return</code> 帰ってきた星を空から下ろす</li>
+          <li><code>/api/stars/report</code> 通報（3件で非表示）</li>
+          <li><code>/api/stars/delete</code> 自分の星を消す</li>
+          <li><code>/api/watch</code> 見守り（合言葉つき）</li>
+          <li class="off"><code>/api/art</code> AI の絵（停止中）</li>
+          <li class="off"><code>/api/wishes</code> 同期（停止中）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <header>
+    <p class="eyebrow">State</p>
+    <h2>願いの状態は3つ。行き止まりをつくらない</h2>
+    <p class="muted">判断せずに閉じても、カプセルは手元に残り、次に開いたときに最初に差し出します。「今でなくていい」ので、いつでも星空へ戻せます。</p>
+  </header>
+  <div class="diagram">
+<pre class="mermaid">
+%%{init: {"theme": "dark", "themeVariables": {"primaryColor": "#151c2f", "primaryBorderColor": "#e2b867", "primaryTextColor": "#f2eee6", "lineColor": "#9aa3b5", "background": "#151c2f"}}}%%
+stateDiagram-v2
+    state "星空で待つ waiting" as waiting
+    state "カプセルが着いた returned" as returned
+    state "受け取った doing" as doing
+    [*] --> waiting : 預ける
+    waiting --> returned : 振る／ひとつ帰す（ランダムに1つ）
+    returned --> doing : 受け取る → 帰還票
+    returned --> waiting : もう少し預ける
+    returned --> returned : 閉じた（次に開いたら再開）
+    doing --> doing : 一歩（1日1回、6等星→1等星）
+</pre>
+  </div>
+</section>
+
+<section class="sec">
+  <header>
+    <p class="eyebrow">Data</p>
+    <h2>どこに、何を置くか</h2>
+  </header>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>置き場所</th><th>中身</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td>端末（IndexedDB）</td><td>自分の願い、状態、預けた日、帰ってきた日、一歩の記録</td><td>ログインなしで使え、名前を預からないため</td></tr>
+        <tr><td>端末（localStorage）</td><td>人の番号、はじめての1回を使ったか、送れなかった控え</td><td>オフラインでも続けられるため</td></tr>
+        <tr><td>D1 <code>orbits</code></td><td>人の番号と軌道 ID</td><td>番号は「最大＋1」を1文で入れ、同時でも重ならない</td></tr>
+        <tr><td>D1 <code>public_stars</code></td><td>名前なしの願いの言葉、見守りの状態、表示の期限</td><td>みんなの星空。帰還した星は30日、最長400日</td></tr>
+        <tr><td>D1 <code>star_reports</code></td><td>通報（端末ごとに同じ星へ1回）</td><td>一人の通報だけで消えないように</td></tr>
+        <tr><td>D1 <code>watch_settings</code></td><td>見守りの一時停止、合言葉のまちがい回数</td><td>Cloudflare の回数制限が本番で止まらなかったため、数をデータベースで数える</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="sec">
+  <header>
+    <p class="eyebrow">Limits</p>
+    <h2>上限は、数で決めた</h2>
+  </header>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>上限</th><th>値</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td>預けられる願い（1人）</td><td class="num">30個</td><td>多すぎると、1つずつ帰ってくる意味がなくなる</td></tr>
+        <tr><td>公開できる願い（1人・1日）</td><td class="num">10件</td><td>ふつうの使い方では届かない数</td></tr>
+        <tr><td>公開できる願い（全員・1日）</td><td class="num">500件</td><td>端末の ID は作り直せるので、全体にも上限。見守りの手間の最悪を決める</td></tr>
+        <tr><td>書く言葉</td><td class="num">12字</td><td>星空に浮かんでも、帰還票でも1行で読める</td></tr>
+        <tr><td>見守りの合言葉のまちがい</td><td class="num">1分5回</td><td>当て推量を止める</td></tr>
+        <tr><td>通報</td><td class="num">3件で非表示</td><td>一人の通報だけで消えないように</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="sec">
+  <header>
+    <p class="eyebrow">Decisions</p>
+    <h2>作ってから、やめたもの</h2>
+    <p class="muted">コードは Claude と Codex に書かせ、互いにレビューさせました。何を作り、何をやめるかは自分で決めました。</p>
+  </header>
+  <div class="cols">
+    <div class="card"><h3>AI で願いの絵をつくる</h3><p class="muted">Workers AI で実装したが、絵が願いのイメージとずれることが多い。→ 星のドット絵のガチャにした</p></div>
+    <div class="card"><h3>願いを星座の線でつなぐ</h3><p class="muted">文字のない線では、意味が伝わらなかった。→ 星が光るだけにした</p></div>
+    <div class="card"><h3>応援の信号</h3><p class="muted">振って星を明るくする仕組み。シェアとの違いが分かりにくい。→ X のいいねで応援を受け取る</p></div>
+    <div class="card"><h3>北45°の固定の星空</h3><p class="muted">季節によって願いの星が地平線に沈む。→ 天の北極を中心にした星座早見盤に作り直した</p></div>
+  </div>
+</section>
+
+<section class="sec">
+  <header>
+    <p class="eyebrow">Quality</p>
+    <h2>確かめ方と公開のしかた</h2>
+  </header>
+  <div class="cols">
+    <div class="card"><h3>テスト</h3><p class="muted">単体テスト 212件（状態の移り変わり、星の位置の計算、上限、見守り、帰還票、オフライン）。GitHub Actions で変更のたびに実行。画面の通しはブラウザの自動操作で確かめる。</p></div>
+    <div class="card"><h3>公開</h3><p class="muted">この PC からビルドして <code>wrangler deploy</code>。直前の版に <code>wrangler rollback</code> で戻せる。下見の URL で確かめてから本番に出す。</p></div>
+  </div>
+</section>
+
+</div>
