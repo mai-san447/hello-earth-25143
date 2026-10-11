@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
-import {nearestStar, randomStar, nextAutoStar} from '../public/floating-wishes.js';
+import {nearestStar, randomStar, nextAutoStar, tapCandidates, tapIndex, TAP_RADIUS} from '../public/floating-wishes.js';
 
 test('24px以内の最も近い星だけ選び、境界も触れられる', () => {
   const points = [{x: 24, y: 0}, {x: 8, y: 0}, {x: 12, y: 0}];
@@ -36,7 +36,7 @@ test('自分の星は空のタップだけで浮かび、ボタン・シート�
   const star = {x: 24, y: 30, wish: {text: '海を見る'}};
   const sandbox = {
     app, canvas, homeIsVisible: () => home, wishStarPoints: () => [star],
-    FloatingWishes: {nearestStar}, homeSince: null, performance: {now: () => 0},
+    FloatingWishes: {nearestStar, tapCandidates, tapIndex}, lastTap: null, homeSince: null, performance: {now: () => 0},
     showFloatingWish: point => shown.push(point), otherStarPoints: [],
     PublicStars: {nearestStar: () => null}, openStarCard: () => {},
   };
@@ -165,4 +165,23 @@ test('自動で浮かべる星は、直前と同じ星を続けて選ばない�
   for (const r of [0, .5, .99]) assert.equal(nextAutoStar(points, 'a', r).wish.id, 'b');
   assert.equal(nextAutoStar([points[0]], 'a', 0).wish.id, 'a');
   assert.equal(nextAutoStar([], 'a', 0), null);
+});
+
+test('タップは自分の星を優先し、範囲内を近い順に並べる', () => {
+  const own = (id, x, y) => ({wish: {id}, x, y});
+  const other = (id, x, y) => ({star: {id}, x, y});
+  const points = [other('o1', 101, 100), own('w1', 110, 100), own('w2', 100, 118), own('far', 200, 200)];
+  assert.deepEqual(tapCandidates(points, 100, 100).map(p => (p.wish ?? p.star).id), ['w1', 'w2']);
+  assert.deepEqual(tapCandidates([other('o1', 101, 100)], 100, 100).map(p => p.star.id), ['o1']);
+  assert.deepEqual(tapCandidates(points, 0, 0), []);
+  assert.equal(TAP_RADIUS, 24);
+});
+
+test('同じ場所をすぐにもう一度タップすると、次の星へ。離れた場所や時間がたてば最初から', () => {
+  assert.equal(tapIndex(null, 100, 100, 0, 3), 0);
+  assert.equal(tapIndex({x: 100, y: 100, time: 0, index: 0}, 104, 98, 1000, 3), 1);
+  assert.equal(tapIndex({x: 100, y: 100, time: 0, index: 2}, 100, 100, 1000, 3), 0);
+  assert.equal(tapIndex({x: 100, y: 100, time: 0, index: 0}, 160, 100, 1000, 3), 0);
+  assert.equal(tapIndex({x: 100, y: 100, time: 0, index: 0}, 100, 100, 7000, 3), 0);
+  assert.equal(tapIndex(null, 100, 100, 0, 0), -1);
 });

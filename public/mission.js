@@ -73,6 +73,7 @@
   let otherStars = PublicStars.sanitizeStars(readJson(STARS_CACHE_KEY, []), Date.now(), reportedStars);
   // 直前に描いた他の人の星の場所（触れたときの当たり判定に使う）
   let otherStarPoints = [];
+  let lastTap = null;
   let openStar = null;
   let lastShownStarId = null;
 
@@ -2470,12 +2471,17 @@
   app.addEventListener('click', event => {
     if ((event.target !== app && event.target !== canvas) || !homeIsVisible()) return;
     const bounds = app.getBoundingClientRect();
-    const ownStar = FloatingWishes.nearestStar([...wishStarPoints(), ...otherStarPoints], event.clientX - bounds.left, event.clientY - bounds.top);
-    if (ownStar) {
-      homeSince = performance.now();
-      showFloatingWish(ownStar);
+    const x = event.clientX - bounds.left, y = event.clientY - bounds.top, now = performance.now();
+    // 自分の星を優先し、同じ場所をもう一度タップすると、となりの星へ移る（FloatingWishes.tapCandidates）
+    const candidates = FloatingWishes.tapCandidates([...wishStarPoints(), ...otherStarPoints], x, y);
+    const index = FloatingWishes.tapIndex(lastTap, x, y, now, candidates.length);
+    if (index >= 0) {
+      lastTap = {x: lastTap && index > 0 ? lastTap.x : x, y: lastTap && index > 0 ? lastTap.y : y, time: now, index};
+      homeSince = now;
+      showFloatingWish(candidates[index]);
       return;
     }
+    lastTap = null;
 
   });
   $('#star-card-close').addEventListener('click', closeStarCard);

@@ -30,3 +30,29 @@ export function randomStar(points, random) {
   if (!points.length || !Number.isFinite(random) || random < 0 || random >= 1) return null;
   return points[Math.floor(random * points.length)];
 }
+
+// タップで拾う星（2026-10-12）。スマホでは自分の星どうしが最短 9.8px しか離れず、指の範囲（半径24px）に平均3個、最大5個入る。
+// 範囲は狭めず（押し外すと反応しなくなる）、①範囲に自分の星があれば他の人の星は拾わない ②同じ場所をもう一度タップすると、次に近い星へ移る。
+export const TAP_RADIUS = 24;
+export const TAP_REPEAT_MS = 6000;
+
+// 範囲内の星を近い順に。自分の星（wish を持つ点）があれば、自分の星だけ
+export function tapCandidates(points, x, y, radius = TAP_RADIUS) {
+  if (![x, y, radius].every(Number.isFinite) || radius < 0) return [];
+  const inReach = points
+    .filter(point => Number.isFinite(point.x) && Number.isFinite(point.y))
+    .map(point => ({point, distance: Math.hypot(point.x - x, point.y - y)}))
+    .filter(item => item.distance <= radius)
+    .sort((a, b) => a.distance - b.distance)
+    .map(item => item.point);
+  const own = inReach.filter(point => point.wish && !point.star);
+  return own.length ? own : inReach;
+}
+
+// 前のタップと同じ場所（範囲内）で、時間がたっていなければ、次の候補へ。そうでなければいちばん近い星
+export function tapIndex(previous, x, y, now, count, radius = TAP_RADIUS) {
+  if (!count) return -1;
+  const again = previous && Number.isFinite(previous.time) && now - previous.time <= TAP_REPEAT_MS &&
+    Math.hypot(previous.x - x, previous.y - y) <= radius;
+  return again ? (previous.index + 1) % count : 0;
+}
