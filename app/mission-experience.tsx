@@ -19,8 +19,6 @@ export function MissionExperience({
         <header className="mission-header">
           <span className="mission-brand">MORUNE <b>25143</b></span>
         </header>
-        {/* わたしの空と、みんなの空を行き来する（2026-10-12）。みんなの空が開いている環境でだけ出す */}
-        <button className="everyone-open" id="everyone-open" type="button" hidden>みんなの空</button>
         <div className="observer-pill" aria-label="観測位置">
           <span className="observer-dot" aria-hidden="true" />
           <span id="observer-reading">35.7°N 139.8°E</span>
@@ -51,7 +49,11 @@ export function MissionExperience({
           </div>
           <div className="mission-dock-meta">
             <p className="gesture-hint" id="gesture-hint">願いを預けると、星がひとつ灯ります</p>
-            <button className="archive-trigger" id="archive-open" type="button">回収記録 <span id="archive-count">0</span></button>
+            {/* 行き先の入口は下の段にまとめる（親指が届く。上は見出しと星空だけにする。2026-10-12） */}
+            <div className="dock-places">
+              <button className="everyone-open" id="everyone-open" type="button" hidden>みんなの空</button>
+              <button className="archive-trigger" id="archive-open" type="button">回収記録 <span id="archive-count">0</span></button>
+            </div>
           </div>
         </section>
         <section className="sheet deposit-sheet" id="deposit-sheet" aria-label="願いを星に預ける" hidden>

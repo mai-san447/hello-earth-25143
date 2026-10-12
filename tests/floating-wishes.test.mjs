@@ -30,6 +30,7 @@ test('偶然の出会いは渡した乱数から1つ選ぶ', () => {
 
 test('自分の星は空のタップだけで浮かび、ボタン・シート・カードの操作では反応しない', () => {
   const shown = [];
+  const returned = [];
   let home = true;
   const app = {getBoundingClientRect: () => ({left: 10, top: 20})};
   const canvas = {};
@@ -37,6 +38,7 @@ test('自分の星は空のタップだけで浮かび、ボタン・シート�
   const sandbox = {
     app, canvas, homeIsVisible: () => home, wishStarPoints: () => [star],
     FloatingWishes: {nearestStar, tapCandidates, tapIndex}, lastTap: null, homeSince: null, performance: {now: () => 0},
+    returningWish: null, returnFlight: null, readyToReturn: () => [], returnOne: wish => returned.push(wish),
     showFloatingWish: point => shown.push(point), otherStarPoints: [],
     PublicStars: {nearestStar: () => null}, openStarCard: () => {},
   };
@@ -47,6 +49,13 @@ test('自分の星は空のタップだけで浮かび、ボタン・シート�
   const event = {clientX: 34, clientY: 50, target: canvas};
   sandbox.tap(event);
   assert.deepEqual(shown, [star]);
+  // 帰ってこられる星なら、言葉ではなく、その願いが帰ってくる
+  sandbox.readyToReturn = () => [star.wish];
+  sandbox.lastTap = null;
+  sandbox.tap(event);
+  assert.deepEqual(returned, [star.wish]);
+  assert.equal(shown.length, 1);
+  sandbox.readyToReturn = () => [];
   sandbox.tap({...event, target: {tagName: 'BUTTON'}});
   home = false;
   sandbox.tap(event);

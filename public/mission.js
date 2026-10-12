@@ -726,16 +726,6 @@
       menu.addEventListener('click', () => openStarCard(point.star));
       menu.addEventListener('focus', () => clearTimeout(floatingTimer));
       floatingText.append(menu);
-    } else if (!chance && !returningWish && !returnFlight && readyToReturn().some(wish => wish.id === point.wish.id)) {
-      // 自分の星をタップしたときだけ、その願いを選んで帰せる（振るのはガチャ、タップは指名。2026-10-12 本人の提案）
-      const call = document.createElement('button');
-      call.type = 'button';
-      call.className = 'floating-return';
-      call.textContent = '帰す';
-      call.setAttribute('aria-label', `「${point.wish.text}」を帰す`);
-      call.addEventListener('click', () => returnOne(point.wish));
-      call.addEventListener('focus', () => clearTimeout(floatingTimer));
-      floatingText.append(call);
     }
     floatingText.className = 'floating-wish' + (point.star ? ' floating-wish-other' : '') + (chance ? ' floating-wish-chance' : '');
     // 自分で触れて出した言葉は、動かさずに長めに出す（「…」から通報できるよう、押せる時間と止まった的をつくる。2026-10-12）
@@ -2516,7 +2506,14 @@
     if (index >= 0) {
       lastTap = {x: lastTap && index > 0 ? lastTap.x : x, y: lastTap && index > 0 ? lastTap.y : y, time: now, index};
       homeSince = now;
-      showFloatingWish(candidates[index]);
+      const point = candidates[index];
+      // 帰ってこられる自分の星に触れたら、その願いがそのまま帰ってくる（ボタンは置かない。2026-10-12 本人の判断）。
+      // 隣の星に触れてしまっても、カードの「もう少し預ける」で星空へ戻せる。帰ってくる日の前の星は、言葉が浮かぶだけ
+      if (point.wish && !returningWish && !returnFlight && readyToReturn().some(wish => wish.id === point.wish.id)) {
+        returnOne(point.wish);
+        return;
+      }
+      showFloatingWish(point);
       return;
     }
     lastTap = null;
