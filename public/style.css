@@ -598,3 +598,4 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 .everyone-status{position:absolute;top:calc(100% + 6px);left:50%;margin:0;padding:3px 10px;border-radius:8px;background:rgba(10,16,30,.9);color:#f0b77a;font-size:12px;white-space:nowrap;transform:translateX(-50%)}
 .everyone-status:empty{display:none}
 .everyone-hover{position:absolute;z-index:3;left:0;top:0;margin:0;padding:4px 12px;border-radius:999px;background:rgba(5,8,18,.7);color:#f2ead6;font:600 14px/1.4 "Shippori Mincho B1","Yu Mincho",serif;white-space:nowrap;transform:translateX(-50%);pointer-events:none;visibility:hidden}
+.return-actions .return-release{min-height:44px;border:0;background:transparent;color:#a9b4c2;font-weight:400;font-size:12px;text-decoration:underline;text-underline-offset:3px}

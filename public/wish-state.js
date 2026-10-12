@@ -8,7 +8,8 @@ export const STATUS = Object.freeze({
   DONE: 'done',         // 終えた
 });
 
-// 帰還カードの3つの選択肢。「戻す」は責めずに星空へ戻すための選択肢。
+// 帰還カードの選択肢。主な2つ（受け取る・もう少し預ける）の下に、小さく「手放す」を置く（2026-10-12 レビュー）。
+// 「戻す」は責めずに星空へ戻すための選択肢。「手放す」は消さずに回収記録へしまう（取り消せない削除とは分ける）
 export const CHOICES = Object.freeze({
   try: STATUS.DOING,
   later: STATUS.WAITING,
@@ -67,7 +68,7 @@ export function summarize(wishes, openDays = [], now = Date.now()) {
 
 export function gentleMessage(wish) {
   return wish.laterCount === LIMITS.gentleLaterCount
-    ? '5回目です。手放してもかまいません。'
+    ? '手放すこともできます'
     : '';
 }
 

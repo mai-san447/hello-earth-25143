@@ -92,6 +92,8 @@ export function MissionExperience({
           <div className="return-actions" aria-label="選択">
             <button className="return-action-primary" id="try-wish" type="button">受け取る</button>
             <button id="return-to-orbit" type="button">もう少し預ける</button>
+            {/* 手放す出口（2026-10-12）。主な2択より目立たせず、消さずに回収記録へしまう */}
+            <button className="return-release" id="release-wish" type="button">手放す</button>
           </div>
         </section>
         <section className="archive-sheet" id="archive-sheet" aria-labelledby="archive-title" hidden>

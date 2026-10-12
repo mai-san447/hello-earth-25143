@@ -118,6 +118,7 @@ test('星空へ戻した回数を数え、5回目に一度だけやさしい一�
   }
   assert.equal(current.laterCount, 6);
   assert.deepEqual(messages.map(Boolean), [false, false, false, false, true, false]);
+  assert.equal(messages[4], '手放すこともできます');
   assert.equal('laterCount' in decide(wish({status: STATUS.RETURNED}), 'try', 1), false);
 });
 
@@ -224,4 +225,11 @@ test('ガチャは前に帰ってきた願いを続けて選ばない（候補�
   assert.equal(pickReturn([], 'a'), null);
   const three = [wish({id: 'a'}), wish({id: 'b'}), wish({id: 'c'})];
   assert.deepEqual([0, .5, .99].map(r => pickReturn(three, null, r).id), ['a', 'b', 'c']);
+});
+
+test('手放すと、星空から消えて回収記録にしまわれる（削除ではない）。席も空く', () => {
+  const released = decide(wish({status: STATUS.RETURNED, seat: 0}), 'finish', 10);
+  assert.equal(released.status, STATUS.DONE);
+  assert.equal(released.text, '朝の海を歩きたい');
+  assert.equal(returnCandidates([released], 20).length, 0);
 });

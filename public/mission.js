@@ -405,7 +405,7 @@
   }
 
   function dispositionLabel(status) {
-    return ({returned: '帰ってきた', doing: 'やってみる', later: '保留', expired: '手放した', done: 'しまった'})[status] || '手元';
+    return ({returned: '帰ってきた', doing: 'やってみる', later: '保留', expired: '手放した', done: '手放した'})[status] || '手元';
   }
 
   function refreshArchiveControls(archiveItems) {
@@ -1711,7 +1711,7 @@
 
   async function chooseDisposition(choice) {
     if (!returningWish || !landed) return;
-    const actions = [...document.querySelectorAll('#try-wish, #return-to-orbit')];
+    const actions = [...document.querySelectorAll('#try-wish, #return-to-orbit, #release-wish')];
     actions.forEach(button => { button.disabled = true; });
     let updated;
     try {
@@ -1747,8 +1747,8 @@
       // 受け取った直後は、これから始める人が多い。「叶ったよ」は聞かず、帰還票で終わりにする（2026-10-12、本人の判断）
       if (updated.status === WishState.STATUS.DOING) openReceiptSheet(updated);
       if (!backToOrbit) {
-        // 受け取った願いは回収記録に入る。回収記録のボタンを一度だけ光らせて知らせる
-        $('#mission-status').textContent = '受け取りました。回収記録に入りました';
+        // 受け取った願い・手放した願いは回収記録に入る。回収記録のボタンを一度だけ光らせて知らせる
+        $('#mission-status').textContent = updated.status === WishState.STATUS.DONE ? '手放しました。回収記録にしまってあります' : '受け取りました。回収記録に入りました';
         const archiveTrigger = $('#archive-open');
         archiveTrigger.classList.remove('archive-glow');
         void archiveTrigger.offsetWidth;
@@ -2416,6 +2416,7 @@
   $('#card-close').addEventListener('click', closeCard);
   $('#try-wish').addEventListener('click', () => chooseDisposition('try'));
   $('#return-to-orbit').addEventListener('click', () => chooseDisposition('later'));
+  $('#release-wish').addEventListener('click', () => chooseDisposition('finish'));
   $('#receipt-save').addEventListener('click', saveReceipt);
   $('#receipt-share').addEventListener('click', shareReceipt);
   $('#receipt-close').addEventListener('click', closeReceiptSheet);
