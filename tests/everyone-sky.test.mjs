@@ -95,3 +95,12 @@ test('段階ごとの描き方：自分の星は金色、やってみること�
   assert.ok(fulfilled.tail > 0 && wish.tail === 0);
   assert.ok(starLook({stage: 'wish', returned: true}, false).alpha < wish.alpha);
 });
+
+test('酔わないように：見上げるのは赤緯60度まで、横の動きの増え方は最大2倍、視野は90度まで', () => {
+  assert.equal(PITCH_LIMIT, 60);
+  assert.equal(FOV.max, 90);
+  // 同じだけ横になぞったとき、赤緯60度での回り方は赤道の2倍まで
+  const atEquator = dragView({raDeg: 100, decDeg: 0}, 50, 0, 60, H).raDeg - 100;
+  const atSixty = dragView({raDeg: 100, decDeg: 60}, 50, 0, 60, H).raDeg - 100;
+  assert.ok(Math.abs(atSixty / atEquator - 2) < 1e-9, `${atSixty / atEquator}`);
+});

@@ -7,12 +7,15 @@
 const RAD = Math.PI / 180;
 
 // 視野（縦の角度）。広いほど遠くから見回し、狭いほど近づく
-export const FOV = Object.freeze({min: 24, max: 100, start: 72});
+// 広げすぎると端がゆがんで酔いやすいので、90度までにする（2026-10-12 本人「くるくる気持ち悪い」）
+export const FOV = Object.freeze({min: 24, max: 90, start: 64});
 // 近づくと言葉が読める。視野がこれより狭いとき、画面の中心に近い星から言葉を出す
 export const READ_FOV = 48;
 export const READ_COUNT = 4;
 // 極の真上・真下では向きが決まらないので、見上げる角度に上限を置く
-export const PITCH_LIMIT = 85;
+// 極の近くでは、横になぞるだけで空が中心のまわりに回って見える（赤経の線が極に集まるため）。
+// 酔わないよう、見上げるのは赤緯60度までにする（極の星は、視野の上のほうに見える）
+export const PITCH_LIMIT = 60;
 export const PICK_RADIUS = 26;
 
 export function radecToVector(raDeg, decDeg) {
@@ -48,7 +51,8 @@ export function project(v, basis, scale, width, height) {
 // ドラッグの量（ピクセル）を、見る向きの変化（度）に直す。指の下の星がおおよそ指についてくる
 export function dragView(view, dx, dy, fovDeg, height) {
   const degPerPx = fovDeg / height;
-  const cosDec = Math.max(0.2, Math.cos(view.decDeg * RAD));
+  // 赤緯が高いほど赤経の1度は短いので、指の動きに合わせて少し大きく回す（最大2倍。それ以上は回りすぎて酔う）
+  const cosDec = Math.max(0.5, Math.cos(view.decDeg * RAD));
   const raDeg = (((view.raDeg + dx * degPerPx / cosDec) % 360) + 360) % 360;
   const decDeg = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, view.decDeg + dy * degPerPx));
   return {raDeg, decDeg};
@@ -107,6 +111,7 @@ export function createEveryoneSky({canvas, reducedMotion, onSelect, seed, onHove
   let points = [];
   let selectedId = null;
   let hoveredId = null;
+  let anim = null;
   let running = false;
   let frame = 0;
   const pointers = new Map();
@@ -144,10 +149,24 @@ export function createEveryoneSky({canvas, reducedMotion, onSelect, seed, onHove
     const item = stars.find(entry => entry.star.id === starId);
     if (!item) return false;
     const [x, y, z] = item.v;
-    view = {raDeg: ((Math.atan2(y, x) / RAD) + 360) % 360, decDeg: Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, Math.asin(z) / RAD))};
-    if (zoomIn) fov = Math.min(fov, READ_FOV - 6);
+    const target = {raDeg: ((Math.atan2(y, x) / RAD) + 360) % 360, decDeg: Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, Math.asin(z) / RAD))};
+    const targetFov = zoomIn ? Math.min(fov, READ_FOV - 6) : fov;
+    // ぱっと飛ぶと落ち着かないので、0.6秒かけて向きを変える（動きを減らす設定では、すぐ切り替える）
+    if (reducedMotion || !running) { view = target; fov = targetFov; anim = null; }
+    else anim = {from: {...view}, fromFov: fov, to: target, toFov: targetFov, start: performance.now()};
     draw(performance.now());
     return true;
+  }
+
+  function stepAnimation(time) {
+    if (!anim) return;
+    const t = Math.min(1, (time - anim.start) / 600);
+    const ease = 1 - (1 - t) ** 3;
+    // 赤経は近いほうの向きに回る（359度から1度へは、2度だけ進む）
+    const dRa = ((anim.to.raDeg - anim.from.raDeg + 540) % 360) - 180;
+    view = {raDeg: (anim.from.raDeg + dRa * ease + 360) % 360, decDeg: anim.from.decDeg + (anim.to.decDeg - anim.from.decDeg) * ease};
+    fov = anim.fromFov + (anim.toFov - anim.fromFov) * ease;
+    if (t >= 1) anim = null;
   }
 
   function select(point) {
@@ -240,6 +259,7 @@ export function createEveryoneSky({canvas, reducedMotion, onSelect, seed, onHove
 
   function loop(time) {
     if (!running) return;
+    stepAnimation(time);
     draw(time);
     frame = requestAnimationFrame(loop);
   }
@@ -256,8 +276,11 @@ export function createEveryoneSky({canvas, reducedMotion, onSelect, seed, onHove
     select(null);
   }
 
+  // ＋−のボタンでも、なめらかに近づく・離れる（ホイールは指の動きに合わせてすぐ変える）
   function zoom(factor) {
-    fov = clampFov(fov * factor);
+    const toFov = clampFov((anim?.toFov ?? fov) * factor);
+    if (reducedMotion || !running) { fov = toFov; anim = null; }
+    else anim = {from: {...view}, fromFov: fov, to: anim?.to ?? {...view}, toFov, start: performance.now()};
     draw(performance.now());
   }
   function rotate(dxDeg, dyDeg) {
@@ -266,6 +289,7 @@ export function createEveryoneSky({canvas, reducedMotion, onSelect, seed, onHove
   }
 
   canvas.addEventListener('pointerdown', event => {
+    anim = null;
     canvas.setPointerCapture?.(event.pointerId);
     pointers.set(event.pointerId, {x: event.clientX, y: event.clientY});
     moved = 0;
