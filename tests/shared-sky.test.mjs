@@ -230,19 +230,26 @@ function queueScene() {
   return {sandbox, saved, actions};
 }
 
-test('オフラインで控えた願いに、接続後の公開IDを付ける。帰還済みなら帰還も送る', async () => {
-  const {sandbox, actions} = queueScene();
-  sandbox.navigator.onLine = false;
-  await sandbox.publishStar('wish', '海へ', id(1));
-  assert.equal(sandbox.wishes[0].publicStarId, undefined);
-  assert.equal(sandbox.readJson('queue', [])[0].wishId, id(1));
-  sandbox.wishes[0] = WishState.markReturned(sandbox.wishes[0], 10);
-  sandbox.navigator.onLine = true;
-  await sandbox.flushPublishQueue();
-  assert.equal(sandbox.wishes[0].publicStarId, id(2));
-  assert.equal(sandbox.wishes[0].status, 'returned');
-  assert.deepEqual(actions, [{action: 'return', starId: id(2)}]);
-  assert.equal(sandbox.readJson('queue', []).length, 0);
+test('オフラインで控えた願いに、接続後の公開IDを付ける。受け取っていれば帰還、帰還票で出していれば「やってみる」を送る', async () => {
+  // 着地しただけ（まだ選んでいない）なら、星は預けた願いのまま
+  for (const [label, prepare, expected] of [
+    ['着地しただけ', wish => WishState.markReturned(wish, 10), []],
+    ['もう少し預けた', wish => WishState.decide(WishState.markReturned(wish, 10), 'later', 20), []],
+    ['受け取った', wish => WishState.decide(WishState.markReturned(wish, 10), 'try', 20), [{action: 'return', starId: id(2)}]],
+    ['受け取って、みんなの空に出した', wish => ({...WishState.decide(WishState.markReturned(wish, 10), 'try', 20), shareDoing: true}), [{action: 'doing', starId: id(2)}]],
+  ]) {
+    const {sandbox, actions} = queueScene();
+    sandbox.navigator.onLine = false;
+    await sandbox.publishStar('wish', '海へ', id(1));
+    assert.equal(sandbox.wishes[0].publicStarId, undefined);
+    assert.equal(sandbox.readJson('queue', [])[0].wishId, id(1));
+    sandbox.wishes[0] = prepare(sandbox.wishes[0]);
+    sandbox.navigator.onLine = true;
+    await sandbox.flushPublishQueue();
+    assert.equal(sandbox.wishes[0].publicStarId, id(2), label);
+    assert.deepEqual(actions, expected, label);
+    assert.equal(sandbox.readJson('queue', []).length, 0);
+  }
 });
 
 test('公開後の端末保存の失敗ではIDを控え、再送で二重公開しない', async () => {
@@ -276,19 +283,19 @@ test('サーバー停止と一時的な失敗・429では送信待ちを残す',
   }
 });
 
-test('入口やシートが閉じたあと、指定星を最初に浮かべる（動きを減らす設定でも）', () => {
+test('帰還票の QR から来たら、入口やシートが閉じたあと、みんなの空でその星を見せる（1回だけ）', () => {
   let home = false;
-  const shown = [];
-  const point = {star: {id: id(1), text: '海へ', focus: true}};
-  const sandbox = {homeIsVisible: () => home, hideFloatingWish: () => {}, homeSince: null, openingCard: false, focusPending: true, otherStarPoints: [point], reducedMotion: true, showFloatingWish: p => shown.push(p), lastAutoWishId: null};
+  const opened = [];
+  const sandbox = {homeIsVisible: () => home, hideFloatingWish: () => {}, homeSince: null, openingCard: false, focusPending: true, requestedStarId: id(1),
+    otherStars: [{id: id(1), text: '海へ', focus: true}], reducedMotion: true, showFloatingWish: () => {}, openEveryone: starId => opened.push(starId), lastAutoWishId: null};
   vm.createContext(sandbox);
   vm.runInContext(functionSource('updateFloatingWish'), sandbox);
   sandbox.updateFloatingWish(0);
-  assert.equal(shown.length, 0);
+  assert.equal(opened.length, 0);
   home = true;
   sandbox.updateFloatingWish(100);
   sandbox.updateFloatingWish(200);
-  assert.deepEqual(shown, [point]);
+  assert.deepEqual(opened, [id(1)]);
 });
 
 test('帰還と公開IDの保存が重なっても、帰還した願いからIDを落とさない', async () => {
@@ -300,7 +307,8 @@ test('帰還と公開IDの保存が重なっても、帰還した願いからID�
   await Promise.all([sandbox.attachPublishedStar(wish.id, id(2)), sandbox.finishReturn(wish)]);
   assert.equal(sandbox.wishes[0].publicStarId, id(2));
   assert.equal(sandbox.wishes[0].status, 'returned');
-  assert.ok(actions.some(item => item.action === 'return' && item.starId === id(2)));
+  // 着地しただけでは、みんなの空の星は変えない（受け取るか、もう少し預けるかを選んだときに送る）
+  assert.equal(actions.some(item => item.action === 'return'), false);
 });
 
 test('帰還と削除の送信待ちはオフライン・503・429・機能停止で残し、成功と星の404だけで外す', async () => {
@@ -308,7 +316,7 @@ test('帰還と削除の送信待ちはオフライン・503・429・機能停�
     for (const status of [200, 404, 429, 503, 'disabled', 'offline']) {
       const saved = new Map();
       const element = {};
-      const sandbox = {PublicStars, readJson: (key, fallback) => saved.has(key) ? JSON.parse(saved.get(key)) : fallback, writeStorage: (key, value) => saved.set(key, value), STAR_ACTIONS_KEY: 'actions', flushingActions: false, navigator: {onLine: status !== 'offline'}, starsEnabled: true, orbitId: () => orbitId, AbortSignal, setTimeout: () => {}, $: () => element, fetch: async (path, options) => {
+      const sandbox = {PublicStars, readJson: (key, fallback) => saved.has(key) ? JSON.parse(saved.get(key)) : fallback, writeStorage: (key, value) => saved.set(key, value), STAR_ACTIONS_KEY: 'actions', flushingActions: false, actionsAgain: false, navigator: {onLine: status !== 'offline'}, starsEnabled: true, orbitId: () => orbitId, AbortSignal, setTimeout: () => {}, $: () => element, fetch: async (path, options) => {
         assert.equal(path, `/api/stars/${action}`);
         assert.deepEqual(JSON.parse(options.body), {starId: id(1), orbitId});
         return new Response(JSON.stringify(status === 'disabled' ? {enabled: false} : {ok: status === 200}), {status: status === 'disabled' ? 404 : status});
@@ -322,24 +330,49 @@ test('帰還と削除の送信待ちはオフライン・503・429・機能停�
   }
 });
 
-test('他人の星も同じ北極中心の投影で描き、帰還後は薄く、指定星には輪を付ける', () => {
+test('わたしの空では、他人の星は同じ北極中心の投影に淡く描くだけで、触れて読めない', () => {
   const stars = [row(1), row(2, {returned: true}), row(3, {focus: true})];
   const now = Date.parse('2026-10-11T10:00Z');
   stars.forEach(star => {star.expiresAt = now + 1000;});
   const calls = [];
   const context = {save: () => {}, restore: () => {}, beginPath: () => {}, arc: (...args) => calls.push({args, alpha: context.globalAlpha}), fill: () => {}, stroke: () => {}};
-  const sandbox = {PublicStars, Sky, otherStars: stars, otherStarPoints: [], starsEnabled: true, Date: {now: () => now}, pendingLocation: {lat: 35.68, lon: 139.76}, width: 400, height: 800, context};
+  const sandbox = {PublicStars, Sky, otherStars: stars, otherStarPoints: [], starsEnabled: true, Date: {now: () => now}, pendingLocation: {lat: 35.68, lon: 139.76}, width: 400, height: 800, context, OWN_REACH: 0.366};
   vm.createContext(sandbox);
-  vm.runInContext(functionSource('drawOtherStars'), sandbox);
+  vm.runInContext(['skyFrame', 'polar', 'drawOtherStars'].map(functionSource).join('\n'), sandbox);
   sandbox.drawOtherStars(0);
-  assert.equal(sandbox.otherStarPoints.length, 3);
+  // 触れる点には入れない（タップの取り違えをなくすため。読むのはみんなの空で）
+  assert.equal(sandbox.otherStarPoints.length, 0);
   const seed = PublicStars.starSeed(stars[0].id);
   const point = Sky.projectPolarStar(seed.raDeg, seed.decDeg, now, 35.68, 139.76, 400, 800);
   assert.deepEqual(calls[0].args.slice(0, 2), [point.x, point.y]);
   assert.ok(calls[1].alpha < calls[0].alpha);
-  assert.ok(calls.some(call => call.args[2] === 9));
+  assert.ok(calls.every(call => call.alpha <= 0.4), '背景の淡い光');
+  assert.equal(calls.some(call => call.args[2] === 9), false, '指定星の輪は、みんなの空で付ける');
   sandbox.starsEnabled = false;
   sandbox.drawOtherStars(0);
   assert.equal(sandbox.otherStarPoints.length, 0);
 });
 import {DatabaseSync} from 'node:sqlite';
+
+test('送信中に「やってみる」が追加されても、終わったあとにもう一度送る', async () => {
+  const saved = new Map();
+  const sent = [];
+  let release;
+  const first = new Promise(resolve => { release = resolve; });
+  const sandbox = {PublicStars, readJson: (key, fallback) => saved.has(key) ? JSON.parse(saved.get(key)) : fallback, writeStorage: (key, value) => saved.set(key, value), STAR_ACTIONS_KEY: 'actions', flushingActions: false, actionsAgain: false, navigator: {onLine: true}, starsEnabled: true, orbitId: () => orbitId, AbortSignal, setTimeout: () => {}, $: () => ({}), fetch: async (path, options) => {
+    sent.push([path, JSON.parse(options.body).starId]);
+    if (sent.length === 1) await first;
+    return new Response(JSON.stringify({ok: true}), {status: 200});
+  }};
+  vm.createContext(sandbox);
+  vm.runInContext(['requestTimeout', 'queueStarAction', 'flushStarActions'].map(functionSource).join('\n'), sandbox);
+  sandbox.queueStarAction('return', id(1));
+  const running = sandbox.flushStarActions();
+  await new Promise(resolve => setImmediate(resolve));
+  sandbox.queueStarAction('doing', id(2));
+  await sandbox.flushStarActions();
+  release();
+  await running;
+  assert.deepEqual(sent, [['/api/stars/return', id(1)], ['/api/stars/doing', id(2)]]);
+  assert.equal(sandbox.readJson('actions', []).length, 0);
+});

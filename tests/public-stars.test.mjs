@@ -28,7 +28,8 @@ test('控えた星は、形が正しく期限内で、通報していないも�
     star(8, {kind: 'fulfilled', text: 'あ'.repeat(41)}),
   ], 1000, [id(7)]);
   assert.deepEqual(stars.map(item => item.id), [id(1), id(6)]);
-  assert.deepEqual(Object.keys(stars[1]), ['id', 'kind', 'text', 'expiresAt', 'returned', 'focus'], '余計な項目は持たない');
+  assert.deepEqual(Object.keys(stars[1]), ['id', 'kind', 'text', 'expiresAt', 'returned', 'focus', 'stage'], '余計な項目は持たない');
+  assert.equal(stars[1].stage, 'wish', '段階が届かない古い控えは、種類から決める');
   assert.deepEqual(sanitizeStars(null, 0), []);
   assert.deepEqual(sanitizeStars({}, 0), []);
   assert.equal(sanitizeStars(Array.from({length: 30}, (_, n) => star(n + 1)), 0).length, SKY_LIMIT);
@@ -71,7 +72,32 @@ test('ネットがないときの「流す予定」は、重ねず・溜めす�
 });
 
 test('公開のあとの一言。保留でも責めない', () => {
-  assert.equal(publishMessage({status: 'visible', number: '25143-0001', kind: 'wish'}), '星空に流しました。あなたの番号 25143-0001');
+  assert.equal(publishMessage({status: 'visible', number: '25143-0001', kind: 'wish'}), 'みんなの空に灯しました。あなたの番号 25143-0001');
   assert.equal(publishMessage({status: 'visible', number: '25143-0001', kind: 'fulfilled'}), '「叶ったよ」を流れ星にしました。あなたの番号 25143-0001');
   assert.match(publishMessage({status: 'held', number: '25143-0001', kind: 'wish'}), /確認してから/);
+});
+
+test('みんなの空の置き場所は、天球全体に偏りなく散らばる（極に集まらない）', async () => {
+  const {sphereSeed} = await import('../public/public-stars.js');
+  const ids = Array.from({length: 4000}, (_, n) => `${String(n).padStart(8, '0')}-0000-4000-8000-000000000000`);
+  const seeds = ids.map(sphereSeed);
+  assert.deepEqual(sphereSeed(ids[0]), sphereSeed(ids[0]));
+  for (const seed of seeds) assert.ok(seed.raDeg >= 0 && seed.raDeg < 360 && seed.decDeg >= -90 && seed.decDeg <= 90);
+  // 面積に比例するなら、北半球と南半球はほぼ半分ずつ、赤緯60度より北は (1 - sin60°)/2 ≒ 6.7%
+  const north = seeds.filter(seed => seed.decDeg > 0).length / seeds.length;
+  const cap = seeds.filter(seed => seed.decDeg > 60).length / seeds.length;
+  assert.ok(Math.abs(north - 0.5) < 0.04, `北半球 ${north}`);
+  assert.ok(Math.abs(cap - (1 - Math.sin(Math.PI / 3)) / 2) < 0.025, `極のまわり ${cap}`);
+});
+
+test('段階を保ち、みんなの空では多めに読める。「やってみる」の送信も控えられる', async () => {
+  const {sanitizeStars, EVERYONE_LIMIT, enqueueAction, sanitizeActions} = await import('../public/public-stars.js');
+  const many = Array.from({length: 400}, (_, n) => star(n + 1, {stage: n % 2 ? 'doing' : 'unknown'}));
+  const kept = sanitizeStars(many, 0, [], EVERYONE_LIMIT);
+  assert.equal(kept.length, EVERYONE_LIMIT);
+  assert.deepEqual([kept[0].stage, kept[1].stage], ['wish', 'doing']);
+  const sid = id(9);
+  assert.deepEqual(enqueueAction([{action: 'return', starId: sid}], {action: 'doing', starId: sid}), [{action: 'doing', starId: sid}]);
+  assert.deepEqual(enqueueAction([{action: 'delete', starId: sid}], {action: 'doing', starId: sid}), [{action: 'delete', starId: sid}], '消す星には送らない');
+  assert.deepEqual(sanitizeActions([{action: 'doing', starId: sid}, {action: 'heart', starId: sid}]), [{action: 'doing', starId: sid}]);
 });

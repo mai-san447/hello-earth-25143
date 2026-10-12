@@ -13,7 +13,7 @@ function functionSource(name) {
   assert.ok(start >= 0 && end > start);
   return source.slice(start, end);
 }
-function scene(seqs) {
+function scene(seqs, shared = seqs) {
   const calls = [];
   const context = Object.fromEntries(['save','restore','beginPath','moveTo','lineTo','stroke','arc','fill'].map(name => [name, (...args) => calls.push([name,...args])]));
   context.createRadialGradient = () => ({addColorStop: () => {}});
@@ -24,6 +24,7 @@ function scene(seqs) {
       g.stars.map(star => Sky.projectPolarStar(star.raDeg, star.decDeg, Date.parse('2026-10-06T15:00Z'),35.68,139.76,400,800))])),
     geometry: () => ({centerX: 200, centerY: 300, orbitX: 100, orbitY: 50, earthY: 650}),
     drawHayabusa: () => {}, drawOtherStars: () => {},
+    sharedWishIds: () => new Set(shared.map(seq => `w${seq}`)),
     drawComet: (...args) => calls.push(['comet', ...args]),
   };
   vm.createContext(sandbox);
@@ -86,8 +87,9 @@ test('背景と願いは同じ投影を使い、サイズ変更と時刻更新�
   });
   sandbox.context.createLinearGradient = sandbox.context.createRadialGradient = () => ({addColorStop:()=>{}});
   sandbox.context.fillRect = () => {};
-  vm.runInContext(['refreshSky','drawSpace'].map(functionSource).join('\n'), sandbox);
-  for (const [width,height,at] of [[400,800,now],[800,400,now],[800,400,now+3600000]]) {
+  vm.runInContext(['skyFrame','polar','refreshSky','drawSpace'].map(functionSource).join('\n'), sandbox);
+  sandbox.OWN_REACH = 0.366;
+  for (const [width,height,at] of [[400,800,now],[800,400,now],[800,400,now+3600000],[1440,900,now]]) {
     Object.assign(sandbox,{width,height});
     now = at;
     sandbox.refreshSky();
@@ -98,7 +100,18 @@ test('背景と願いは同じ投影を使い、サイズ変更と時刻更新�
     calls.length = 0;
     sandbox.drawWishStars(1000);
     assert.deepEqual(calls.find(c => c[0] === 'arc').slice(1,3), background[0].slice(1,3));
-    const expected = Sky.projectPolarStar(star.raDeg,star.decDeg,now,35.68,139.76,width,height);
-    assert.deepEqual(background[0].slice(1,3), [expected.x,expected.y]);
+    // 横に広い画面では、見出しと操作バーを避けて右に寄せた枠に描く（2026-10-12）
+    const frame = sandbox.skyFrame();
+    const expected = Sky.projectPolarStar(star.raDeg,star.decDeg,now,35.68,139.76,frame.w,frame.h);
+    assert.deepEqual(background[0].slice(1,3), [expected.x + frame.x,expected.y + frame.y]);
+    if (width === 1440) assert.ok(frame.x + frame.w / 2 > width * 0.55 && frame.w * 0.366 <= height * 0.32 + 1e-9);
+    else assert.equal(JSON.stringify(frame), JSON.stringify({x: 0, y: 0, w: width, h: height}));
   }
+});
+
+test('自分だけの星は十字の光を描かず、みんなの空に出した星だけ十字の光が外へのびる', () => {
+  const {sandbox, calls} = scene([1, 2, 3], [2]);
+  sandbox.drawWishStars(1000);
+  assert.equal(calls.filter(c => c[0] === 'arc').length, 6);
+  assert.equal(calls.filter(c => c[0] === 'stroke').length, 1);
 });

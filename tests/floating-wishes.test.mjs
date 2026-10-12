@@ -134,7 +134,7 @@ test('帰還票は最初の描画だけ現像し、入力更新では再生し�
   const classes = new Set();
   const preview = {classList: {add: name => classes.add(name), remove: name => classes.delete(name)}};
   const sandbox = {
-    receiptPreviewTimer: null, receiptPreviewVersion: 0, receiptRevealPending: true,
+    receiptPreviewTimer: null, receiptPreviewVersion: 0, receiptRevealPending: true, receiptNotice: "",
     receiptSheet: {hidden: false}, receiptWish: () => ({id: 'wish'}),
     commitReceiptFirstStep: async () => ({id: 'wish'}), canvasBlob: async () => ({}), receiptImage: null,
     document: {fonts: {ready: Promise.resolve()}},

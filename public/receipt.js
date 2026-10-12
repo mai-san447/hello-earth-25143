@@ -61,6 +61,7 @@ export function returnReceiptContent({wish, now, distanceText = '', number = nul
   const returned = formatDate(returnedAt);
   const meta = [deposited && deposited !== returned ? `${deposited} → ${returned}` : returned];
   if (distanceText) meta.push(`25143まで ${distanceText}`);
+  // ハートの数は紙に載せない。紙はシェアや展示の印刷で人に見えるため（数は回収記録で本人だけが見る。2026-10-12）
   // 紙の文字は最小限にする（2026-10-07、本人の判断：文字が多くてごちゃごちゃする）。
   // 載せるのは、番号・絵・（選んだときだけ）願いの言葉・日付と距離・QR・最初の一歩だけ
   return {

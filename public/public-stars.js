@@ -7,6 +7,9 @@ const KINDS = new Set(['wish', 'fulfilled']);
 
 // サーバーの SKY_LIMIT と同じ。端末に控えた星が多すぎても、この数までしか描かない
 export const SKY_LIMIT = 24;
+// サーバーの EVERYONE_LIMIT と同じ。みんなの空（見回す画面）で一度に描く数
+export const EVERYONE_LIMIT = 300;
+const STAGES = new Set(['wish', 'doing', 'fulfilled']);
 export const MAX_LENGTH = Object.freeze({wish: 60, fulfilled: 40});
 // オフラインのときに控えておく「流す予定」の数。オフラインで何度押しても溜まりすぎないように
 export const QUEUE_LIMIT = 30;
@@ -15,7 +18,7 @@ export const QUEUE_MAX_AGE_MS = 400 * DAY_MS;
 
 // 端末に控えた星、またはサーバーから届いた星のうち、形が正しく期限内のものだけを使う。
 // 通報した星は、この端末では二度と出さない
-export function sanitizeStars(value, now, reportedIds = []) {
+export function sanitizeStars(value, now, reportedIds = [], limit = SKY_LIMIT) {
   if (!Array.isArray(value)) return [];
   const reported = new Set(reportedIds);
   return value
@@ -25,8 +28,10 @@ export function sanitizeStars(value, now, reportedIds = []) {
       && typeof star.text === 'string' && star.text.length > 0 && [...star.text].length <= MAX_LENGTH[star.kind]
       && Number.isFinite(star.expiresAt) && star.expiresAt > now
       && !reported.has(star.id))
-    .map(({id, kind, text, expiresAt, returned, focus}) => ({id, kind, text, expiresAt, returned: returned === true, focus: focus === true}))
-    .slice(0, SKY_LIMIT);
+    .map(({id, kind, text, expiresAt, returned, focus, stage}) => ({id, kind, text, expiresAt, returned: returned === true, focus: focus === true,
+      // 段階が届かない古い控えは、種類から決める（叶ったよ＝流れ星、それ以外は預けた願い）
+      stage: STAGES.has(stage) ? stage : kind === 'fulfilled' ? 'fulfilled' : 'wish'}))
+    .slice(0, limit);
 }
 
 // 星ごとに決まった置き場所（毎回同じ場所に出るよう、id から決める）
@@ -35,6 +40,19 @@ export function starSeed(id) {
   for (const character of String(id)) value = Math.imul(value ^ character.charCodeAt(0), 16777619);
   const seed = value >>> 0;
   return {raDeg: (seed % 36000) / 100, decDeg: 40 + ((seed >>> 8) % 4501) / 100, phase: (seed % 997) / 997};
+}
+
+// みんなの空での置き場所。天球全体に偏りなく散らす（赤緯は sin が一様になるように選ぶ。
+// 赤緯そのものを一様に選ぶと、面積の小さい極のまわりに星が集まってしまう）
+export function sphereSeed(id) {
+  let a = 2166136261, b = 5381;
+  for (const character of String(id)) {
+    a = Math.imul(a ^ character.charCodeAt(0), 16777619);
+    b = Math.imul(b, 33) ^ character.charCodeAt(0);
+  }
+  const u = (a >>> 0) / 4294967296;
+  const w = (b >>> 0) / 4294967296;
+  return {raDeg: u * 360, decDeg: Math.asin(2 * w - 1) * 180 / Math.PI, phase: ((a >>> 0) % 997) / 997};
 }
 
 // 触れた場所にいちばん近い星。指で触れるので、少し離れていても拾う（maxDistance は CSS ピクセル）
@@ -73,20 +91,21 @@ export function pruneQueue(queue, now) {
 
 // 公開したあとに出す一言。保留（held）でも責めない言い方にする
 export function publishMessage({status, number, kind}) {
-  const label = kind === 'fulfilled' ? '「叶ったよ」を流れ星にしました' : '星空に流しました';
-  if (status === 'held') return 'この願いは確認してから星空に出ます';
+  const label = kind === 'fulfilled' ? '「叶ったよ」を流れ星にしました' : 'みんなの空に灯しました';
+  if (status === 'held') return 'この願いは、確認してからみんなの空に出ます';
   return number ? `${label}。あなたの番号 ${number}` : label;
 }
 
 // 削除は帰還より優先し、同じ星の操作を重ねても控えを増やさない。
 export function enqueueAction(queue, item) {
   const kept = sanitizeActions(queue);
-  if (item.action === 'return' && kept.some(entry => entry.starId === item.starId && entry.action === 'delete')) return kept;
+  // 消すと決めた星には、帰還も「やってみる」も送らない
+  if (item.action !== 'delete' && kept.some(entry => entry.starId === item.starId && entry.action === 'delete')) return kept;
   return [...kept.filter(entry => entry.starId !== item.starId), item];
 }
 
 export function sanitizeActions(queue) {
-  return Array.isArray(queue) ? queue.filter(item => item && STAR_ID.test(item.starId) && ['return', 'delete'].includes(item.action)) : [];
+  return Array.isArray(queue) ? queue.filter(item => item && STAR_ID.test(item.starId) && ['return', 'doing', 'delete'].includes(item.action)) : [];
 }
 
 export function receiptUrl(origin, publicStarId) {
