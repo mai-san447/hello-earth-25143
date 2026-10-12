@@ -25,8 +25,6 @@ export const LIMITS = Object.freeze({
   orbit: 19,
   // 書く言葉（願い・最初の一歩・叶ったよ）の文字数。星空に浮かんでも帰還票でも1行で読める長さ（2026-10-12 本人と決定。以前は60字と40字）
   textLength: 12,
-  // 帰ってくる日は、翌日から1年後まで。打ち間違いを防ぎ、端末の保存が消えるリスクも抑える
-  returnFromMaxDays: 365,
   // 星空へ戻した回数がこの回数になったら、一度だけ「手放してもいい」と伝える。戻すこと自体は止めない
   gentleLaterCount: 5,
 });
@@ -35,31 +33,6 @@ export const LIMITS = Object.freeze({
 // 数えないと、満杯のときに1つ帰して新しく預け、戻すと上限を1つ超えていた（2026-10-07 レビュー）
 export function canDeposit(wishes) {
   return wishes.filter(wish => wish.status === STATUS.WAITING || wish.status === STATUS.RETURNED).length < LIMITS.orbit;
-}
-
-// 帰ってくる日の入力を確かめる。空欄は「すぐ帰還の候補」でよい
-export function checkReturnFrom(value, now) {
-  if (!value) return {ok: true, time: null};
-  const time = parseReturnFrom(value);
-  if (time == null) return {ok: false, error: '帰ってくる日を確かめてください。'};
-  const tomorrow = new Date(now);
-  tomorrow.setHours(0, 0, 0, 0);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  if (time < tomorrow.getTime()) return {ok: false, error: '帰ってくる日は、明日以降にしてください。'};
-  const latest = new Date(tomorrow);
-  latest.setDate(latest.getDate() - 1 + LIMITS.returnFromMaxDays);
-  if (time > latest.getTime()) return {ok: false, error: '帰ってくる日は、1年後までにしてください。'};
-  return {ok: true, time};
-}
-
-// 日付欄の min / max に入れる値（YYYY-MM-DD、端末の暦）
-export function returnFromRange(now) {
-  const format = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-  const min = new Date(now);
-  min.setDate(min.getDate() + 1);
-  const max = new Date(now);
-  max.setDate(max.getDate() + LIMITS.returnFromMaxDays);
-  return {min: format(min), max: format(max)};
 }
 
 // 検証・評価（docs/検証計画.md）のための数。願いの中身は使わず、端末の中の記録から数だけを出す。
@@ -205,12 +178,12 @@ export function wishNumber(personNumber, seq) {
   return `${personNumber}-${String(seq).padStart(2, '0')}`;
 }
 
-export function createWish({id, text, now, returnFrom = null, seq = null, seat = null}) {
+// 帰ってくる日の入力は2026-10-12にやめた（タップで選んで帰せるため）。前に日付つきで預けた願いは、
+// 保存された returnFrom を見て、その日まで帰らない（returnCandidates）
+export function createWish({id, text, now, seq = null, seat = null}) {
   const wish = {id, text, status: STATUS.WAITING, createdAt: now, updatedAt: now};
   if (Number.isInteger(seq) && seq > 0) wish.seq = seq;
   if (validSeat(seat)) wish.seat = seat;
-  // 今日より後の日付のときだけ持たせる。空欄や過去の日付は「すぐ帰還の候補」
-  if (Number.isFinite(returnFrom) && returnFrom > now) wish.returnFrom = returnFrom;
   return wish;
 }
 
@@ -226,15 +199,6 @@ export function setPublicStarId(wish, id) {
 }
 
 // 日付入力（YYYY-MM-DD）を、その日の端末の 0:00 にする。空や不正な値は null。
-export function parseReturnFrom(value) {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value ?? '');
-  if (!match) return null;
-  const [, year, month, day] = match.map(Number);
-  const date = new Date(year, month - 1, day);
-  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-  return date.getTime();
-}
-
 export function returnFromLabel(time) {
   const date = new Date(time);
   return `${date.getMonth() + 1}月${date.getDate()}日`;

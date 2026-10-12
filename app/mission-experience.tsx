@@ -63,11 +63,6 @@ export function MissionExperience({
           <label className="wish-label" htmlFor="wish">願い（12字まで）</label>
           <textarea id="wish" maxLength={24} placeholder="例：天文台に行く" />
           <div className="input-meta"><span /><span><b id="wish-length">0</b> / 12</span></div>
-          <div className="return-from-field">
-            <label htmlFor="return-from">帰ってくる日（任意）</label>
-            <input id="return-from" type="date" aria-describedby="return-from-hint" />
-            <p id="return-from-hint">この日までは帰ってきません。空けておくと、すぐ帰ってくることがあります。</p>
-          </div>
           {/* みんなの空に出すかを選ぶ。初期値は出さない（2026-10-12）。サーバーの準備ができた環境でだけ出す */}
           <div className="publish-field" id="publish-field" hidden>
             <label className="publish-option">
@@ -148,7 +143,7 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>入力内容と保存</h3>
-                <p>願いは12文字以内で入力できます。預けられる願いは19個まで、帰ってくる日は翌日から1年後までです。願いと回収記録はこのブラウザーのIndexedDBに保存されます。「みんなの空に出す」を選んだ願いの言葉だけを、サーバーにも送ります。選ばなければ送りません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないとサイトの保存が消えることがあります）。</p>
+                <p>願いは12文字以内で入力できます。預けられる願いは19個までです。願いと回収記録はこのブラウザーのIndexedDBに保存されます。「みんなの空に出す」を選んだ願いの言葉だけを、サーバーにも送ります。選ばなければ送りません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないとサイトの保存が消えることがあります）。</p>
                 <p>ほかの人に見られたくない内容を書くときは、端末の画面ロックをお使いください。パスワードや、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
               </section>
               <section>

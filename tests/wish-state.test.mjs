@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {CHOICES, LIMITS, STATUS, candidatesWithTrial, canDeposit, checkReturnFrom, createWish, daysWaited, decide, gentleMessage, markReturned, nextReturnFrom, orbitingWishes, parseReturnFrom, pendingReturn, returnCandidates, returnFromLabel, returnFromRange, summarize, trialAvailable, waitedMessage, nextSeat, assignMissingSeats, seatOf, pickReturn} from '../public/wish-state.js';
+import {CHOICES, LIMITS, STATUS, candidatesWithTrial, canDeposit, createWish, daysWaited, decide, gentleMessage, markReturned, nextReturnFrom, orbitingWishes, pendingReturn, returnCandidates, returnFromLabel, summarize, trialAvailable, waitedMessage, nextSeat, assignMissingSeats, seatOf, pickReturn} from '../public/wish-state.js';
 
 const at = (y, m, d, h = 12, min = 0) => new Date(y, m - 1, d, h, min).getTime();
 const wish = (overrides = {}) => ({id: 'a', text: '朝の海を歩きたい', status: STATUS.WAITING, createdAt: at(2026, 9, 22), updatedAt: at(2026, 9, 22), ...overrides});
@@ -82,18 +82,11 @@ test('候補がないときは、いちばん早い開始日を知らせる', ()
 
 test('預けるとき、今日より後の日付だけを帰還が始まる日として持たせる', () => {
   const now = at(2026, 10, 1);
-  assert.equal(createWish({id: 'x', text: '海', now, returnFrom: discharge}).returnFrom, discharge);
+  // 帰ってくる日の入力はやめた。新しい願いは日付を持たない
   assert.equal('returnFrom' in createWish({id: 'x', text: '海', now}), false);
-  assert.equal('returnFrom' in createWish({id: 'x', text: '海', now, returnFrom: at(2026, 9, 1, 0)}), false);
   assert.equal(createWish({id: 'x', text: '海', now}).status, STATUS.WAITING);
 });
 
-test('日付の入力を端末の 0:00 に直す。空や存在しない日付は null', () => {
-  assert.equal(parseReturnFrom('2026-10-25'), discharge);
-  assert.equal(parseReturnFrom(''), null);
-  assert.equal(parseReturnFrom('2026-02-30'), null);
-  assert.equal(parseReturnFrom('10/25'), null);
-});
 
 test('「星空へ戻す」を選んでも、帰還が始まる日はそのまま残る', () => {
   const back = decide(wish({status: STATUS.RETURNED, returnFrom: discharge}), 'later', at(2026, 10, 26));
@@ -102,28 +95,18 @@ test('「星空へ戻す」を選んでも、帰還が始まる日はそのま�
 });
 
 // #17 登録できる数とルール
-test('軌道に置ける願いは30件まで。受け取った願いは数えない', () => {
+test('預けておける願いは19件まで。受け取った願いは数えない', () => {
   const orbit = Array.from({length: LIMITS.orbit}, (_, index) => wish({id: `o${index}`}));
   assert.equal(canDeposit(orbit.slice(0, LIMITS.orbit - 1)), true);
   assert.equal(canDeposit(orbit), false);
   assert.equal(canDeposit([...orbit.slice(0, LIMITS.orbit - 1), wish({id: 'r', status: STATUS.DONE})]), true);
 });
 
-test('判断を待っているカプセルも枠に数える（もう少し預けたときに31個にならない）', () => {
+test('判断を待っているカプセルも枠に数える（もう少し預けたときに上限を超えない）', () => {
   const orbit = Array.from({length: LIMITS.orbit - 1}, (_, index) => wish({id: `o${index}`}));
   assert.equal(canDeposit([...orbit, wish({id: 'p', status: STATUS.RETURNED})]), false);
 });
 
-test('帰還が始まる日は翌日から1年後まで。空欄はすぐ帰還の候補', () => {
-  const now = at(2026, 10, 1, 15);
-  assert.deepEqual(checkReturnFrom('', now), {ok: true, time: null});
-  assert.equal(checkReturnFrom('2026-10-01', now).ok, false);
-  assert.equal(checkReturnFrom('2026-10-02', now).time, at(2026, 10, 2, 0));
-  assert.equal(checkReturnFrom('2027-10-01', now).ok, true);
-  assert.equal(checkReturnFrom('2027-10-02', now).ok, false);
-  assert.equal(checkReturnFrom('2026-02-30', now).ok, false);
-  assert.deepEqual(returnFromRange(now), {min: '2026-10-02', max: '2027-10-01'});
-});
 
 test('星空へ戻した回数を数え、5回目に一度だけやさしい一言を出す', () => {
   let current = wish({status: STATUS.RETURNED});

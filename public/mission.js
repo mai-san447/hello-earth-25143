@@ -2229,10 +2229,6 @@
     // 公開の初期値は「自分だけ」。出してよい願いだけ、自分で選ぶ（2026-10-12 本人と決定）
     publishCheckbox.checked = false;
     unlockAudioFromGesture();
-    // #17 帰ってくる日は、翌日から1年後まで
-    const range = WishState.returnFromRange(Date.now());
-    $('#return-from').min = range.min;
-    $('#return-from').max = range.max;
     depositStatus.textContent = WishState.canDeposit(wishes)
       ? ''
       : `預けられるのは${WishState.LIMITS.orbit}個までです。1つ受け取ると、また預けられます。`;
@@ -2280,13 +2276,8 @@
       depositStatus.textContent = `預けられるのは${WishState.LIMITS.orbit}個までです。1つ受け取ると、また預けられます。`;
       return;
     }
-    const returnFromInput = $('#return-from');
-    const returnFrom = WishState.checkReturnFrom(returnFromInput.value, now);
-    if (!returnFrom.ok) {
-      depositStatus.textContent = returnFrom.error;
-      returnFromInput.focus();
-      return;
-    }
+    // 帰ってくる日の入力はやめた（2026-10-12 本人の判断。タップで選んで帰せるため）。
+    // 前に日付つきで預けた願いは、その日まで帰らない動きのまま残す（wish-state.js の returnCandidates）
     unlockAudioFromGesture();
     launchButton.disabled = true;
     depositStatus.textContent = '預けています…';
@@ -2300,14 +2291,13 @@
     try {
       const seq = WishState.nextWishSeq(wishes, Number(readStorage(WISH_SEQ_KEY)) || 0);
       writeStorage(WISH_SEQ_KEY, String(seq));
-      const wish = WishState.createWish({id: createWishId(), text, now, returnFrom: returnFrom.time, seq, seat: WishState.nextSeat(wishes)});
+      const wish = WishState.createWish({id: createWishId(), text, now, seq, seat: WishState.nextSeat(wishes)});
       await store('readwrite', object => object.put(wish));
       wishes = [...wishes, wish];
       // 最初に預けたとき、人の番号を受け取る（ネットがなければ、つながったときに）
       ensureNumber();
       refreshInterface();
       wishInput.value = '';
-      returnFromInput.value = '';
       publishCheckbox.checked = false;
       $('#wish-length').textContent = '0';
       depositStatus.textContent = wish.returnFrom
