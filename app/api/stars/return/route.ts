@@ -26,6 +26,8 @@ export async function POST(request: Request) {
     if (!canDelete(Number(result?.value) - 1)) return Response.json({error: "少し待ってから、もう一度お試しください。"}, {status: 429});
     await db.run(sql`DELETE FROM watch_settings WHERE key LIKE 'return:%' AND updated_at < ${now - DELETE_LIMIT.windowMs}`);
     const [star] = await db.select().from(publicStars).where(eq(publicStars.id, starId)).limit(1);
+    // 「やってみる」で明るくした星への遅れた帰還は、成功として受け流す（送信待ちを残さない）
+    if (star && star.orbitId === orbitId && Number.isFinite(star.doingAt)) return Response.json({ok: true});
     const update = returnedStar(star, orbitId, now);
     if (!update) return Response.json({error: "この星は、もうありません。"}, {status: 404});
     // 同時の再送でも最初の帰還時刻を保ち、保留や非表示の状態は変えない。

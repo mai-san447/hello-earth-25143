@@ -36,6 +36,9 @@ export const publicStars = sqliteTable("public_stars", {
   createdAt: integer("created_at").notNull(),
   expiresAt: integer("expires_at").notNull(),
   returnedAt: integer("returned_at"),
+  // みんなの空（2026-10-12）。受け取って「みんなの空に出す」を選んだ時刻と、届いたハートの数（持ち主にだけ返す）
+  doingAt: integer("doing_at"),
+  hearts: integer("hearts").notNull().default(0),
 }, table => [
   index("public_stars_status_expires").on(table.status, table.expiresAt),
   // 1日の上限を数えるときに使う
@@ -58,3 +61,10 @@ export const artUses = sqliteTable("art_uses", {
   index("art_uses_orbit_created").on(table.orbitId, table.createdAt),
   index("art_uses_created").on(table.createdAt),
 ]);
+
+// ハートを同じ端末から同じ星へ1日1回に数えるためだけの表。key は日付・端末・星のハッシュで、送った人は分からない。3日で消す
+export const starHearts = sqliteTable("star_hearts", {
+  key: text("key").primaryKey(),
+  starId: text("star_id").notNull(),
+  createdAt: integer("created_at").notNull(),
+}, table => [index("star_hearts_created").on(table.createdAt)]);

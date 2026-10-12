@@ -146,7 +146,10 @@ test('枝番は 25143-0001 の形。この作品の中だけの番号', () => {
 
 test('返す星には、軌道ID・状態・通報数を含めない', () => {
   const row = {id: starId, orbitId, kind: 'wish', text: '海', status: 'visible', reports: 2, createdAt: 1, expiresAt: 2};
-  assert.deepEqual(publicStar(row), {id: starId, kind: 'wish', text: '海', expiresAt: 2, returned: false});
+  assert.deepEqual(publicStar(row), {id: starId, kind: 'wish', text: '海', expiresAt: 2, returned: false, stage: 'wish'});
+  // ハートの数とやってみることにした時刻は、ほかの人には返さない（段階だけ）
+  assert.deepEqual(publicStar({...row, hearts: 9, doingAt: 5}), {id: starId, kind: 'wish', text: '海', expiresAt: 2, returned: false, stage: 'doing'});
+  assert.equal(publicStar({...row, kind: 'fulfilled'}).stage, 'fulfilled');
 });
 
 test('みんなの星は、D1 があってもスイッチが "true" のときだけ開く', () => {
@@ -162,4 +165,48 @@ test('人の番号は、1分あたり全体で60までしか新しく発行し�
   assert.equal(canIssueOrbit(59), true);
   assert.equal(canIssueOrbit(60), false);
   assert.equal(canIssueOrbit(undefined), false);
+});
+
+test('「やってみる」は本人の願いの星だけ。期限は1年（前の期限が長ければそちら）、再送で時刻は変わらない', async () => {
+  const {doingStar, DOING_TTL_MS} = await import('../app/api/stars/rules.mjs');
+  const star = {id: starId, orbitId, kind: 'wish', expiresAt: 100};
+  assert.deepEqual(doingStar(star, orbitId, 1000), {doingAt: 1000, expiresAt: 1000 + DOING_TTL_MS});
+  assert.deepEqual(doingStar({...star, doingAt: 500}, orbitId, 9000), {doingAt: 500, expiresAt: 500 + DOING_TTL_MS});
+  assert.equal(doingStar({...star, expiresAt: 10 ** 13}, orbitId, 1000).expiresAt, 10 ** 13);
+  assert.equal(doingStar(star, '00000000-0000-4000-8000-000000000000', 1000), null);
+  assert.equal(doingStar({...star, kind: 'fulfilled'}, orbitId, 1000), null);
+  assert.equal(doingStar(undefined, orbitId, 1000), null);
+});
+
+test('ハートは見えている他の人の星にだけ。日付は日本時間で区切り、送った人は分からない形で数える', async () => {
+  const {canHeart, heartDay, heartSource, parseHeart} = await import('../app/api/stars/rules.mjs');
+  const other = '11111111-1111-4111-8111-111111111111';
+  const star = {id: starId, orbitId, kind: 'wish', status: 'visible', expiresAt: 2000};
+  assert.equal(canHeart(star, other, 1000), true);
+  assert.equal(canHeart(star, orbitId, 1000), false, '自分の星には送れない');
+  assert.equal(canHeart({...star, status: 'held'}, other, 1000), false);
+  assert.equal(canHeart({...star, status: 'hidden'}, other, 1000), false);
+  assert.equal(canHeart({...star, expiresAt: 1000}, other, 1000), false);
+  assert.equal(canHeart(undefined, other, 1000), false);
+  assert.equal(canHeart({...star, kind: 'fulfilled'}, other, 1000), false, '叶ったよの流れ星には送らない（持ち主の願いとつながらない）');
+  // 日本時間 2026-10-12 23:59 と 10-13 00:00 は別の日
+  assert.equal(heartDay(Date.parse('2026-10-12T14:59:00Z')), '2026-10-12');
+  assert.equal(heartDay(Date.parse('2026-10-12T15:00:00Z')), '2026-10-13');
+  assert.notEqual(heartSource(other, starId, Date.parse('2026-10-12T14:59:00Z')), heartSource(other, starId, Date.parse('2026-10-12T15:00:00Z')));
+  assert.deepEqual(parseHeart({starId, orbitId: other}), {ok: true, value: {starId, orbitId: other}});
+  for (const body of [null, [], {starId}, {starId: 'x', orbitId: other}, {starId, orbitId: 'x'}]) assert.equal(parseHeart(body).ok, false);
+});
+
+test('ハートは鍵（HEART_SECRET、16文字以上）があり、みんなの空が開いている環境でだけ出す', async () => {
+  const {heartsEnabled} = await import('../app/api/stars/rules.mjs');
+  assert.equal(heartsEnabled({DB: {}, PUBLIC_STARS_ENABLED: 'true'}), false);
+  assert.equal(heartsEnabled({DB: {}, PUBLIC_STARS_ENABLED: 'true', HEART_SECRET: 'short'}), false);
+  assert.equal(heartsEnabled({DB: {}, PUBLIC_STARS_ENABLED: 'true', HEART_SECRET: 'x'.repeat(32)}), true);
+  assert.equal(heartsEnabled({DB: {}, PUBLIC_STARS_ENABLED: 'false', HEART_SECRET: 'x'.repeat(32)}), false);
+});
+
+test('「やってみる」で明るくした星は、遅れて届いた帰還で薄くしない', async () => {
+  const {returnedStar} = await import('../app/api/stars/rules.mjs');
+  assert.equal(returnedStar({orbitId, doingAt: 5}, orbitId, 10), null);
+  assert.ok(returnedStar({orbitId}, orbitId, 10));
 });

@@ -4,7 +4,7 @@ import { env } from "cloudflare:workers";
 import { and, count, eq, gt, gte, inArray, lt, ne, sql } from "drizzle-orm";
 import { getDb } from "../../../db";
 import { orbits, publicStars, starReports } from "../../../db/schema";
-import { DAILY_WINDOW_MS, SKY_LIMIT, STATUS, GLOBAL_DAILY_LIMIT, acceptGlobal, acceptPublish, publicStarsEnabled, expiresAt, formatNumber, isOrbitId, isStarId, parsePublish, focusedStars, publishStatus } from "./rules.mjs";
+import { DAILY_WINDOW_MS, EVERYONE_LIMIT, heartsEnabled, SKY_LIMIT, STATUS, GLOBAL_DAILY_LIMIT, acceptGlobal, acceptPublish, publicStarsEnabled, expiresAt, formatNumber, isOrbitId, isStarId, parsePublish, focusedStars, publishStatus } from "./rules.mjs";
 import { readPaused } from "../watch/settings";
 
 // みんなの星（#22）。公開を選んだ言葉（画面では12字まで。サーバーは前の長い言葉も受け取れるよう60字まで）と軌道IDだけを受け取る。名前・IPアドレスは保存しない。
@@ -23,8 +23,15 @@ async function orbitNumber(orbitId: string) {
 export async function GET(request: Request) {
   if (!enabled()) return Response.json({ enabled: false });
   const params = new URL(request.url).searchParams;
+  // みんなの空は一度に多く読むので、連打には回数の制限をかける
+  if (params.get("view") === "everyone") {
+    const limited = await rateLimit(request, '/api/stars?view=everyone', env);
+    if (limited) return limited;
+  }
   const orbitId = params.get("orbit");
   const starId = params.get("star");
+  // view=everyone：みんなの空（3Dで見回す画面）。一度に多めに読む
+  const limit = params.get("view") === "everyone" ? EVERYONE_LIMIT : SKY_LIMIT;
   if (starId !== null && !isStarId(starId)) return Response.json({error: "星を確認してください。"}, {status: 400});
   if (orbitId !== null && !isOrbitId(orbitId)) return Response.json({ error: "軌道を確認してください。" }, { status: 400 });
   try {
@@ -37,12 +44,14 @@ export async function GET(request: Request) {
       .from(publicStars)
       .where(and(...conditions))
       .orderBy(sql`random()`)
-      .limit(SKY_LIMIT);
+      .limit(limit);
     // QRで指定した星だけは、自分の星でも見えるようにする。保留や期限切れは出さない。
     const [focused] = starId ? await getDb().select().from(publicStars).where(and(eq(publicStars.id, starId), eq(publicStars.status, STATUS.VISIBLE), gt(publicStars.expiresAt, now))).limit(1) : [];
     return Response.json({
       enabled: true,
-      stars: focusedStars(rows, focused),
+      stars: focusedStars(rows, focused, limit),
+      // ハートを送れる環境か（鍵が無ければ、画面にハートを出さない）
+      hearts: heartsEnabled(env),
       number: orbitId ? await orbitNumber(orbitId) : null,
     });
   } catch (error) {

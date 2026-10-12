@@ -10,6 +10,8 @@ declare namespace Cloudflare {
     CHATGPT_SYNC_ENABLED?: string;
     PUBLIC_STARS_ENABLED?: string;
     WATCH_TOKEN?: string;
+    // ハートの1日1回を数える値を作る鍵（HMAC）。無い環境ではハートを出さない
+    HEART_SECRET?: string;
     ART_ENABLED?: string;
   }
 }
