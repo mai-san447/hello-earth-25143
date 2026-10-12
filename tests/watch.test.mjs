@@ -147,10 +147,17 @@ test('見守りAPI：再表示は通報数を戻し、削除は星と通報を�
   }
 });
 
-test('見守りの合言葉は、全体で1分に5回まちがえたら、その1分は受け付けない', () => {
-  assert.equal(watch.tooManyFailures(4), false);
-  assert.equal(watch.tooManyFailures(5), true);
-  assert.equal(watch.tooManyFailures('7'), true);
+test('見守りの合言葉は、同じ回線から1分5回・全体で1分30回まちがえたら、その1分は受け付けない', () => {
+  assert.equal(watch.tooManyFailures(29), false);
+  assert.equal(watch.tooManyFailures(30), true);
+  assert.equal(watch.tooManyFailures('31'), true);
+  const failures = new Map();
+  for (let i = 0; i < 4; i += 1) watch.recordSourceFailure(failures, 'a', 1000);
+  assert.equal(watch.sourceBlocked(failures, 'a', 1000), false);
+  watch.recordSourceFailure(failures, 'a', 1000);
+  assert.equal(watch.sourceBlocked(failures, 'a', 1000), true);
+  assert.equal(watch.sourceBlocked(failures, 'b', 1000), false, 'ほかの回線は止めない');
+  assert.equal(watch.sourceBlocked(failures, 'a', 61000), false, '次の1分は受け付ける');
   // 同じ1分の中は同じ数え先、次の1分は新しい数え先
   assert.equal(watch.failBucket(60000 * 10), watch.failBucket(60000 * 10 + 59999));
   assert.notEqual(watch.failBucket(60000 * 10), watch.failBucket(60000 * 11));
@@ -158,17 +165,22 @@ test('見守りの合言葉は、全体で1分に5回まちがえたら、その
   assert.notEqual(watch.failBucket(0), 'paused');
 });
 
-test('見守りAPI：まちがいを数え、5回目のあとは合言葉を確かめずに429を返す', async () => {
+test('見守りAPI：同じ回線は5回まちがえたら止まるが、ほかの回線（運営者）は締め出されない', async () => {
   const failures = {count: 0};
-  const {exports} = load('watch/route.ts', {env: {DB: {}, WATCH_TOKEN: token}, failures});
-  const wrong = () => exports.GET(new Request('https://example.com/api/watch', {headers: {Authorization: 'Bearer wrong-passphrase'}}));
-  for (let i = 0; i < 5; i += 1) assert.equal((await wrong()).status, 401);
+  const chain = {from: () => chain, where: () => chain, orderBy: () => chain, limit: async () => []};
+  const {exports} = load('watch/route.ts', {env: {DB: {}, WATCH_TOKEN: token}, failures, db: {select: () => chain}});
+  const request = (ip, auth) => new Request('https://example.com/api/watch', {headers: {Authorization: auth, 'CF-Connecting-IP': ip}});
+  for (let i = 0; i < 5; i += 1) assert.equal((await exports.GET(request('203.0.113.9', 'Bearer wrong-passphrase'))).status, 401);
   assert.equal(failures.count, 5);
-  assert.equal((await wrong()).status, 429);
-  // 止まっている間は、正しい合言葉でも数を増やさず待ってもらう
-  const right = await exports.GET(new Request('https://example.com/api/watch', {headers: {Authorization: `Bearer ${token}`}}));
-  assert.equal(right.status, 429);
+  assert.equal((await exports.GET(request('203.0.113.9', 'Bearer wrong-passphrase'))).status, 429);
+  // 止まっている回線は、正しい合言葉でも数を増やさず待ってもらう
+  assert.equal((await exports.GET(request('203.0.113.9', `Bearer ${token}`))).status, 429);
   assert.equal(failures.count, 5);
+  // 運営者のほかの回線は入れる
+  assert.equal((await exports.GET(request('198.51.100.7', `Bearer ${token}`))).status, 200);
+  // 全体で30回を超えたら、どの回線も止める（回線を替えた当て推量への歯止め）
+  failures.count = 30;
+  assert.equal((await exports.GET(request('198.51.100.7', `Bearer ${token}`))).status, 429);
 });
 
 test('まちがいの数が読めないときは、受け付けない側に倒す', async () => {
@@ -176,4 +188,23 @@ test('まちがいの数が読めないときは、受け付けない側に倒�
   const {exports, logs} = load('watch/settings.ts', {db});
   assert.equal(watch.tooManyFailures(await exports.readFailures(Date.now())), true);
   assert.ok(!JSON.stringify(logs).includes('private database details'));
+});
+
+test('通報API：番号を発行していない端末の通報は数えない（乱数のIDで星を隠せない）', async () => {
+  for (const registered of [false, true]) {
+    let counted = 0;
+    const select = fields => {
+      const chain = {from: table => { chain.table = table; return chain; }, where: () => chain, limit: async () => {
+        if ('id' in fields) return registered ? [{id: other}] : [];
+        return [{orbitId}];
+      }};
+      return chain;
+    };
+    const db = {select, insert: () => ({values: () => ({onConflictDoNothing: () => ({returning: async () => [{starId}]})})}),
+      update: () => ({set: () => ({where: () => ({returning: async () => { counted += 1; return [{reports: 1, status: 'visible'}]; }})})})};
+    const {exports} = load('stars/report/route.ts', {db, env: {DB: {}, PUBLIC_STARS_ENABLED: 'true'}});
+    const response = await exports.POST(new Request('https://example.com/api/stars/report', {method: 'POST', body: JSON.stringify({starId, reporterOrbitId: other})}));
+    assert.equal(response.status, registered ? 200 : 403);
+    assert.equal(counted, registered ? 1 : 0);
+  }
 });

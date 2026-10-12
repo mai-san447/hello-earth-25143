@@ -4,12 +4,14 @@ import {getDb} from "../../../db";
 import {publicStars, starReports, watchSettings} from "../../../db/schema";
 import {errorKind} from "../error-kind.mjs";
 import {rateLimit} from "../rate-limit";
-import {authorized, parseWatch, tooManyFailures, watchEnabled} from "./rules.mjs";
+import {authorized, parseWatch, recordSourceFailure, sourceBlocked, tooManyFailures, watchEnabled} from "./rules.mjs";
 import {readFailures, readPaused, recordFailure} from "./settings";
 
 function reply(body: unknown, status = 200) {
   return Response.json(body, {status, headers: {"Cache-Control": "no-store", "X-Robots-Tag": "noindex"}});
 }
+// 同じ回線のまちがいの数（この Worker のメモリの中だけ。保存しない）
+const sourceFailures = new Map<string, {bucket: string, count: number}>();
 async function guard(request: Request) {
   if (!watchEnabled(env)) return reply({error: "見つかりません。"}, 404);
   // 当て推量を止める：同じ回線からの回数制限（Cloudflare）と、全体で1分5回までのまちがい回数（データベース）を重ねる。
@@ -17,8 +19,10 @@ async function guard(request: Request) {
   const limited = await rateLimit(request, "/api/watch", {STARS_LIMITER: env.WATCH_LIMITER});
   if (limited) return limited;
   const now = Date.now();
-  if (tooManyFailures(await readFailures(now))) return reply({error: "少し時間をおいてください。"}, 429);
+  const source = request.headers.get("CF-Connecting-IP") ?? "unknown";
+  if (sourceBlocked(sourceFailures, source, now) || tooManyFailures(await readFailures(now))) return reply({error: "少し時間をおいてください。"}, 429);
   if (!await authorized(env.WATCH_TOKEN!, request.headers.get("Authorization"))) {
+    recordSourceFailure(sourceFailures, source, now);
     await recordFailure(now);
     const error = new Error();
     console.error("watch authentication", errorKind(error));

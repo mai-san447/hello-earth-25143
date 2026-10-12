@@ -36,7 +36,23 @@ export function parseWatch(body) {
 export function isPaused(value) { return value !== '0'; }
 
 // Cloudflare の回数制限は場所ごとに数えるため、本番で止まらないことがあった（2026-10-12に確認）。
-// そこで、間違えた回数をデータベースで1分ごとに数え、全体で5回を超えたらその1分は受け付けない。
-export const WATCH_FAIL_LIMIT = 5;
+// まちがいは2段で数える（2026-10-12 レビュー：全体で5回だけだと、だれかが5回まちがえ続けるだけで運営者も入れなくなった）。
+// ・同じ回線から1分5回まで（Worker のメモリの中だけで数え、IP アドレスは保存しない）
+// ・全体で1分30回まで（データベース。回線を替えて当て推量を続けられないための歯止め）
+// 本当の守りは /watch を Cloudflare Access で囲むこと（docs/見守りの手順.md）
+export const WATCH_FAIL_LIMIT = 30;
+export const WATCH_FAIL_PER_SOURCE = 5;
+// 同じ回線のまちがいを、1分ごとの数え先で数える（メモリの中だけ）。古い数え先は捨てる
+export function sourceBlocked(failures, source, now) {
+  const entry = failures.get(source);
+  return Boolean(entry) && entry.bucket === failBucket(now) && entry.count >= WATCH_FAIL_PER_SOURCE;
+}
+export function recordSourceFailure(failures, source, now) {
+  const bucket = failBucket(now);
+  const entry = failures.get(source);
+  failures.set(source, entry && entry.bucket === bucket ? {bucket, count: entry.count + 1} : {bucket, count: 1});
+  // 覚えすぎない：1000件を超えたら、今の1分以外を捨てる
+  if (failures.size > 1000) for (const [key, value] of failures) if (value.bucket !== bucket) failures.delete(key);
+}
 export function failBucket(now) { return `fail:${Math.floor(now / 60000)}`; }
 export function tooManyFailures(count) { return Number(count) >= WATCH_FAIL_LIMIT; }

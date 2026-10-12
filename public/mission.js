@@ -3290,7 +3290,8 @@
       // 404 はすでに空にない星。通報したのと同じ扱いで、この端末の空から外す
       if (!response.ok && response.status !== 404) {
         console.error('star report', response.status, data.error);
-        status.textContent = '通報を送れませんでした。少し待ってから、もう一度押してください';
+        // 願いを預けたことがない端末は通報を数えない（403）。理由をそのまま伝える
+        status.textContent = response.status === 403 && data.error ? data.error : '通報を送れませんでした。少し待ってから、もう一度押してください';
         return;
       }
       // この端末からは同じ星へ二度通報しない。通報した星は、この端末の空にはもう出さない

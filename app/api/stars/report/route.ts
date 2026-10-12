@@ -3,7 +3,7 @@ import { errorKind } from "../../error-kind.mjs";
 import { env } from "cloudflare:workers";
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "../../../../db";
-import { publicStars, starReports } from "../../../../db/schema";
+import { orbits, publicStars, starReports } from "../../../../db/schema";
 import { parseReport, statusAfterReport, publicStarsEnabled } from "../rules.mjs";
 
 // 他の人の星の通報（#23）。同じ端末から同じ星へは1回だけ数え、3件で非表示にする。
@@ -19,6 +19,10 @@ export async function POST(request: Request) {
   const { starId, reporterOrbitId } = parsed.value;
   try {
     const db = getDb();
+    // 番号を発行した端末（願いを預けたことがある端末）からの通報だけ数える。
+    // 乱数で作った軌道ID を3つ並べるだけで、だれの星でも隠せないようにする（2026-10-12 レビュー）
+    const [reporter] = await db.select({ id: orbits.id }).from(orbits).where(eq(orbits.id, reporterOrbitId)).limit(1);
+    if (!reporter) return Response.json({ error: "願いを1つ預けると、通報できます。" }, { status: 403 });
     const [star] = await db.select({ orbitId: publicStars.orbitId }).from(publicStars).where(eq(publicStars.id, starId)).limit(1);
     if (!star) return Response.json({ error: "この星は、もう空にありません。" }, { status: 404 });
     if (star.orbitId === reporterOrbitId) return Response.json({ error: "自分の星は通報できません。" }, { status: 400 });
