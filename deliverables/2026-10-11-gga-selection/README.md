@@ -6,7 +6,7 @@
 | ファイル | 中身 |
 | --- | --- |
 | `MORUNE25143_GGAセレクション_2026-10-11.pptx` | 16:9・12枚。各ページのノートに、話すことと時間を書いた |
-| `demo-phone.mp4` | デモの予備の録画（約80秒、縦長。2026-10-12 の新しい版で撮り直し）。スライド「04 デモ」に埋め込み済み |
+| `demo-phone.mp4` | デモの予備の録画（約90秒、縦長。2026-10-12 夕の本番と同じ版で撮り直し。星に触れて呼び戻す場面入り）。スライド「04 デモ」に埋め込み済み |
 | `demo-16x9.mp4` | 同じ録画を 16:9 の夜空色の背景に置いたもの（画面いっぱいで流すとき） |
 | `system-and-demo.html` | 画面とシステム設計の1枚（https://claude.ai/artifact/NsTvM3fLQ51Vc5T8tWucgx）|
 | `star-seats-simulation.html` ・ `sim.mjs` ・ `sim-result.json` | 星の席・距離・1年の重なり・ガチャの確率のシミュレーション（https://claude.ai/artifact/X2LhUutmsALMNDvVxZpKVm）。`node sim.mjs <リポジトリ>` で再計算 |
