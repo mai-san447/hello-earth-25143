@@ -580,15 +580,8 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 .everyone-empty{position:absolute;z-index:2;left:50%;top:42%;width:min(320px,calc(100% - 48px));margin:0;transform:translate(-50%,-50%);color:#c7d0e2;font-size:14px;line-height:1.8;text-align:center;pointer-events:none}
 .everyone-tools{position:absolute;z-index:2;right:clamp(18px,5vw,72px);bottom:calc(max(18px,env(safe-area-inset-bottom)) + 150px);display:flex;gap:8px}
 .everyone-tools button{min-width:44px;min-height:44px;padding:0 12px;border:1px solid rgba(193,210,230,.28);border-radius:9999px;background:rgba(8,14,26,.72);color:#dfe7f5;font:500 14px/1 "Zen Kaku Gothic New",sans-serif;cursor:pointer}
-.everyone-card{position:absolute;z-index:3;left:50%;bottom:max(18px,env(safe-area-inset-bottom));width:min(460px,calc(100% - 32px));padding:18px 20px 14px;border:1px solid rgba(156,200,255,.28);border-radius:20px;background:linear-gradient(150deg,rgba(20,30,44,.96),rgba(8,14,23,.98));box-shadow:0 18px 60px rgba(0,0,0,.5);transform:translateX(-50%)}
-.everyone-kicker{margin:0 0 6px;color:#e6c889;font-size:11px;letter-spacing:.14em}
-.everyone-text{margin:0;padding-right:112px;color:#f5f0e2;font:600 19px/1.5 "Shippori Mincho B1","Yu Mincho",serif;overflow-wrap:anywhere}
-.everyone-actions{position:absolute;top:16px;right:16px;display:flex;gap:8px}
-.everyone-actions button{min-width:44px;min-height:44px;border:1px solid rgba(193,210,230,.3);border-radius:9999px;background:rgba(255,255,255,.04);color:#ffd9de;font-size:20px;line-height:1;cursor:pointer}
-.everyone-actions .everyone-more{color:#d8e9ff;font-size:18px}
 .everyone-heart[aria-pressed="true"]{border-color:rgba(255,170,180,.6);color:#ff9fae}
 .everyone-heart:disabled{cursor:default}
-.everyone-status{min-height:1.4em;margin:6px 0 0;color:#aeb9c8;font-size:12px}
 .archive-hearts{margin-left:8px;color:#ffb7c1;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:reduce){.everyone-view *{transition:none!important}}
 .everyone-view[hidden],.everyone-view [hidden],.everyone-open[hidden]{display:none!important}
@@ -596,3 +589,12 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 #star-card{z-index:40}
 .receipt-publish:disabled{opacity:.7;cursor:default}
 .dock-places button{min-height:40px}
+/* みんなの空：星の横に出す言葉（2026-10-12）。下のカードはやめた */
+.everyone-card{position:absolute;z-index:3;left:0;top:0;display:flex;align-items:center;gap:4px;max-width:min(340px,calc(100% - 20px));padding:4px 4px 4px 14px;border:1px solid rgba(156,200,255,.3);border-radius:999px;background:rgba(10,16,30,.88);box-shadow:0 10px 30px rgba(0,0,0,.45);transform:translateX(-50%);visibility:hidden;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.everyone-text{margin:0 4px 0 0;color:#f5f0e2;font:600 15px/1.4 "Shippori Mincho B1","Yu Mincho",serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.everyone-card button{flex:none;min-width:38px;min-height:38px;border:0;border-radius:999px;background:transparent;color:#ffd9de;font-size:18px;line-height:1;cursor:pointer}
+.everyone-card button:hover{background:rgba(255,255,255,.08)}
+.everyone-card .everyone-more{color:#d8e9ff;font-size:16px}
+.everyone-status{position:absolute;top:calc(100% + 6px);left:50%;margin:0;padding:3px 10px;border-radius:8px;background:rgba(10,16,30,.9);color:#f0b77a;font-size:12px;white-space:nowrap;transform:translateX(-50%)}
+.everyone-status:empty{display:none}
+.everyone-hover{position:absolute;z-index:3;left:0;top:0;margin:0;padding:4px 12px;border-radius:999px;background:rgba(5,8,18,.7);color:#f2ead6;font:600 14px/1.4 "Shippori Mincho B1","Yu Mincho",serif;white-space:nowrap;transform:translateX(-50%);pointer-events:none;visibility:hidden}

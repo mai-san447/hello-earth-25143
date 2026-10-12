@@ -3031,7 +3031,36 @@
     reducedMotion,
     seed: PublicStars.sphereSeed,
     onSelect: point => showEveryoneCard(point),
+    onHover: point => showEveryoneHover(point),
+    onFrame: points => placeEveryoneLabels(points),
   });
+
+  // 星の横に言葉を出す（下にカードは出さない。2026-10-12 本人の判断）。星が動いたら一緒に動かし、画面の端では内側に収める
+  const everyoneHover = $('#everyone-hover');
+  let everyoneHovered = null;
+  function placeNear(element, point) {
+    if (!point) { element.style.visibility = 'hidden'; return; }
+    const view = everyoneView.getBoundingClientRect();
+    const box = element.getBoundingClientRect();
+    const half = box.width / 2;
+    const x = Math.max(half + 10, Math.min(view.width - half - 10, point.x));
+    // 上に収まらないときは、星の下に出す
+    const below = point.y - box.height - 22 < 64;
+    element.style.left = `${x}px`;
+    element.style.top = `${below ? point.y + 18 : point.y - box.height - 18}px`;
+    element.style.visibility = 'visible';
+  }
+  function placeEveryoneLabels(points) {
+    if (!everyoneCard.hidden && everyoneSelected) placeNear(everyoneCard, points.find(point => point.star.id === everyoneSelected.id));
+    if (!everyoneHover.hidden && everyoneHovered) placeNear(everyoneHover, points.find(point => point.star.id === everyoneHovered.id));
+  }
+  function showEveryoneHover(point) {
+    everyoneHovered = point && point.star.id !== everyoneSelected?.id ? point.star : null;
+    everyoneHover.hidden = !everyoneHovered;
+    if (!everyoneHovered) return;
+    everyoneHover.textContent = everyoneHovered.text;
+    placeNear(everyoneHover, point);
+  }
 
   // サーバーと同じく、日本時間の0時で日付を区切る
   const heartDay = () => new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -3045,8 +3074,10 @@
     everyoneSelected = point?.star ?? null;
     $('#everyone-status').textContent = '';
     if (!point) { everyoneCard.hidden = true; return; }
+    if (everyoneHovered?.id === point.star.id) { everyoneHovered = null; everyoneHover.hidden = true; }
     const star = point.star;
     const own = point.own;
+    // 段階は星の明るさで見せる。読み上げのためだけに、見えない見出しを残す
     $('#everyone-kicker').textContent = own ? 'あなたの願い' : star.stage === 'fulfilled' ? '叶った願い' : star.stage === 'doing' ? 'やってみることにした願い' : '預けられた願い';
     $('#everyone-text').textContent = star.text;
     const heart = $('#everyone-heart');
@@ -3059,6 +3090,7 @@
     heart.setAttribute('aria-label', sent ? '今日はハートを送りました' : 'ハートを送る');
     heart.disabled = sent;
     everyoneCard.hidden = false;
+    placeNear(everyoneCard, point);
   }
 
   async function sendHeart() {
@@ -3081,7 +3113,8 @@
         heart.textContent = '♥︎';
         heart.setAttribute('aria-pressed', 'true');
         heart.setAttribute('aria-label', '今日はハートを送りました');
-        $('#everyone-status').textContent = 'ハートを届けました';
+        // 届いたことは♥に変わることで見せる。読み上げには知らせる
+        $('#everyone-live').textContent = 'ハートを届けました';
       }
     } catch {
       heart.disabled = false;

@@ -273,15 +273,17 @@ export function MissionExperience({
             <button id="everyone-zoom-in" type="button" aria-label="近づく">＋</button>
             <button className="everyone-next" id="everyone-next" type="button">次の願い</button>
           </div>
-          <div className="everyone-card" id="everyone-card" hidden>
-            <p className="everyone-kicker" id="everyone-kicker" />
+          {/* 選んだ星の横に出す言葉（下にカードは出さない）。♡ と通報だけを添える */}
+          <div className="everyone-card" id="everyone-card" role="group" aria-labelledby="everyone-kicker everyone-text" hidden>
+            <p className="visually-hidden" id="everyone-kicker" />
             <p className="everyone-text" id="everyone-text" />
-            <div className="everyone-actions">
-              <button className="everyone-heart" id="everyone-heart" type="button" aria-pressed="false" aria-label="ハートを送る">♡</button>
-              <button className="everyone-more" id="everyone-more" type="button" aria-label="この言葉を通報する">…</button>
-            </div>
-            <p className="everyone-status" id="everyone-status" role="status" aria-live="polite" />
+            <button className="everyone-heart" id="everyone-heart" type="button" aria-pressed="false" aria-label="ハートを送る">♡</button>
+            <button className="everyone-more" id="everyone-more" type="button" aria-label="この言葉を通報する">…</button>
+            <p className="everyone-status" id="everyone-status" role="alert" />
           </div>
+          {/* マウスを当てた星の言葉（読むだけ） */}
+          <p className="everyone-hover" id="everyone-hover" aria-hidden="true" hidden />
+          <p className="visually-hidden" id="everyone-live" role="status" aria-live="polite" />
         </section>
         {/* 入口：はじめて開いた人にだけ、完成物（帰還票）と3つのステップを見せる（2026-10-11） */}
         <section className="intro-screen" id="intro-screen" role="dialog" aria-modal="true" aria-labelledby="intro-title" hidden>

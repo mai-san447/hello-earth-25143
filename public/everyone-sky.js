@@ -96,7 +96,7 @@ export function starLook(star, own) {
  * 画面を作る。描画と操作だけを持ち、データ（星・自分の星・カタログ）は外から渡す。
  * @param {{canvas: HTMLCanvasElement, reducedMotion: boolean, onSelect: (point: object|null) => void, seed: (id: string) => {raDeg: number, decDeg: number, phase: number}}} options
  */
-export function createEveryoneSky({canvas, reducedMotion, onSelect, seed}) {
+export function createEveryoneSky({canvas, reducedMotion, onSelect, seed, onHover = () => {}, onFrame = () => {}}) {
   const context = canvas.getContext('2d');
   let width = 0, height = 0, ratio = 1;
   let view = {raDeg: 0, decDeg: 60};
@@ -106,6 +106,7 @@ export function createEveryoneSky({canvas, reducedMotion, onSelect, seed}) {
   let background = [];
   let points = [];
   let selectedId = null;
+  let hoveredId = null;
   let running = false;
   let frame = 0;
   const pointers = new Map();
@@ -218,7 +219,7 @@ export function createEveryoneSky({canvas, reducedMotion, onSelect, seed}) {
       points.push({...item, x: p.x, y: p.y});
     }
     // 近づいたときの言葉。選んだ星の言葉は画面の下のカードに出すので、ここでは描かない
-    const readable = readablePoints(points.filter(p => p.star.id !== selectedId), width, height, fov);
+    const readable = readablePoints(points.filter(p => p.star.id !== selectedId && p.star.id !== hoveredId), width, height, fov);
     context.save();
     context.font = '14px "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif';
     context.textAlign = 'center';
@@ -233,6 +234,8 @@ export function createEveryoneSky({canvas, reducedMotion, onSelect, seed}) {
       context.fillText(label, point.x, point.y - 18);
     }
     context.restore();
+    // 選んだ星・カーソルを当てた星の言葉は、画面の部品（HTML）で星の横に出す。星が動いたら一緒に動かす
+    onFrame(points);
   }
 
   function loop(time) {
@@ -273,7 +276,16 @@ export function createEveryoneSky({canvas, reducedMotion, onSelect, seed}) {
   });
   canvas.addEventListener('pointermove', event => {
     const previous = pointers.get(event.pointerId);
-    if (!previous) return;
+    if (!previous) {
+      // マウスでは、星にカーソルを当てるだけで言葉が見える（2026-10-12 本人の判断）
+      if (event.pointerType !== 'mouse') return;
+      const bounds = canvas.getBoundingClientRect();
+      const hover = pickPoint(points, event.clientX - bounds.left, event.clientY - bounds.top);
+      const id = hover?.star.id ?? null;
+      canvas.style.cursor = hover ? 'pointer' : '';
+      if (id !== hoveredId) { hoveredId = id; onHover(hover); if (reducedMotion || !running) draw(performance.now()); }
+      return;
+    }
     const current = {x: event.clientX, y: event.clientY};
     pointers.set(event.pointerId, current);
     if (pointers.size === 2 && pinchStart) {
@@ -298,6 +310,7 @@ export function createEveryoneSky({canvas, reducedMotion, onSelect, seed}) {
     }
   };
   canvas.addEventListener('pointerup', release);
+  canvas.addEventListener('pointerleave', () => { if (hoveredId) { hoveredId = null; canvas.style.cursor = ''; onHover(null); } });
   canvas.addEventListener('pointercancel', release);
   canvas.addEventListener('wheel', event => {
     event.preventDefault();
