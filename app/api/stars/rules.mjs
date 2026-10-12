@@ -220,9 +220,9 @@ export function publicStar(row) {
   return {id: row.id, kind: row.kind, text: row.text, expiresAt: row.expiresAt, returned: Number.isFinite(row.returnedAt), stage: starStage(row)};
 }
 
-// --- みんなの空（2026-10-12）：願いの段階・ハート・取得数 ---
+// --- みんなの星空（2026-10-12）：願いの段階・ハート・取得数 ---
 
-// みんなの空で一度に読む星の数。わたしの空（SKY_LIMIT）より多く、見回して出会えるように
+// みんなの星空で一度に読む星の数。わたしの星空（SKY_LIMIT）より多く、見回して出会えるように
 export const EVERYONE_LIMIT = 300;
 // 「やってみることにした」星を出しておく期間。1年かけて取り組めるように
 export const DOING_TTL_MS = 365 * DAY_MS;
@@ -233,7 +233,7 @@ export function starStage(row) {
   return Number.isFinite(row?.doingAt) ? 'doing' : 'wish';
 }
 
-// 受け取って「みんなの空に出す」を選んだ星を、明るい星にする。本人の星だけ。
+// 受け取って「みんなの星空に出す」を選んだ星を、明るい星にする。本人の星だけ。
 // 帰還で薄くなっていた星も、明るさと期限を戻す（期限は今から1年。前の期限のほうが長ければそちら）
 export function doingStar(star, orbitId, now) {
   if (!ownsStar(star, orbitId) || star.kind !== 'wish') return null;
@@ -264,7 +264,7 @@ export function parseHeart(body) {
   if (!isStarId(starId) || !isOrbitId(orbitId)) return {ok: false, status: 400, error: 'ハートを送る星を確認してください。'};
   return {ok: true, value: {starId, orbitId}};
 }
-// 送れるのは、みんなの空に見えている他の人の願いの星だけ（自分の星・保留・非表示・期限切れ、
+// 送れるのは、みんなの星空に見えている他の人の願いの星だけ（自分の星・保留・非表示・期限切れ、
 // 持ち主の願いとつながらない「叶ったよ」の流れ星には送れない）
 export function canHeart(star, giverOrbitId, now) {
   return Boolean(star) && star.kind === 'wish' && star.status === STATUS.VISIBLE && star.expiresAt > now && star.orbitId !== giverOrbitId;

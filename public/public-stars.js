@@ -7,7 +7,7 @@ const KINDS = new Set(['wish', 'fulfilled']);
 
 // サーバーの SKY_LIMIT と同じ。端末に控えた星が多すぎても、この数までしか描かない
 export const SKY_LIMIT = 24;
-// サーバーの EVERYONE_LIMIT と同じ。みんなの空（見回す画面）で一度に描く数
+// サーバーの EVERYONE_LIMIT と同じ。みんなの星空（見回す画面）で一度に描く数
 export const EVERYONE_LIMIT = 300;
 const STAGES = new Set(['wish', 'doing', 'fulfilled']);
 export const MAX_LENGTH = Object.freeze({wish: 60, fulfilled: 40});
@@ -42,7 +42,7 @@ export function starSeed(id) {
   return {raDeg: (seed % 36000) / 100, decDeg: 40 + ((seed >>> 8) % 4501) / 100, phase: (seed % 997) / 997};
 }
 
-// みんなの空での置き場所。天球全体に偏りなく散らす（赤緯は sin が一様になるように選ぶ。
+// みんなの星空での置き場所。天球全体に偏りなく散らす（赤緯は sin が一様になるように選ぶ。
 // 赤緯そのものを一様に選ぶと、面積の小さい極のまわりに星が集まってしまう）
 export function sphereSeed(id) {
   let a = 2166136261, b = 5381;
@@ -91,8 +91,8 @@ export function pruneQueue(queue, now) {
 
 // 公開したあとに出す一言。保留（held）でも責めない言い方にする
 export function publishMessage({status, number, kind}) {
-  const label = kind === 'fulfilled' ? '「叶ったよ」を流れ星にしました' : 'みんなの空に灯しました';
-  if (status === 'held') return 'この願いは、確認してからみんなの空に出ます';
+  const label = kind === 'fulfilled' ? '「叶ったよ」を流れ星にしました' : 'みんなの星空に灯しました';
+  if (status === 'held') return 'この願いは、確認してからみんなの星空に出ます';
   return number ? `${label}。あなたの番号 ${number}` : label;
 }
 

@@ -564,7 +564,7 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 .floating-wish-held{animation:wish-hold 6s ease-out both}
 @keyframes wish-hold{0%{opacity:0}6%,88%{opacity:1}100%{opacity:0}}
 .floating-wish:has(.floating-star-menu:hover),.floating-wish:has(.floating-star-menu:focus-visible){animation-play-state:paused}
-/* みんなの空（2026-10-12）。わたしの空とは別の画面。天球の内側から見回す */
+/* みんなの星空（2026-10-12）。わたしの星空とは別の画面。天球の内側から見回す */
 .dock-places{display:flex;flex:none;align-items:center;gap:6px}
 .everyone-open{flex:none;min-height:34px;padding:7px 12px;border:1px solid rgba(156,200,255,.3);border-radius:999px;background:rgba(156,200,255,.07);color:#dbe8ff;font:500 12px/1 "Zen Kaku Gothic New",sans-serif;letter-spacing:0;white-space:nowrap;cursor:pointer;transition:background .2s,border-color .2s}
 .everyone-open:hover{border-color:rgba(156,200,255,.6);background:rgba(156,200,255,.12)}
@@ -585,11 +585,11 @@ body:has(#archive-sheet:not([hidden])) .mission-dock{opacity:0;pointer-events:no
 .archive-hearts{margin-left:8px;color:#ffb7c1;font-variant-numeric:tabular-nums}
 @media (prefers-reduced-motion:reduce){.everyone-view *{transition:none!important}}
 .everyone-view[hidden],.everyone-view [hidden],.everyone-open[hidden]{display:none!important}
-/* みんなの空から開いた通報のカードは、全画面の上に出す */
+/* みんなの星空から開いた通報のカードは、全画面の上に出す */
 #star-card{z-index:40}
 .receipt-publish:disabled{opacity:.7;cursor:default}
 .dock-places button{min-height:40px}
-/* みんなの空：星の横に出す言葉（2026-10-12）。下のカードはやめた */
+/* みんなの星空：星の横に出す言葉（2026-10-12）。下のカードはやめた */
 .everyone-card{position:absolute;z-index:3;left:0;top:0;display:flex;align-items:center;gap:4px;max-width:min(340px,calc(100% - 20px));padding:4px 4px 4px 14px;border:1px solid rgba(156,200,255,.3);border-radius:999px;background:rgba(10,16,30,.88);box-shadow:0 10px 30px rgba(0,0,0,.45);transform:translateX(-50%);visibility:hidden;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .everyone-text{margin:0 4px 0 0;color:#f5f0e2;font:600 15px/1.4 "Shippori Mincho B1","Yu Mincho",serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .everyone-card button{flex:none;min-width:38px;min-height:38px;border:0;border-radius:999px;background:transparent;color:#ffd9de;font-size:18px;line-height:1;cursor:pointer}

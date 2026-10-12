@@ -109,7 +109,7 @@ test('背景と願いは同じ投影を使い、サイズ変更と時刻更新�
   }
 });
 
-test('自分だけの星は十字の光を描かず、みんなの空に出した星だけ十字の光が外へのびる', () => {
+test('自分だけの星は十字の光を描かず、みんなの星空に出した星だけ十字の光が外へのびる', () => {
   const {sandbox, calls} = scene([1, 2, 3], [2]);
   sandbox.drawWishStars(1000);
   assert.equal(calls.filter(c => c[0] === 'arc').length, 6);

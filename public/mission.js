@@ -74,7 +74,7 @@
   if (!Array.isArray(reportedStars)) reportedStars = [];
   let otherStars = PublicStars.sanitizeStars(readJson(STARS_CACHE_KEY, []), Date.now(), reportedStars);
   // 直前に描いた他の人の星の場所（触れたときの当たり判定に使う）
-  // わたしの空では他の人の星に触れられない（2026-10-12）。触れて読む処理はみんなの空にあり、ここは常に空のまま。
+  // わたしの星空では他の人の星に触れられない（2026-10-12）。触れて読む処理はみんなの星空にあり、ここは常に空のまま。
   // 浮かぶ言葉・タップの処理は、自分の星と同じ形で扱えるよう、この入れ物を残している
   let otherStarPoints = [];
   let lastTap = null;
@@ -748,7 +748,7 @@
     }
     // 見ているだけで、願いが1つずつ浮かんでは消える（案C）。触れると homeSince が戻り、次の自動は間隔をあけてから。
     // 動きを減らす設定では、自動では浮かべない（触れたときだけ）
-    // 帰還票の QR から来たときは、みんなの空でその星を見せる
+    // 帰還票の QR から来たときは、みんなの星空でその星を見せる
     if (focusPending && requestedStarId && otherStars.some(star => star.focus)) {
       focusPending = false;
       openEveryone(requestedStarId);
@@ -1220,7 +1220,7 @@
     context.restore();
   }
 
-  // みんなの空に出した（出す予定の）願いか。オフラインで控えている公開も含める
+  // みんなの星空に出した（出す予定の）願いか。オフラインで控えている公開も含める
   function sharedWishIds() {
     return new Set([...wishes.filter(wish => wish.publicStarId).map(wish => wish.id), ...readJson(PUBLISH_QUEUE_KEY, []).map(item => item.wishId).filter(Boolean)]);
   }
@@ -1250,7 +1250,7 @@
       context.beginPath();
       context.arc(point.x, point.y, halo, 0, Math.PI * 2);
       context.fill();
-      // みんなの空に出した願いは、十字の光が外へのびる。自分だけの星は丸い光だけ（2026-10-12、案1）
+      // みんなの星空に出した願いは、十字の光が外へのびる。自分だけの星は丸い光だけ（2026-10-12、案1）
       if (shared.has(wish.id)) {
         const spike = 11 * growth * twinkle;
         context.strokeStyle = 'rgba(255, 232, 180, .55)';
@@ -1284,7 +1284,7 @@
       const point = polar(seed.raDeg, seed.decDeg, now);
       if (!point.visible || point.x < 0 || point.x > width || point.y < 0 || point.y > height) continue;
       const {x, y} = point;
-      // わたしの空では、他の人の星は背景の淡い光。触れて読むのは、みんなの空で（2026-10-12 本人と決定）
+      // わたしの星空では、他の人の星は背景の淡い光。触れて読むのは、みんなの星空で（2026-10-12 本人と決定）
       let headX = x;
       let headY = y;
       context.save();
@@ -1734,7 +1734,7 @@
       });
       const backToOrbit = updated.status === WishState.STATUS.WAITING;
       returningWish = updated;
-      // 受け取った願いは、みんなの空では薄い星になる（帰還票で「みんなの空に出す」を選べば、明るい星になる）
+      // 受け取った願いは、みんなの星空では薄い星になる（帰還票で「みんなの星空に出す」を選べば、明るい星になる）
       if (!backToOrbit && updated.publicStarId && !updated.shareDoing) { queueStarAction('return', updated.publicStarId); flushStarActions(); }
       if (backToOrbit) launchFlight = {wish: updated, startedAt: performance.now()};
       closeCard({decided: true});
@@ -2047,13 +2047,13 @@
   let receiptWishId = null;
   let receiptPreviewTimer = null;
   let receiptRevealPending = false;
-  // 帰還票の画面に残しておく知らせ（「みんなの空に出した」など）。描き直しても消さない
+  // 帰還票の画面に残しておく知らせ（「みんなの星空に出した」など）。描き直しても消さない
   let receiptNotice = '';
   function setReceiptPublishButton(shared) {
     const button = $('#receipt-publish');
     button.hidden = !starsEnabled;
     button.disabled = shared;
-    button.textContent = shared ? 'みんなの空に出しました' : 'みんなの空に出す';
+    button.textContent = shared ? 'みんなの星空に出しました' : 'みんなの星空に出す';
   }
   let receiptPreviewVersion = 0;
   let receiptImage = null;
@@ -2146,7 +2146,7 @@
         const preview = $('#receipt-preview');
         preview.classList.remove('receipt-developing');
         preview.src = canvas.toDataURL('image/png');
-        // 作り直しで前のエラーは消すが、「みんなの空に出した」の知らせは残す
+        // 作り直しで前のエラーは消すが、「みんなの星空に出した」の知らせは残す
         $('#receipt-status').textContent = receiptNotice;
         if (receiptRevealPending) {
           receiptRevealPending = false;
@@ -2940,7 +2940,7 @@
   async function publishStar(kind, text, wishId) {
     queuePublish(kind, text, wishId);
     const results = await flushPublishQueue();
-    return results?.get(wishId ?? kind + ':' + text) ?? {done: true, message: 'つながったら、みんなの空に出ます。願いは端末に預かっています'};
+    return results?.get(wishId ?? kind + ':' + text) ?? {done: true, message: 'つながったら、みんなの星空に出ます。願いは端末に預かっています'};
   }
 
   let flushingQueue = false;
@@ -2958,7 +2958,7 @@
           if (!id) {
             const {response, data} = await postStar(item.kind, item.text, item.publishId);
             if (!response.ok) {
-              results.set(item.wishId ?? item.kind + ':' + item.text, {done: false, message: 'みんなの空に出せませんでした。もう一度押してください'});
+              results.set(item.wishId ?? item.kind + ':' + item.text, {done: false, message: 'みんなの星空に出せませんでした。もう一度押してください'});
               done = response.status >= 400 && response.status < 500 && response.status !== 429 && data.enabled !== false;
               continue;
             }
@@ -2973,7 +2973,7 @@
           if (item.wishId) await attachPublishedStar(item.wishId, id);
           done = true;
         } catch {
-          results.set(item.wishId ?? item.kind + ':' + item.text, {done: true, message: 'みんなの空への送信を控えています。つながったら続けます'});
+          results.set(item.wishId ?? item.kind + ':' + item.text, {done: true, message: 'みんなの星空への送信を控えています。つながったら続けます'});
         } finally {
           // 待っている間に追加された願いを消さないよう、処理した控えだけを外す。
           if (done) writeStorage(PUBLISH_QUEUE_KEY, JSON.stringify(readJson(PUBLISH_QUEUE_KEY, []).filter(entry => !(entry.queuedAt === item.queuedAt && entry.wishId === item.wishId && entry.text === item.text))));
@@ -2993,7 +2993,7 @@
   let flushingActions = false;
   let actionsAgain = false;
   async function flushStarActions() {
-    // 送っている途中に新しい操作（帰還票で「みんなの空に出す」など）が入ったら、終わったあとにもう一度送る
+    // 送っている途中に新しい操作（帰還票で「みんなの星空に出す」など）が入ったら、終わったあとにもう一度送る
     if (flushingActions) { actionsAgain = true; return; }
     if (!navigator.onLine || !starsEnabled) return;
     flushingActions = true;
@@ -3008,7 +3008,7 @@
           if (response.ok || (response.status === 404 && data.enabled !== false)) {
             writeStorage(STAR_ACTIONS_KEY, JSON.stringify(readJson(STAR_ACTIONS_KEY, []).filter(entry => !(entry.starId === item.starId && entry.action === item.action))));
           } else if (response.status !== 429 && data.enabled !== false) {
-            $('#mission-status').textContent = 'みんなの空への変更を控えています。次につながったときに送ります';
+            $('#mission-status').textContent = 'みんなの星空への変更を控えています。次につながったときに送ります';
           }
         } catch {
           // 願いの帰還や削除は端末で済んでいるため、空への変更だけを次の接続まで残す。
@@ -3019,7 +3019,7 @@
     if (readJson(STAR_ACTIONS_KEY, []).some(item => item.action === 'delete')) setTimeout(flushStarActions, 60000);
   }
 
-  // --- みんなの空（2026-10-12）。公開された願いを見回し、近づいて読み、ハートを送る ---
+  // --- みんなの星空（2026-10-12）。公開された願いを見回し、近づいて読み、ハートを送る ---
   const everyoneView = $('#everyone-view');
   const everyoneCard = $('#everyone-card');
   const HEARTED_KEY = 'morune-25143-hearted';
@@ -3132,11 +3132,11 @@
       const data = await response.json();
       everyoneStars = data.enabled ? PublicStars.sanitizeStars(data.stars, Date.now(), reportedStars, PublicStars.EVERYONE_LIMIT) : [];
       heartsOpen = data.hearts === true;
-      $('#everyone-empty').textContent = 'まだ星がありません。「みんなの空に出す」を選んだ願いが、ここに灯ります';
+      $('#everyone-empty').textContent = 'まだ星がありません。「みんなの星空に出す」を選んだ願いが、ここに灯ります';
     } catch {
-      // 読めないときは、わたしの空で読んだ星だけで見せる
+      // 読めないときは、わたしの星空で読んだ星だけで見せる
       everyoneStars = everyoneStars.length ? everyoneStars : visibleOtherStars();
-      $('#everyone-empty').textContent = 'みんなの空を読めませんでした。つながってから、もう一度開いてください';
+      $('#everyone-empty').textContent = 'みんなの星空を読めませんでした。つながってから、もう一度開いてください';
     }
     const ownIds = wishes.map(wish => wish.publicStarId).filter(Boolean);
     everyoneSky.setStars(everyoneStars, ownIds);
@@ -3202,8 +3202,8 @@
     }
   }
 
-  // 帰還票で「みんなの空に出す」。受け取った願いを、明るい星（やってみることにした願い）として出す
-  // 帰還票で「みんなの空に出す」。受け取った願いを、明るい星（やってみることにした願い）として出す。
+  // 帰還票で「みんなの星空に出す」。受け取った願いを、明るい星（やってみることにした願い）として出す
+  // 帰還票で「みんなの星空に出す」。受け取った願いを、明るい星（やってみることにした願い）として出す。
   // 送れなかった（上限・内容の確認・障害）ときは、出した扱いを戻して、もう一度押せるようにする
   async function shareReceivedWish() {
     const button = $('#receipt-publish');
@@ -3220,7 +3220,7 @@
       queueStarAction('doing', shared.publicStarId);
       await flushStarActions();
       const waiting = readJson(STAR_ACTIONS_KEY, []).some(item => item.starId === shared.publicStarId && item.action === 'doing');
-      receiptNotice = !waiting ? 'みんなの空で、明るい星になりました' : navigator.onLine ? 'みんなの空に届けています' : 'つながったら、みんなの空で明るい星になります';
+      receiptNotice = !waiting ? 'みんなの星空で、明るい星になりました' : navigator.onLine ? 'みんなの星空に届けています' : 'つながったら、みんなの星空で明るい星になります';
     } else {
       const published = await publishStar('wish', shared.text, shared.id);
       if (published.done === false) {

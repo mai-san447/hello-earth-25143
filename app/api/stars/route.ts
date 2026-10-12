@@ -23,14 +23,14 @@ async function orbitNumber(orbitId: string) {
 export async function GET(request: Request) {
   if (!enabled()) return Response.json({ enabled: false });
   const params = new URL(request.url).searchParams;
-  // みんなの空は一度に多く読むので、連打には回数の制限をかける
+  // みんなの星空は一度に多く読むので、連打には回数の制限をかける
   if (params.get("view") === "everyone") {
     const limited = await rateLimit(request, '/api/stars?view=everyone', env);
     if (limited) return limited;
   }
   const orbitId = params.get("orbit");
   const starId = params.get("star");
-  // view=everyone：みんなの空（3Dで見回す画面）。一度に多めに読む
+  // view=everyone：みんなの星空（3Dで見回す画面）。一度に多めに読む
   const limit = params.get("view") === "everyone" ? EVERYONE_LIMIT : SKY_LIMIT;
   if (starId !== null && !isStarId(starId)) return Response.json({error: "星を確認してください。"}, {status: 400});
   if (orbitId !== null && !isOrbitId(orbitId)) return Response.json({ error: "軌道を確認してください。" }, { status: 400 });

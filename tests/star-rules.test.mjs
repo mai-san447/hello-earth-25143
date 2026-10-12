@@ -197,7 +197,7 @@ test('ハートは見えている他の人の星にだけ。日付は日本時�
   for (const body of [null, [], {starId}, {starId: 'x', orbitId: other}, {starId, orbitId: 'x'}]) assert.equal(parseHeart(body).ok, false);
 });
 
-test('ハートは鍵（HEART_SECRET、16文字以上）があり、みんなの空が開いている環境でだけ出す', async () => {
+test('ハートは鍵（HEART_SECRET、16文字以上）があり、みんなの星空が開いている環境でだけ出す', async () => {
   const {heartsEnabled} = await import('../app/api/stars/rules.mjs');
   assert.equal(heartsEnabled({DB: {}, PUBLIC_STARS_ENABLED: 'true'}), false);
   assert.equal(heartsEnabled({DB: {}, PUBLIC_STARS_ENABLED: 'true', HEART_SECRET: 'short'}), false);

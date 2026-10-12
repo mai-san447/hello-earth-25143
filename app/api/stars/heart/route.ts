@@ -14,7 +14,7 @@ async function heartKey(secret: string, text: string) {
   return [...new Uint8Array(signature)].map(byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
-// みんなの空の星にハートを送る（2026-10-12）。数は送った人には返さない（持ち主にだけ届く）。
+// みんなの星空の星にハートを送る（2026-10-12）。数は送った人には返さない（持ち主にだけ届く）。
 // 同じ端末から同じ星へは1日1回。2回目以降も ok を返し、数えたかどうかは伝えない（数を探られないように）
 export async function POST(request: Request) {
   const limited = await rateLimit(request, '/api/stars/heart', env);

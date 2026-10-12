@@ -6,7 +6,7 @@ import {publicStars} from "../../../../db/schema";
 import {errorKind} from "../../error-kind.mjs";
 import {canDelete, DELETE_LIMIT, doingStar, parseReturn, publicStarsEnabled} from "../rules.mjs";
 
-// 受け取った願いを「やってみることにした」明るい星にする（みんなの空、2026-10-12）。本人の星だけを変える。
+// 受け取った願いを「やってみることにした」明るい星にする（みんなの星空、2026-10-12）。本人の星だけを変える。
 // 帰還で薄くしていた星も、明るさと期限を戻す。保留や非表示の状態は変えない
 export async function POST(request: Request) {
   const limited = await rateLimit(request, '/api/stars/doing', env);
@@ -35,6 +35,6 @@ export async function POST(request: Request) {
     return Response.json({ok: true});
   } catch (error) {
     console.error("stars doing", errorKind(error));
-    return Response.json({error: "みんなの空に届けられませんでした。"}, {status: 503});
+    return Response.json({error: "みんなの星空に届けられませんでした。"}, {status: 503});
   }
 }

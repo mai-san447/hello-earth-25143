@@ -72,12 +72,12 @@ test('ネットがないときの「流す予定」は、重ねず・溜めす�
 });
 
 test('公開のあとの一言。保留でも責めない', () => {
-  assert.equal(publishMessage({status: 'visible', number: '25143-0001', kind: 'wish'}), 'みんなの空に灯しました。あなたの番号 25143-0001');
+  assert.equal(publishMessage({status: 'visible', number: '25143-0001', kind: 'wish'}), 'みんなの星空に灯しました。あなたの番号 25143-0001');
   assert.equal(publishMessage({status: 'visible', number: '25143-0001', kind: 'fulfilled'}), '「叶ったよ」を流れ星にしました。あなたの番号 25143-0001');
   assert.match(publishMessage({status: 'held', number: '25143-0001', kind: 'wish'}), /確認してから/);
 });
 
-test('みんなの空の置き場所は、天球全体に偏りなく散らばる（極に集まらない）', async () => {
+test('みんなの星空の置き場所は、天球全体に偏りなく散らばる（極に集まらない）', async () => {
   const {sphereSeed} = await import('../public/public-stars.js');
   const ids = Array.from({length: 4000}, (_, n) => `${String(n).padStart(8, '0')}-0000-4000-8000-000000000000`);
   const seeds = ids.map(sphereSeed);
@@ -90,7 +90,7 @@ test('みんなの空の置き場所は、天球全体に偏りなく散らば�
   assert.ok(Math.abs(cap - (1 - Math.sin(Math.PI / 3)) / 2) < 0.025, `極のまわり ${cap}`);
 });
 
-test('段階を保ち、みんなの空では多めに読める。「やってみる」の送信も控えられる', async () => {
+test('段階を保ち、みんなの星空では多めに読める。「やってみる」の送信も控えられる', async () => {
   const {sanitizeStars, EVERYONE_LIMIT, enqueueAction, sanitizeActions} = await import('../public/public-stars.js');
   const many = Array.from({length: 400}, (_, n) => star(n + 1, {stage: n % 2 ? 'doing' : 'unknown'}));
   const kept = sanitizeStars(many, 0, [], EVERYONE_LIMIT);

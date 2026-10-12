@@ -236,7 +236,7 @@ test('オフラインで控えた願いに、接続後の公開IDを付ける。
     ['着地しただけ', wish => WishState.markReturned(wish, 10), []],
     ['もう少し預けた', wish => WishState.decide(WishState.markReturned(wish, 10), 'later', 20), []],
     ['受け取った', wish => WishState.decide(WishState.markReturned(wish, 10), 'try', 20), [{action: 'return', starId: id(2)}]],
-    ['受け取って、みんなの空に出した', wish => ({...WishState.decide(WishState.markReturned(wish, 10), 'try', 20), shareDoing: true}), [{action: 'doing', starId: id(2)}]],
+    ['受け取って、みんなの星空に出した', wish => ({...WishState.decide(WishState.markReturned(wish, 10), 'try', 20), shareDoing: true}), [{action: 'doing', starId: id(2)}]],
   ]) {
     const {sandbox, actions} = queueScene();
     sandbox.navigator.onLine = false;
@@ -283,7 +283,7 @@ test('サーバー停止と一時的な失敗・429では送信待ちを残す',
   }
 });
 
-test('帰還票の QR から来たら、入口やシートが閉じたあと、みんなの空でその星を見せる（1回だけ）', () => {
+test('帰還票の QR から来たら、入口やシートが閉じたあと、みんなの星空でその星を見せる（1回だけ）', () => {
   let home = false;
   const opened = [];
   const sandbox = {homeIsVisible: () => home, hideFloatingWish: () => {}, homeSince: null, openingCard: false, focusPending: true, requestedStarId: id(1),
@@ -307,7 +307,7 @@ test('帰還と公開IDの保存が重なっても、帰還した願いからID�
   await Promise.all([sandbox.attachPublishedStar(wish.id, id(2)), sandbox.finishReturn(wish)]);
   assert.equal(sandbox.wishes[0].publicStarId, id(2));
   assert.equal(sandbox.wishes[0].status, 'returned');
-  // 着地しただけでは、みんなの空の星は変えない（受け取るか、もう少し預けるかを選んだときに送る）
+  // 着地しただけでは、みんなの星空の星は変えない（受け取るか、もう少し預けるかを選んだときに送る）
   assert.equal(actions.some(item => item.action === 'return'), false);
 });
 
@@ -330,7 +330,7 @@ test('帰還と削除の送信待ちはオフライン・503・429・機能停�
   }
 });
 
-test('わたしの空では、他人の星は同じ北極中心の投影に淡く描くだけで、触れて読めない', () => {
+test('わたしの星空では、他人の星は同じ北極中心の投影に淡く描くだけで、触れて読めない', () => {
   const stars = [row(1), row(2, {returned: true}), row(3, {focus: true})];
   const now = Date.parse('2026-10-11T10:00Z');
   stars.forEach(star => {star.expiresAt = now + 1000;});
@@ -340,14 +340,14 @@ test('わたしの空では、他人の星は同じ北極中心の投影に淡�
   vm.createContext(sandbox);
   vm.runInContext(['skyFrame', 'polar', 'drawOtherStars'].map(functionSource).join('\n'), sandbox);
   sandbox.drawOtherStars(0);
-  // 触れる点には入れない（タップの取り違えをなくすため。読むのはみんなの空で）
+  // 触れる点には入れない（タップの取り違えをなくすため。読むのはみんなの星空で）
   assert.equal(sandbox.otherStarPoints.length, 0);
   const seed = PublicStars.starSeed(stars[0].id);
   const point = Sky.projectPolarStar(seed.raDeg, seed.decDeg, now, 35.68, 139.76, 400, 800);
   assert.deepEqual(calls[0].args.slice(0, 2), [point.x, point.y]);
   assert.ok(calls[1].alpha < calls[0].alpha);
   assert.ok(calls.every(call => call.alpha <= 0.4), '背景の淡い光');
-  assert.equal(calls.some(call => call.args[2] === 9), false, '指定星の輪は、みんなの空で付ける');
+  assert.equal(calls.some(call => call.args[2] === 9), false, '指定星の輪は、みんなの星空で付ける');
   sandbox.starsEnabled = false;
   sandbox.drawOtherStars(0);
   assert.equal(sandbox.otherStarPoints.length, 0);
