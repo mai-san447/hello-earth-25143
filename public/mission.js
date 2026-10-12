@@ -645,11 +645,11 @@
     const wide = width >= 900 && width >= height * 1.15;
     return {
       // イトカワは右上の隅に小さく置く。願いの星（天の北極のまわり、短辺の約36%以内）と重ならないため（2026-10-12）
-      centerX: width * (wide ? 0.9 : 0.86),
-      centerY: height * (wide ? 0.22 : 0.25),
-      orbitX: Math.min(width * 0.2, unit * 0.26),
-      orbitY: unit * 0.15,
-      asteroid: Math.min(65, Math.max(32, unit * 0.085)),
+      centerX: width * (wide ? 0.9 : 0.87),
+      centerY: height * (wide ? 0.22 : 0.12),
+      orbitX: Math.min(width * 0.3, unit * 0.39),
+      orbitY: unit * 0.22,
+      asteroid: Math.min(98, Math.max(48, unit * 0.13)),
       earthY: height * 0.91,
     };
   }
@@ -975,7 +975,8 @@
     const samplerHorn = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.19, 0.48, 14), samplerMaterial);
     samplerHorn.position.y = -0.61;
     hayabusaCraft.add(samplerHorn);
-    hayabusaCraft.scale.setScalar(0.62);
+    // 形が分かる大きさ（2026-10-12 本人「小さすぎて分からない」）
+    hayabusaCraft.scale.setScalar(0.95);
     const spacecraftBeacon = new THREE.PointLight(0x9dc9df, 1.8, 11, 2);
     spacecraftBeacon.position.set(0, 1.1, 1.4);
     hayabusaCraft.add(spacecraftBeacon);
@@ -1008,8 +1009,9 @@
     glowCanvas.width = glowCanvas.height = 128;
     const glowContext = glowCanvas.getContext('2d');
     const glowGradient = glowContext.createRadialGradient(64, 64, 2, 64, 64, 64);
-    glowGradient.addColorStop(0, 'rgba(255,232,176,.72)');
-    glowGradient.addColorStop(.2, 'rgba(243,190,105,.3)');
+    // 光は弱めにして、近くの見出しや星を白く飛ばさない
+    glowGradient.addColorStop(0, 'rgba(255,232,176,.5)');
+    glowGradient.addColorStop(.2, 'rgba(243,190,105,.18)');
     glowGradient.addColorStop(1, 'rgba(238,174,89,0)');
     glowContext.fillStyle = glowGradient;
     glowContext.fillRect(0, 0, 128, 128);
@@ -1021,7 +1023,7 @@
       depthTest: false,
     }));
     glowSprite.position.copy(itokawaMesh.position);
-    glowSprite.scale.set(12, 12, 1);
+    glowSprite.scale.set(17, 17, 1);
     skyGroup.add(glowSprite);
     threeScene.add(new THREE.AmbientLight(0x9aa9ba, 0.32));
     const asteroidKey = new THREE.DirectionalLight(0xd8e2eb, 1.1);
@@ -1038,16 +1040,17 @@
       renderer.setSize(width, height, false);
       const halfViewWidth = 68 * Math.tan(THREE.MathUtils.degToRad(threeCamera.fov / 2)) * width / height;
       const halfViewHeight = 68 * Math.tan(THREE.MathUtils.degToRad(threeCamera.fov / 2));
-      // 右上の隅（横 86%・縦 25% のあたり）へ。2D の代わりの絵（geometry）と同じ場所
-      itokawaMesh.scale.setScalar(0.5);
+      // イトカワの場所と大きさ（2D の代わりの絵 geometry() と同じ場所）。願いの星は画面の中心（横に広い画面は右寄りの枠の中心）から
+      // 短辺の36.6%以内に並ぶので、そこから外れた隅に置く。スマホは見出しより上の右（時刻の右の空き、横87%・縦12%）、
+      // 横に広い画面は右上の隅（横90%・縦22%）。形が分かる大きさにする（2026-10-12 本人「小さすぎて分からない」）
       const wide = width >= 900 && width >= height * 1.15;
-      // 画面の横 90%・縦 22% のあたり（右上の「みんなの空」ボタンの下）。スマホは横 86%・縦 25%
-      itokawaMesh.position.set(halfViewWidth * (wide ? 0.8 : 0.72), halfViewHeight * (wide ? 0.56 : 0.5), -68);
+      itokawaMesh.scale.setScalar(wide ? 0.75 : 0.62);
+      itokawaMesh.position.set(halfViewWidth * (wide ? 0.8 : 0.74), halfViewHeight * (wide ? 0.56 : 0.76), -68);
       asteroidLight.position.copy(itokawaMesh.position).add(new THREE.Vector3(-8, 9, 14));
       hayabusaOrbit.position.copy(itokawaMesh.position);
       glowSprite.position.copy(itokawaMesh.position);
-      const radiusX = width < 560 ? 6.5 : width < 900 ? 6 : 12;
-      const radiusY = width < 560 ? 4 : width < 900 ? 5 : 7;
+      const radiusX = width < 560 ? 10 : width < 900 ? 9 : 17;
+      const radiusY = width < 560 ? 6 : width < 900 ? 7 : 10;
       const startAngle = 2.2;
       const tangentX = -radiusX * Math.sin(startAngle);
       const tangentY = radiusY * Math.cos(startAngle);
