@@ -2299,6 +2299,8 @@
       wishes = [...wishes, wish];
       // 最初に預けたとき、人の番号を受け取る（ネットがなければ、つながったときに）
       ensureNumber();
+      // 長く開かなくても端末の保存が消えにくくする（ブラウザーが空き容量のために消す対象から外してもらう）
+      void keepStorage(wishes.length);
       refreshInterface();
       wishInput.value = '';
       publishCheckbox.checked = false;
@@ -2335,8 +2337,9 @@
           }, 2200);
         });
       }
-      // #27 はじめての人には、星が灯ったところで「試しに1つ帰す」へ案内する
-      if (firstWish) {
+      // #27 はじめての人には、星が灯ったところで「試しに1つ帰す」へ案内する。
+      // つらい気持ちの案内を出したときは、ほかの誘いを重ねない（2026-10-12 レビュー）
+      if (firstWish && !notice) {
         setTimeout(() => {
           if (returnFlight || returningWish) return;
           setMissionStep('receive');
@@ -2720,6 +2723,20 @@
       .catch(() => {
         // 保存できなくても、ネットがあれば今までどおり使える
       });
+  }
+
+  // 端末の保存を消えにくくする（2026-10-12 レビュー）。iPhone ではしばらく開かないとサイトの保存が消えることがあるため、
+  // ①ブラウザーに「消さないで」と頼む（navigator.storage.persist。断られても使い続けられる）
+  // ②2つ目を預けたとき1回だけ、ホーム画面への追加をすすめる（ホーム画面から開いていれば出さない）
+  const HOME_HINT_KEY = 'morune-25143-home-hint';
+  async function keepStorage(count) {
+    try { if (navigator.storage?.persist && !(await navigator.storage.persisted?.())) await navigator.storage.persist(); } catch { /* 断られても続ける */ }
+    const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+    if (count !== 2 || standalone || readStorage(HOME_HINT_KEY)) return;
+    writeStorage(HOME_HINT_KEY, '1');
+    setTimeout(() => {
+      if (!returnFlight && !returningWish) $('#mission-status').textContent = 'ホーム画面に追加すると、長く預けられます';
+    }, 4600);
   }
 
   function orbitId() {
@@ -3350,6 +3367,15 @@
     status.textContent = '流れ星にしています…';
     const result = await publishStar('fulfilled', text);
     status.textContent = result.message;
+    // 「叶ったよ」でも、つらい気持ちの言葉には相談先を添える（端末の中だけ。言葉は保留になり、みんなの星空には出ない）
+    if (Care.careNotice(text)) {
+      const link = document.createElement('a');
+      link.href = Care.CARE_URL;
+      link.textContent = Care.CARE_LINK_TEXT;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      status.replaceChildren(document.createTextNode(Care.CARE_TEXT), link);
+    }
     button.disabled = false;
     // 流せた・控えたときは送り直さない。上限などで流せなかったときは、書き直して送れるよう残す
     if (result.done) {

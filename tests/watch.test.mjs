@@ -50,6 +50,8 @@ test('端末内の案内：注意語を揃え、ふつうの願いは変えな�
   }
   assert.equal(careNotice('生きるのが つらい'), careNotice('生きるのがつらい'));
   for (const text of ['', null, '海に行きたい', '少しねむい']) assert.equal(careNotice(text), '');
+  // 言いかけの形や、少し違う言い方でも案内が出る
+  for (const text of ['もう死にたくなる', '消えてしまいたい夜', 'いなくなりたい', '生きていたくない日']) assert.ok(careNotice(text).includes(CARE_URL), text);
   assert.equal(new Set(stars.CAUTION_WORDS).size, stars.CAUTION_WORDS.length);
 });
 
