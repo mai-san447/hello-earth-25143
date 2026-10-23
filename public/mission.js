@@ -45,7 +45,7 @@
     try { localStorage.setItem(key, value); } catch { /* 保存できなくても使い続けられる */ }
   }
 
-  // #22 みんなの星。他の人の星は、最後にネットにつながったときに受け取った分を端末に控え、病室でも見せる。
+  // #22 みんなの星。他の人の星は、最後にネットにつながったときに受け取った分を端末に控え、オフラインでも見せる。
   // 自分だけの星は送らず、公開する言葉と軌道IDだけをサーバーに渡す。
   const STARS_CACHE_KEY = 'morune-25143-public-stars';
   const STARS_ENABLED_KEY = 'morune-25143-stars-enabled';
@@ -588,7 +588,7 @@
         } catch (error) {
           // 1日1回・文字数などのルールで受け付けなかった（保存の失敗とは分けて伝える）
           console.error('growth rule', error);
-          return {rule: error.message === '今日の一歩は、もう記録しています' ? '今日の一歩は、もう記録しています' : [...String(growthDrafts.get(id) ?? '')].length > WishState.GROWTH.firstStepMax ? '最初の一歩は60字までです' : 'この操作はできませんでした。ページを開き直してください'};
+          return {rule: error.message === '今日の一歩は、もう記録しています' ? '今日の一歩は、もう記録しています' : [...String(growthDrafts.get(id) ?? '')].length > WishState.GROWTH.firstStepMax ? `最初の一歩は${WishState.GROWTH.firstStepMax}字までです` : 'この操作はできませんでした。ページを開き直してください'};
         }
         if (next === current) return {skipped: true};
         await store('readwrite', object => object.put(next));
@@ -695,14 +695,16 @@
       floatingText.append(menu);
     }
     floatingText.className = 'floating-wish' + (point.star ? ' floating-wish-other' : '') + (chance ? ' floating-wish-chance' : '');
+    // 自分で触れて出した言葉は、動かさずに長めに出す（「…」から通報できるよう、押せる時間と止まった的をつくる。2026-10-12）
+    const held = !chance;
     floatingText.style.left = `${Math.max(110, Math.min(width - 110, point.x))}px`;
     const dockTop = missionDock.getBoundingClientRect().top - app.getBoundingClientRect().top;
     floatingText.style.top = `${Math.max(40, Math.min(dockTop - 12, point.y - 20))}px`;
     floatingText.hidden = false;
     // 同じ星を続けて触っても、前の言葉が途中から再生されないようにする。
     void floatingText.offsetWidth;
-    floatingText.classList.add('floating-wish-visible');
-    floatingTimer = setTimeout(hideFloatingWish, 2500);
+    floatingText.classList.add(held ? 'floating-wish-held' : 'floating-wish-visible');
+    floatingTimer = setTimeout(hideFloatingWish, held ? 6000 : 2500);
   }
 
   function updateFloatingWish(time) {
@@ -2198,10 +2200,26 @@
     setTimeout(() => { depositSheet.hidden = true; restoreSheetFocus(depositSheet); }, 330);
   }
 
+  // 書く言葉は12字まで。絵文字も1字として数える（maxLength は UTF-16 で数えるので、ここで切りそろえる）
+  function limitTextLength(input, counter = null) {
+    const keep = () => {
+      const chars = [...input.value];
+      if (chars.length > WishState.LIMITS.textLength) input.value = chars.slice(0, WishState.LIMITS.textLength).join('');
+      if (counter) counter.textContent = String([...input.value].length);
+    };
+    input.addEventListener('input', event => { if (!event.isComposing) keep(); });
+    input.addEventListener('compositionend', keep);
+  }
+
   async function launchWish() {
     const text = wishInput.value.trim();
     if (!text) {
       depositStatus.textContent = '願いを書いてください。';
+      wishInput.focus();
+      return;
+    }
+    if ([...text].length > WishState.LIMITS.textLength) {
+      depositStatus.textContent = `願いは${WishState.LIMITS.textLength}字までです。`;
       wishInput.focus();
       return;
     }
@@ -2344,7 +2362,7 @@
     if (event.target === policySheet) closePolicy();
   });
   launchButton.addEventListener('click', launchWish);
-  wishInput.addEventListener('input', () => { $('#wish-length').textContent = String(wishInput.value.length); });
+  limitTextLength(wishInput, $('#wish-length'));
   $('#shake').addEventListener('click', enableMotion);
   // カプセルが着地して待っているときは開き、そうでなければ1つ帰す
   $('#fallback').addEventListener('click', () => (landed && returningWish && !returnFlight ? openCard() : returnOne()));
@@ -2385,6 +2403,7 @@
     }
   });
   $('#receipt-first-step').addEventListener('compositionend', renderReceiptPreview);
+  limitTextLength($('#receipt-first-step'));
   $('#receipt-include-text').addEventListener('change', renderReceiptPreview);
   // 回収記録を開いている間は、下の操作バー（見えなくしている）をキーボードでも選べないようにし、閉じたら元の場所へ戻す
   function openArchive() {
@@ -2456,7 +2475,7 @@
     $('#star-report').focus({preventScroll: true});
   });
   $('#star-report-send').addEventListener('click', sendStarReport);
-  $('#fulfilled-text').addEventListener('input', () => { $('#fulfilled-length').textContent = String($('#fulfilled-text').value.length); });
+  limitTextLength($('#fulfilled-text'), $('#fulfilled-length'));
   $('#fulfilled-send').addEventListener('click', sendFulfilled);
   $('#fulfilled-skip').addEventListener('click', closeFulfilledSheet);
   $('#my-record-copy').addEventListener('click', copyMyRecord);
@@ -2627,11 +2646,11 @@
     }
   }
 
-  // #5 病室（ネットなし）でも開けるように、画面と部品を端末に保存する Service Worker を登録する。
+  // #5 オフラインでも開けるように、画面と部品を端末に保存する Service Worker を登録する。
   // 開発サーバーでは古い部品が残って混乱するため、https の本番だけで動かす。
   function registerOfflineSupport() {
     // 端末の保存を「消されにくい保存」にしてほしいと頼む。iPhone の Safari は、しばらく開かないサイトの
-    // 保存（願いも含む）を消すことがあり、入院中に長く預ける使い方とぶつかるため。断られても使い続けられる
+    // 保存（願いも含む）を消すことがあり、長く預ける使い方とぶつかるため。断られても使い続けられる
     navigator.storage?.persist?.().catch(() => {});
     if (!('serviceWorker' in navigator) || location.protocol !== 'https:') return;
     const warm = registration => registration.active?.postMessage({
@@ -3018,6 +3037,11 @@
     const status = $('#fulfilled-status');
     if (!text) {
       status.textContent = 'ひとことを書いてください。流さないときは「今は流さない」を押してください';
+      $('#fulfilled-text').focus();
+      return;
+    }
+    if ([...text].length > WishState.LIMITS.textLength) {
+      status.textContent = `ひとことは${WishState.LIMITS.textLength}字までです`;
       $('#fulfilled-text').focus();
       return;
     }

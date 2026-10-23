@@ -8,7 +8,7 @@ const KINDS = new Set(['wish', 'fulfilled']);
 // サーバーの SKY_LIMIT と同じ。端末に控えた星が多すぎても、この数までしか描かない
 export const SKY_LIMIT = 24;
 export const MAX_LENGTH = Object.freeze({wish: 60, fulfilled: 40});
-// ネットがないときに控えておく「流す予定」の数。病室で何度押しても溜まりすぎないように
+// オフラインのときに控えておく「流す予定」の数。オフラインで何度押しても溜まりすぎないように
 export const QUEUE_LIMIT = 30;
 // 長く離れている間も願いを失わないよう、公開の期限と同じ期間控える。
 export const QUEUE_MAX_AGE_MS = 400 * DAY_MS;

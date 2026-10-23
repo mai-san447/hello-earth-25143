@@ -24,7 +24,10 @@ export function MissionExperience({
           <span id="observer-reading">35.7°N 139.8°E</span>
         </div>
         <section className="mission-title" aria-labelledby="mission-title">
-          <h1 id="mission-title">願いを星に、<br /><span>想いを地球へ。</span></h1>
+          {/* 見出しは句読点を置かず、改行で区切る（大きな明朝の「。」は行末に穴があいて見えるため）。書体はしっぽり明朝 B1 と Cormorant Garamond（2026-10-12 本人と決定） */}
+          <p className="title-kicker" lang="en">Leave your wish with the stars</p>
+          <h1 id="mission-title">やりたいことを<br />星に預けておく</h1>
+          <p className="title-sub">預けた願いは　いつか帰ってくる</p>
         </section>
         <div className="telemetry" aria-live="polite">
           <span className="telemetry-dot" />
@@ -54,9 +57,9 @@ export function MissionExperience({
           <div className="sheet-grip" aria-hidden="true" />
           <button className="sheet-close" id="deposit-close" type="button" aria-label="閉じる">×</button>
           <h2 className="deposit-question">いつか、何をしたい？</h2>
-          <label className="wish-label" htmlFor="wish">願い（60字まで）</label>
-          <textarea id="wish" maxLength={60} placeholder="例：天文台に行く" />
-          <div className="input-meta"><span /><span><b id="wish-length">0</b> / 60</span></div>
+          <label className="wish-label" htmlFor="wish">願い（12字まで）</label>
+          <textarea id="wish" maxLength={24} placeholder="例：天文台に行く" />
+          <div className="input-meta"><span /><span><b id="wish-length">0</b> / 12</span></div>
           <div className="return-from-field">
             <label htmlFor="return-from">帰ってくる日（任意）</label>
             <input id="return-from" type="date" aria-describedby="return-from-hint" />
@@ -142,7 +145,7 @@ export function MissionExperience({
               </section>
               <section>
                 <h3>入力内容と保存</h3>
-                <p>願いは60文字以内で入力できます。預けられる願いは30個まで、帰ってくる日は翌日から1年後までです。願いと回収記録はこのブラウザーのIndexedDBに保存されます。みんなの星空が開いている環境では、公開する願いの言葉をサーバーにも送ります。「自分だけの星にする」を選んだ願いは送りません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないとサイトの保存が消えることがあります）。</p>
+                <p>願いは12文字以内で入力できます。預けられる願いは30個まで、帰ってくる日は翌日から1年後までです。願いと回収記録はこのブラウザーのIndexedDBに保存されます。みんなの星空が開いている環境では、公開する願いの言葉をサーバーにも送ります。「自分だけの星にする」を選んだ願いは送りません。別の端末・ブラウザーとは同期されず、端末の故障、ブラウザーのデータ消去、サイトデータの削除などで失われることがあります。個別のバックアップ・復元機能はありません。長く預けるときは、ホーム画面に追加してください（iPhone では、しばらく開かないとサイトの保存が消えることがあります）。</p>
                 <p>ほかの人に見られたくない内容を書くときは、端末の画面ロックをお使いください。パスワードや、第三者の個人情報・秘密は入力しないでください。入力内容の権利は利用者に留保されます。第三者の権利を侵害する内容、違法な内容、他者への嫌がらせを目的とする内容は入力しないでください。</p>
               </section>
               <section>
@@ -163,7 +166,7 @@ export function MissionExperience({
                 <h3>みんなの星空のルール</h3>
                 <p>みんなで気持ちよく星空を見られるよう、次のルールで運営します。</p>
                 <ul>
-                  <li>書かないこと：名前・住所・電話番号・メールアドレス・URL・病院名など、だれかが分かること。ほかの人への悪口やいやがらせ。宣伝。法律や他人の権利に反すること。</li>
+                  <li>書かないこと：名前・住所・電話番号・メールアドレス・URLなど、だれかが分かること。ほかの人への悪口やいやがらせ。宣伝。法律や他人の権利に反すること。</li>
                   <li>数：預けられる願いは1台の端末で30個まで。みんなの星空に出せるのは、1台の端末から1日10件、全員あわせて1日500件までです。短い時間に何度も送ると、少し時間をおくようお願いすることがあります。</li>
                   <li>確認：URLや電話番号らしい数字、気になる言葉を含む願いは、すぐには出さず、運営が確かめてから出します。運営が見守れない期間は、新しい願いをすべて確かめてから出します。</li>
                   <li>つらい気持ちの言葉：星空には出しません。書いた人には、相談できる窓口をこの端末の中だけでお知らせします。</li>
@@ -247,8 +250,8 @@ export function MissionExperience({
             <p className="sheet-kicker">叶ったよ</p>
             <h2 id="fulfilled-title">「叶ったよ」のひとこと（任意）</h2>
             <p className="stars-note">書くと、24時間だけ、ほかの人の星空に流れ星として出ます。名前は出ません。</p>
-            <textarea id="fulfilled-text" maxLength={40} aria-label="叶ったよ、のひとこと" placeholder="例：海を見に行けた" />
-            <div className="input-meta"><span>ひとこと</span><span><b id="fulfilled-length">0</b> / 40</span></div>
+            <textarea id="fulfilled-text" maxLength={24} aria-label="叶ったよ、のひとこと" placeholder="例：海を見に行けた" />
+            <div className="input-meta"><span>ひとこと</span><span><b id="fulfilled-length">0</b> / 12</span></div>
             <button className="stars-primary" id="fulfilled-send" type="button">流れ星にして流す</button>
             <button className="stars-secondary" id="fulfilled-skip" type="button">今は流さない</button>
             <p className="stars-status" id="fulfilled-status" role="status" aria-live="polite" />
@@ -258,12 +261,13 @@ export function MissionExperience({
         <section className="intro-screen" id="intro-screen" role="dialog" aria-modal="true" aria-labelledby="intro-title" hidden>
           <div className="intro-inner">
             <p className="intro-brand">MORUNE <span>25143</span></p>
-            <h2 id="intro-title">願いを星に、<br />想いを地球へ。</h2>
-            <p className="intro-lead">手放した「いつかやりたいこと」を星に預け、ひとつずつ受け取りなおす。</p>
+            <p className="title-kicker" lang="en">Leave your wish with the stars</p>
+            <h2 id="intro-title">やりたいことを<br />星に預けておく</h2>
+            <p className="intro-lead">預けた願いは　いつか帰ってくる</p>
             <div className="intro-sample">
               {/* eslint-disable-next-line @next/next/no-img-element -- 見本の帰還票（同梱の画像） */}
               <img src="/receipt-sample.png" alt="帰還票の見本" />
-              <p><span>持ち帰れるもの</span>帰ってきた願いは、<br />帰還票として現像されます。</p>
+              <p><span>持ち帰れるもの</span>帰ってきた願いは<br />帰還票として現像される</p>
             </div>
             <ol className="intro-steps">
               <li>願いを星に預ける</li>
