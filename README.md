@@ -1,6 +1,6 @@
 # MORUNE 25143 | 願いのサンプルリターン
 
-[公開アプリを開く](https://morune-25143.morune-25143.workers.dev/)
+[公開アプリを開く](https://25143.morune.store/)
 
 > やりたいことを　星に預けておく（Leave your wish with the stars）
 
@@ -10,7 +10,7 @@ GS 卒業制作（**2026-10-07 提出**）の入口。ここから全部たど�
 
 | 見たいもの | 場所 |
 | --- | --- |
-| 動くもの（本番） | https://morune-25143.morune-25143.workers.dev/ |
+| 動くもの（本番） | https://25143.morune.store/ （旧URL https://morune-25143.morune-25143.workers.dev/ も残す。願いは端末にURLごとに保存されるので、前から使っている人は旧URLのまま） |
 | やること・進み具合（看板） | [GitHub Projects「MORUNE 25143 卒業制作」](https://github.com/users/mai-san447/projects/2)（優先度・カテゴリ・目安・締め切りつき） |
 | やることの一覧 | [Issues](https://github.com/mai-san447/hello-earth-25143/issues) |
 | 変更のまとめとレビュー | [Pull Request #18](https://github.com/mai-san447/hello-earth-25143/pull/18) |
