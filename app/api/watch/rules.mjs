@@ -34,3 +34,9 @@ export function parseWatch(body) {
 
 // 未設定や壊れた値も、人が再開するまでは表示しない。
 export function isPaused(value) { return value !== '0'; }
+
+// Cloudflare の回数制限は場所ごとに数えるため、本番で止まらないことがあった（2026-10-12に確認）。
+// そこで、間違えた回数をデータベースで1分ごとに数え、全体で5回を超えたらその1分は受け付けない。
+export const WATCH_FAIL_LIMIT = 5;
+export function failBucket(now) { return `fail:${Math.floor(now / 60000)}`; }
+export function tooManyFailures(count) { return Number(count) >= WATCH_FAIL_LIMIT; }

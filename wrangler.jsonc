@@ -4,7 +4,11 @@
   "main": "./dist/server/index.js",
   "compatibility_date": "2026-09-26",
   "compatibility_flags": ["nodejs_compat"],
+  // 旧URL（workers.dev）は消さない：キーホルダー裏の印刷・配ったQR・預けた人の端末の願い（URLごとに保存）がそこにあるため
   "workers_dev": true,
+  // 新しい人に配る短いURL（2026-11-25〜）。morune.store のDNSが同じCloudflareアカウントにあるので custom_domain で足す
+  "routes": [{"pattern": "25143.morune.store", "custom_domain": true}],
+  // 回数制限は補助（場所ごとに数えるため本番では止まらないことがある）。量の上限は1日の上限、見守りはデータベースのまちがい回数で守る
   "ratelimits": [{"name": "STARS_LIMITER", "namespace_id": "25143", "simple": {"limit": 20, "period": 60}}, {"name": "WATCH_LIMITER", "namespace_id": "25144", "simple": {"limit": 5, "period": 60}}],
   "assets": {
     "directory": "./dist/client"

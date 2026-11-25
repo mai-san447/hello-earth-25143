@@ -80,7 +80,7 @@ for (const operation of ['saveReceipt', 'shareReceipt']) {
       for (let i = 0; i < 20; i++) await Promise.resolve();
       assert.equal(sandbox.growthDrafts.get('w'), text);
       assert.equal(sandbox.wishes[0].firstStep, undefined);
-      assert.match($('#receipt-status').textContent, failure === 'length' ? /60字/ : /保存できません/);
+      assert.match($('#receipt-status').textContent, failure === 'length' ? /12字/ : /保存できません/);
       assert.deepEqual(calls, operation === 'shareReceipt' ? ['post', 'refresh'] : ['refresh']);
       assert.equal(sandbox.receiptImage, null);
       assert.equal($(operation === 'shareReceipt' ? '#receipt-share' : '#receipt-save').disabled, false);

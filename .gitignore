@@ -49,3 +49,6 @@ next-env.d.ts
 
 # Claude Code の作業用コピー
 .claude/worktrees/
+
+# TypeScript の差分ビルドの記録（生成物）
+*.tsbuildinfo

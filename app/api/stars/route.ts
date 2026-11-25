@@ -7,7 +7,7 @@ import { orbits, publicStars, starReports } from "../../../db/schema";
 import { DAILY_WINDOW_MS, SKY_LIMIT, STATUS, GLOBAL_DAILY_LIMIT, acceptGlobal, acceptPublish, publicStarsEnabled, expiresAt, formatNumber, isOrbitId, isStarId, parsePublish, focusedStars, publishStatus } from "./rules.mjs";
 import { readPaused } from "../watch/settings";
 
-// みんなの星（#22）。公開を選んだ言葉（60字まで）と軌道IDだけを受け取る。名前・IPアドレスは保存しない。
+// みんなの星（#22）。公開を選んだ言葉（画面では12字まで。サーバーは前の長い言葉も受け取れるよう60字まで）と軌道IDだけを受け取る。名前・IPアドレスは保存しない。
 // D1 の `DB` が無い環境、または PUBLIC_STARS_ENABLED が "true" でない環境では、機能ごと隠す（rules.mjs）。
 function enabled() {
   return publicStarsEnabled(env);
