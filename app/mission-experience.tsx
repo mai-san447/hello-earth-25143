@@ -127,6 +127,9 @@ export function MissionExperience({
             <button id="my-record-copy" type="button">記録の数をコピー</button>
             <p className="my-record-status" id="my-record-status" role="status" aria-live="polite" />
           </details>
+          {/* サービスとして続けるので、使ってくれた人の次の行き先として MORUNE のお店を1行だけ置く（2026-11-27）。
+              noreferrer をつけないのは、お店の日報で「25143 から来た」と数えるため（送るのはサイト名だけ） */}
+          <a className="shop-link" href="https://morune.store/" target="_blank" rel="noopener">MORUNE のお店（本・ミニCD） <span aria-hidden="true">↗</span></a>
           <button className="policy-open" id="policy-open" type="button" aria-haspopup="dialog">利用規約・プライバシー <span aria-hidden="true">›</span></button>
         </section>
         <section className="policy-backdrop" id="policy-sheet" role="dialog" aria-modal="true" aria-labelledby="policy-title" hidden>

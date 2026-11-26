@@ -395,6 +395,10 @@ body:has(.mission-app){background:transparent}
 }
 .policy-open{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;margin-top:14px;padding:9px 2px 0;border:0;border-top:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(239,243,247,.78);font:500 11px/1.5 "Noto Sans JP","Zen Kaku Gothic New",sans-serif;text-align:left;cursor:pointer}
 .policy-open span{color:#e7cf9c;font-size:18px;line-height:1}
+.shop-link{display:flex;align-items:center;justify-content:space-between;min-height:44px;margin-top:14px;padding:9px 2px 0;border-top:1px solid rgba(255,255,255,.1);color:rgba(239,243,247,.78);font:500 11px/1.5 "Noto Sans JP","Zen Kaku Gothic New",sans-serif;text-decoration:none}
+.shop-link span{color:#e7cf9c;font-size:14px;line-height:1}
+.shop-link+.policy-open{margin-top:0}
+.shop-link:focus-visible{outline:2px solid #e6ca91;outline-offset:3px}
 .policy-open:focus-visible,.policy-close:focus-visible,.policy-content:focus-visible{outline:2px solid #e6ca91;outline-offset:3px}
 .policy-backdrop{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:max(14px,env(safe-area-inset-top)) 14px max(14px,env(safe-area-inset-bottom));background:rgba(2,5,11,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .policy-backdrop[hidden]{display:none}
