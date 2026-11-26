@@ -133,7 +133,7 @@ export function MissionExperience({
           <div className="policy-panel">
             <button className="policy-close" id="policy-close" type="button" aria-label="利用規約を閉じる">×</button>
             <h2 id="policy-title">利用規約・プライバシー</h2>
-            <p className="policy-updated">内容更新日：2026年10月12日</p>
+            <p className="policy-updated">内容更新日：2026年11月26日</p>
             <div className="policy-content" id="policy-content" tabIndex={0}>
               <section>
                 <h3>運営者</h3>
@@ -174,6 +174,10 @@ export function MissionExperience({
                   <li>運営は、ルールに合わない言葉を、お知らせなく見えなくしたり消したりできます。</li>
                   <li>流れ星は、だれかの「叶ったよ」です（24時間）。帰ってきた星は、30日のあいだ薄く残ります。</li>
                 </ul>
+              </section>
+              <section>
+                <h3>アクセス数の計測</h3>
+                <p>どのくらい見られているかを知るため、Cloudflare Web Analytics を使います。開いたページのURL・参照元・ブラウザーや端末の種類・おおまかな国と、表示の速さが Cloudflare に送られます。Cookie は使わず、ひとりひとりを追いかけることはしません。願いの言葉・軌道ID・位置情報は送りません。</p>
               </section>
               <section>
                 <h3>X でのシェア</h3>
